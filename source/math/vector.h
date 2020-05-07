@@ -9,6 +9,8 @@
 
 #include <cmath>
 
+// TODO: Cross Product etc...
+
 // TO DO: SIMD SUPPORT!
 
 ///////////////////////////////////////////////////////////////////////
@@ -24,6 +26,9 @@ struct Vec2
 
   inline T Magnitude() const;
   inline T SqrMagnitude() const;
+
+  inline T Distance(const Vec2<T>& rhs) const;
+  inline T SqrDistance(const Vec2<T>& rhs) const;
 
   inline void Normalize();
   inline void SafeNormalize();
@@ -77,6 +82,21 @@ template <typename T>
 inline T Vec2<T>::SqrMagnitude() const
 {
   return (x * x) + (y * y);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline T Vec2<T>::Distance(const Vec2<T>& rhs) const
+{
+  return std::sqrt(SqrDistance(rhs));
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline T Vec2<T>::SqrDistance(const Vec2<T>& rhs) const
+{
+  Vec2<T> d(rhs.x - x, rhs.y - y);
+  return d.SqrMagnitude();
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -149,6 +169,9 @@ struct Vec3
   inline T Magnitude() const;
   inline T SqrMagnitude() const;
 
+  inline T Distance(const Vec3<T>& rhs) const;
+  inline T SqrDistance(const Vec3<T>& rhs) const;
+
   inline void Normalize();
   inline void SafeNormalize();
   inline Vec3<T> Normalized() const;
@@ -203,6 +226,21 @@ template <typename T>
 inline T Vec3<T>::SqrMagnitude() const
 {
   return (x * x) + (y * y) + (z * z);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline T Vec3<T>::Distance(const Vec3<T>& rhs) const
+{
+  return std::sqrt(SqrDistance(rhs));
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline T Vec3<T>::SqrDistance(const Vec3<T>& rhs) const
+{
+  Vec3<T> d(rhs.x - x, rhs.y - y, rhs.z - z);
+  return d.SqrMagnitude();
 }
 
 ///////////////////////////////////////////////////////////////////////

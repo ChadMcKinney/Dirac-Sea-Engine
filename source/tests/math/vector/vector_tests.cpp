@@ -90,6 +90,13 @@ void RunFloatingVec2Tests()
 		T sqrMagnitude = a.SqrMagnitude();
 		TEST("Vec3: (3, 4).SqrMagnitude()", sqrMagnitude == T(25));
 	}
+
+	{
+		Vec2<T> a(5, 0);
+		Vec2<T> b(-1, 8);
+		T d = a.Distance(b);
+		TEST("Vec2: (5, 0).Distance(-1, 8)", d == 10);
+	}
 }
 
 template <typename T>
@@ -169,6 +176,13 @@ void RunFloatingVec3Tests()
 		Vec3<T> a(T(3), T(4), T(-3.3166247903554));
 		T sqrMagnitude = a.SqrMagnitude();
 		TEST("Vec3: (3, 4, -3.3166247903554).SqrMagnitude()", sqrMagnitude == T(36));
+	}
+
+	{
+		Vec3<T> a(5, 6, -7);
+		Vec3<T> b(-1, 8, 1337);
+		T d = a.Distance(b);
+		TEST("Vec3: (5,6,7).Distance(-1,8,1337)", d == std::sqrt(T(1806376)));
 	}
 }
 
