@@ -7,11 +7,7 @@
 
 #include "types.h"
 
-// TO DO: SIMD SUPPORT!!!!!!!!
-// TO DO: SIMD SUPPORT!!!!!!!!
-// TO DO: SIMD SUPPORT!!!!!!!!
-// TO DO: SIMD SUPPORT!!!!!!!!
-// TO DO: SIMD SUPPORT!!!!!!!!
+// TO DO: SIMD SUPPORT!
 
 ///////////////////////////////////////////////////////////////////////
 // Vec2
@@ -106,7 +102,7 @@ Vec3<T> Vec3<T>::operator+(const Vec3& rhs) const
 template <typename T>
 Vec3<T> Vec3<T>::operator-(const Vec3& rhs) const
 {
-	return Vec3(x + rhs.x, y + rhs.y, z + rhs.z);
+	return Vec3(x - rhs.x, y - rhs.y, z - rhs.z);
 }
 
 ///////////////////////////////////////////////////////////////////////
