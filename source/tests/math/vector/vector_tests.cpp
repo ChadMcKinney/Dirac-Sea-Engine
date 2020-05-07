@@ -34,6 +34,19 @@ void RunVec2Tests()
 		T c = a.Dot(b);
 		TEST("Vec2: (1, 1).Dot(1, 1)", c == T(2));
 	}
+
+	{
+		Vec2<T> a(1, 1);
+		a.Scale(666);
+		TEST("Vec2: (1,1).Scale", a.x == 666 && a.y == 666);
+	}
+
+
+	{
+		Vec2<T> a(1, 1);
+		Vec2<T> b = a.Scaled(666);
+		TEST("Vec2: (1,1).Scaled", a.x == 1 && a.y == 1 && b.x == 666 && b.y == 666);
+	}
 }
 
 template <typename T>
@@ -121,6 +134,19 @@ void RunVec3Tests()
 		Vec3<T> b(1, 1, 1);
 		T c = a.Dot(b);
 		TEST("Vec3: (1, 1, 1).Dot(1, 1, 1)", c == T(3));
+	}
+
+	{
+		Vec3<T> a(1, 1, 1);
+		a.Scale(666);
+		TEST("Vec3: (1,1,1).Scale", a.x == 666 && a.y == 666 && a.z == 666);
+	}
+
+
+	{
+		Vec3<T> a(1, 1, 1);
+		Vec3<T> b = a.Scaled(666);
+		TEST("Vec3: (1,1,1).Scaled", a.x == 1 && a.y == 1 && a.z == 1 && b.x == 666 && b.y == 666 && b.z == 666);
 	}
 }
 
