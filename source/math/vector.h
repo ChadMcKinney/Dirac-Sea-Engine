@@ -7,6 +7,12 @@
 
 #include "types.h"
 
+// TO DO: SIMD SUPPORT!!!!!!!!
+// TO DO: SIMD SUPPORT!!!!!!!!
+// TO DO: SIMD SUPPORT!!!!!!!!
+// TO DO: SIMD SUPPORT!!!!!!!!
+// TO DO: SIMD SUPPORT!!!!!!!!
+
 ///////////////////////////////////////////////////////////////////////
 // Vec2
 template <typename T>
@@ -54,6 +60,8 @@ Vec2<T> Vec2<T>::operator-(const Vec2& rhs) const
 ///////////////////////////////////////////////////////////////////////
 typedef Vec2<fworld> Vec2w;
 typedef Vec2<flocal> Vec2l;
+typedef Vec2<int32_t> Vec2i;
+typedef Vec2<uint32_t> Vec2u;
 
 ///////////////////////////////////////////////////////////////////////
 // Vec3
@@ -104,3 +112,5 @@ Vec3<T> Vec3<T>::operator-(const Vec3& rhs) const
 ///////////////////////////////////////////////////////////////////////
 typedef Vec3<fworld> Vec3w;
 typedef Vec3<flocal> Vec3l;
+typedef Vec3<int32_t> Vec3i;
+typedef Vec3<uint32_t> Vec3u;

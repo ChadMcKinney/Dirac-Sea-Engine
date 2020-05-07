@@ -11,20 +11,52 @@
 #include "tests/test_framework.h"
 #include "vector.h"
 
+template <typename T>
 void RunVec2Tests()
 {
-    Vec2w a(1, 2);
-    Vec2w b(4, 5);
-    Vec2w c = a + b;
-    TEST("Vec2: (1,2) + (4,5)", c.x == fworld(5) && c.y == fworld(7));
+    Vec2<T> a(1, 2);
+    Vec2<T> b(4, 5);
+    Vec2<T> c = a + b;
+    TEST("Vec2: (1,2) + (4,5)", c.x == T(5) && c.y == T(7));
+}
+
+template <typename T>
+void RunVec3Tests()
+{
+    Vec3<T> a(1, 2, 3);
+    Vec3<T> b(4, 5, 6);
+    Vec3<T> c = a + b;
+    TEST("Vec3: (1,2,3) + (4,5,6)", c.x == T(5) && c.y == T(7) && c.z == T(9));
+}
+
+void RunVec2Tests()
+{
+  puts("Running Vec2w tests");
+  RunVec2Tests<fworld>();
+
+  puts("Running Vec2l tests");
+  RunVec2Tests<flocal>();
+
+  puts("Running Vec2i tests");
+  RunVec2Tests<int32_t>();
+
+  puts("Running Vec2u tests");
+  RunVec2Tests<uint32_t>();
 }
 
 void RunVec3Tests()
 {
-    Vec3w a(1, 2, 3);
-    Vec3w b(4, 5, 6);
-    Vec3w c = a + b;
-    TEST("Vec3: (1,2,3) + (4,5,6)", c.x == fworld(5) && c.y == fworld(7) && c.z == fworld(9));
+  puts("Running Vec3w tests");
+  RunVec3Tests<fworld>();
+
+  puts("Running Vec3l tests");
+  RunVec3Tests<flocal>();
+
+  puts("Running Vec3i tests");
+  RunVec3Tests<int32_t>();
+
+  puts("Running Vec3u tests");
+  RunVec3Tests<uint32_t>();
 }
 
 void RunVectorTests()

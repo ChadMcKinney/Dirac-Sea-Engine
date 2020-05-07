@@ -29,6 +29,9 @@ add_definitions(${CMAKE_CXX_FLAGS})
 set(INCLUDE_DIR
     source
     source/math
+    source/tests
+    source/tests/math
+    source/tests/math/vector
     )
 
 include_directories(${INCLUDE_DIR})
