@@ -38,6 +38,7 @@ set(project_SOURCES
     )
 
 set(project_HEADERS
+    source/math/types.h
     source/math/vector.h
     )
 
