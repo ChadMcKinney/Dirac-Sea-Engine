@@ -35,11 +35,17 @@ include_directories(${INCLUDE_DIR})
 
 set(project_SOURCES
     source/main.cpp
+    source/tests/tests.cpp
+    source/tests/test_framework.cpp
+    source/tests/math/vector/vector_tests.cpp
     )
 
 set(project_HEADERS
     source/math/types.h
     source/math/vector.h
+    source/tests/tests.h
+    source/tests/test_framework.h
+    source/tests/math/vector/vector_tests.h
     )
 
 ADD_EXECUTABLE(DiracSea ${project_HEADERS} ${project_SOURCES})

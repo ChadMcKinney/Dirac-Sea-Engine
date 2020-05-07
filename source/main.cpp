@@ -5,6 +5,7 @@
 
 #include <cstdio>
 
+#include "tests/tests.h"
 #include "vector.h"
 
 int main()
@@ -14,5 +15,6 @@ int main()
     Vec3w b(4, 5, 6);
     Vec3w c = a + b;
     printf("c: { x: %f, y: %f, z: %f\n", c.x, c.y, c.z);
+    RunTests();
     return 0;
 }
