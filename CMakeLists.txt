@@ -2,28 +2,29 @@
 # Dirac Sea Engine
 # =============================================================================
 
-cmake_minimum_required(VERSION 2.6 FATAL_ERROR)
-project(diracsea)
+cmake_minimum_required(VERSION 3.17 FATAL_ERROR)
+project(DiracSea)
 
-set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_BUILD_TYPE Debug)
 
-find_package(LLVM REQUIRED CONFIG)
-message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
-message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+# TODO ADD SDL
+# find_package(LLVM REQUIRED CONFIG)
+# message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+# message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
-include_directories(${LLVM_INCLUDE_DIRS})
-add_definitions(${LLVM_DEFINITIONS})
+# include_directories(${LLVM_INCLUDE_DIRS})
+# add_definitions(${LLVM_DEFINITIONS})
 
 if (CMAKE_COMPILER_IS_GNUCC)
-    set(CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -Wall -Wextra")
+    set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 endif()
 
 if (MSVC)
-    set(CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} /W4 /wd4201 /wd4204 /WX")
+    set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} /W4 /wd4201 /wd4204 /WX")
 endif()
 
-add_definitions(${CMAKE_C_FLAGS})
+add_definitions(${CMAKE_CXX_FLAGS})
 
 set(INCLUDE_DIR
     source
@@ -37,10 +38,12 @@ set(project_SOURCES
     )
 
 set(project_HEADERS
-    source/vector.h
+    source/math/vector.h
     )
 
 ADD_EXECUTABLE(DiracSea ${project_HEADERS} ${project_SOURCES})
+
+set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT DiracSea)
 
 # TODO ADD SDL
 # Find the libraries that correspond to the LLVM components
@@ -51,7 +54,3 @@ ADD_EXECUTABLE(DiracSea ${project_HEADERS} ${project_SOURCES})
 # TODO ADD SDL 
 # TARGET_LINK_LIBRARIES(necro ${llvm_libs})
 
-
-execute_process (
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
