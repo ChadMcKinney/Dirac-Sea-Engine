@@ -19,6 +19,8 @@ template <typename T>
 struct Vec2
 {
   Vec2();
+  Vec2(EZero);
+  Vec2(EUninitialized);
   Vec2(T _x, T _y);
 
   inline Vec2 operator+(const Vec2& rhs) const;
@@ -53,6 +55,20 @@ template <typename T>
 Vec2<T>::Vec2(T _x, T _y)
 	: x(_x)
 	, y(_y)
+{
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+Vec2<T>::Vec2(EZero)
+  : x(0),
+  , y(0)
+{
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+Vec2<T>::Vec2(EUninitialized)
 {
 }
 
@@ -161,6 +177,8 @@ template <typename T>
 struct Vec3
 {
   Vec3();
+  Vec3(EZero);
+  Vec3(EUninitialized);
   Vec3(T _x, T _y, T _z);
 
   inline Vec3 operator+(const Vec3& rhs) const;
@@ -188,6 +206,21 @@ Vec3<T>::Vec3()
   : x(T{})
   , y(T{})
   , z(T{})
+{
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+Vec3<T>::Vec3(EZero)
+	: x(0)
+	, y(0)
+	, z(0)
+{
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+Vec3<T>::Vec3(EUninitialized)
 {
 }
 

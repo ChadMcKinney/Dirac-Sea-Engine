@@ -29,3 +29,9 @@ constexpr T epsilon()
 {
 	return std::numeric_limits<T>::epsilon();
 }
+
+///////////////////////////////////////////////////////////////////////
+// Construction types
+enum class EZero : uint8_t { Constructor };
+enum class EIdentity : uint8_t { Constructor };
+enum class EUninitialized : uint8_t { Constructor };
