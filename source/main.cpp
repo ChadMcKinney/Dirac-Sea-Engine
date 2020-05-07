@@ -3,8 +3,6 @@
  * Proprietary and confidential
  */
 
-#include <cstdio>
-
 #include "tests/tests.h"
 
 int main()

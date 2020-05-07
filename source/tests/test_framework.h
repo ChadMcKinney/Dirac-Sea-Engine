@@ -5,4 +5,6 @@
 
 #pragma once
 
+#include <cstdio>
+
 #define TEST(name, ...) do { puts("Running test: " #name); assert(__VA_ARGS__); puts("Test successful"); } while (false)
