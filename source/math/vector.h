@@ -43,6 +43,11 @@ struct Vec2
 
   inline T Dot(const Vec2& rhs) const;
 
+  inline Vec2<T> ParallelProjection(const Vec2& rhs) const;
+  inline Vec2<T> ParallelProjection_Safe(const Vec2& rhs) const;
+  inline Vec2<T> PerpendicularProjection(const Vec2& rhs) const;
+  inline Vec2<T> PerpendicularProjection_Safe(const Vec2& rhs) const;
+
 	T x, y;
 };
 
@@ -185,6 +190,40 @@ inline T Vec2<T>::Dot(const Vec2& rhs) const
 }
 
 ///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Vec2<T> Vec2<T>::ParallelProjection(const Vec2& rhs) const
+{
+  Vec2 n = Normalized();
+  const T l = n.Dot(rhs);
+  n.Scale(l);
+  return n;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Vec2<T> Vec2<T>::ParallelProjection_Safe(const Vec2& rhs) const
+{
+  Vec2 n = SafeNormalized();
+  const T l = n.Dot(rhs);
+  n.Scale(l);
+  return n;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Vec2<T> Vec2<T>::PerpendicularProjection(const Vec2& rhs) const
+{
+  return rhs - ParallelProjection(rhs);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Vec2<T> Vec2<T>::PerpendicularProjection_Safe(const Vec2& rhs) const
+{
+  return rhs - ParallelProjection_Safe(rhs);
+}
+
+///////////////////////////////////////////////////////////////////////
 typedef Vec2<fworld> Vec2w;
 typedef Vec2<flocal> Vec2l;
 typedef Vec2<int32_t> Vec2i;
@@ -219,6 +258,11 @@ struct Vec3
   inline Vec3<T> SafeNormalized() const;
 
   inline T Dot(const Vec3& rhs) const;
+
+  inline Vec3<T> ParallelProjection(const Vec3& rhs) const;
+  inline Vec3<T> ParallelProjection_Safe(const Vec3& rhs) const;
+  inline Vec3<T> PerpendicularProjection(const Vec3& rhs) const;
+  inline Vec3<T> PerpendicularProjection_Safe(const Vec3& rhs) const;
 
   T x, y, z;
 };
@@ -365,6 +409,40 @@ template <typename T>
 inline T Vec3<T>::Dot(const Vec3& rhs) const
 {
   return (x * rhs.x) + (y * rhs.y) + (z * rhs.z);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Vec3<T> Vec3<T>::ParallelProjection(const Vec3& rhs) const
+{
+  Vec3 n = Normalized();
+  const T l = n.Dot(rhs);
+  n.Scale(l);
+  return n;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Vec3<T> Vec3<T>::ParallelProjection_Safe(const Vec3& rhs) const
+{
+  Vec3 n = SafeNormalized();
+  const T l = n.Dot(rhs);
+  n.Scale(l);
+  return n;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Vec3<T> Vec3<T>::PerpendicularProjection(const Vec3& rhs) const
+{
+  return rhs - ParallelProjection(rhs);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Vec3<T> Vec3<T>::PerpendicularProjection_Safe(const Vec3& rhs) const
+{
+  return rhs - ParallelProjection_Safe(rhs);
 }
 
 ///////////////////////////////////////////////////////////////////////

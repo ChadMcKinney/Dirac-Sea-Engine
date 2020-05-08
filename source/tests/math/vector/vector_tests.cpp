@@ -210,6 +210,21 @@ void RunFloatingVec3Tests()
 		T d = a.Distance(b);
 		TEST("Vec3: (5,6,7).Distance(-1,8,1337)", d == std::sqrt(T(1806376)));
 	}
+
+	{
+		Vec3<T> a(4, 0, 1);
+		Vec3<T> b(3, 5, -2);
+		Vec3<T> c = a.ParallelProjection(b);
+		TEST("Vec3: (4, 0, 1).ParallelProjection(3, 5, -2)", abs(c.x - (T(40) / T(17))) <= (epsilon<T>()*2) && c.y == 0 && abs(c.z - (T(10) / T(17))) <= epsilon<T>());
+	}
+
+
+	{
+		Vec3<T> a(4, 0, 1);
+		Vec3<T> b(3, 5, -2);
+		Vec3<T> c = a.PerpendicularProjection(b);
+		TEST("Vec3: (4, 0, 1).PerpendicularProjection(3, 5, -2)", abs(c.x - (T(11) / T(17))) <= (epsilon<T>()*3) && c.y == 5 && abs(c.z - (T(-44) / T(17))) <= epsilon<T>());
+	}
 }
 
 void RunVec2Tests()
