@@ -110,6 +110,16 @@ void RunFloatingVec2Tests()
 		T d = a.Distance(b);
 		TEST("Vec2: (5, 0).Distance(-1, 8)", d == 10);
 	}
+
+	{
+		T angle = Vec3<T>::Up.Angle(Vec3<T>::Right);
+		TEST("Vec2: (0, 1).Angle(1, 0)", angle == kHalfPi<T>);
+	}
+
+	{
+		T angle = Vec3<T>::Left.Angle(Vec3<T>::Right);
+		TEST("Vec3: (-1, 0).Angle(1, 0)", angle == kPi<T>);
+	}
 }
 
 template <typename T>
@@ -224,6 +234,16 @@ void RunFloatingVec3Tests()
 		Vec3<T> b(3, 5, -2);
 		Vec3<T> c = a.PerpendicularProjection(b);
 		TEST("Vec3: (4, 0, 1).PerpendicularProjection(3, 5, -2)", abs(c.x - (T(11) / T(17))) <= (epsilon<T>()*3) && c.y == 5 && abs(c.z - (T(-44) / T(17))) <= epsilon<T>());
+	}
+
+	{
+		T angle = Vec3<T>::Up.Angle(Vec3<T>::Right);
+		TEST("Vec3: (0, 1, 0).Angle(1, 0, 0)", angle == kHalfPi<T>);
+	}
+
+	{
+		T angle = Vec3<T>::Forward.Angle(Vec3<T>::Back);
+		TEST("Vec3: (0, 0, 1).Angle(0, 0, -1)", angle == kPi<T>);
 	}
 }
 

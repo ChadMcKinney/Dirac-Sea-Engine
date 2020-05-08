@@ -43,10 +43,19 @@ struct Vec2
 
   inline T Dot(const Vec2& rhs) const;
 
+  inline T Angle(const Vec2& rhs) const;
+  inline T Angle_Safe(const Vec2& rhs) const;
+
   inline Vec2<T> ParallelProjection(const Vec2& rhs) const;
   inline Vec2<T> ParallelProjection_Safe(const Vec2& rhs) const;
   inline Vec2<T> PerpendicularProjection(const Vec2& rhs) const;
   inline Vec2<T> PerpendicularProjection_Safe(const Vec2& rhs) const;
+
+  static const Vec2<T> Zero;
+  static const Vec2<T> Up;
+  static const Vec2<T> Down;
+  static const Vec2<T> Left;
+  static const Vec2<T> Right;
 
 	T x, y;
 };
@@ -191,6 +200,20 @@ inline T Vec2<T>::Dot(const Vec2& rhs) const
 
 ///////////////////////////////////////////////////////////////////////
 template <typename T>
+inline T Vec2<T>::Angle(const Vec2& rhs) const
+{
+  return std::acos(Normalized().Dot(rhs.Normalized()));
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline T Vec2<T>::Angle_Safe(const Vec2& rhs) const
+{
+  return std::acos(SafeNormalized().Dot(rhs.SafeNormalized()));
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
 inline Vec2<T> Vec2<T>::ParallelProjection(const Vec2& rhs) const
 {
   Vec2 n = Normalized();
@@ -222,6 +245,18 @@ inline Vec2<T> Vec2<T>::PerpendicularProjection_Safe(const Vec2& rhs) const
 {
   return rhs - ParallelProjection_Safe(rhs);
 }
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+const Vec2<T> Vec2<T>::Zero(EZero::Constructor);
+template <typename T>
+const Vec2<T> Vec2<T>::Up(0, 1);
+template <typename T>
+const Vec2<T> Vec2<T>::Down(0, -1);
+template <typename T>
+const Vec2<T> Vec2<T>::Left(-1, 0);
+template <typename T>
+const Vec2<T> Vec2<T>::Right(1, 0);
 
 ///////////////////////////////////////////////////////////////////////
 typedef Vec2<fworld> Vec2w;
@@ -259,10 +294,21 @@ struct Vec3
 
   inline T Dot(const Vec3& rhs) const;
 
+  inline T Angle(const Vec3& rhs) const;
+  inline T Angle_Safe(const Vec3& rhs) const;
+
   inline Vec3<T> ParallelProjection(const Vec3& rhs) const;
   inline Vec3<T> ParallelProjection_Safe(const Vec3& rhs) const;
   inline Vec3<T> PerpendicularProjection(const Vec3& rhs) const;
   inline Vec3<T> PerpendicularProjection_Safe(const Vec3& rhs) const;
+
+  static const Vec3<T> Zero;
+  static const Vec3<T> Up;
+  static const Vec3<T> Down;
+  static const Vec3<T> Left;
+  static const Vec3<T> Right;
+  static const Vec3<T> Forward;
+  static const Vec3<T> Back;
 
   T x, y, z;
 };
@@ -413,6 +459,20 @@ inline T Vec3<T>::Dot(const Vec3& rhs) const
 
 ///////////////////////////////////////////////////////////////////////
 template <typename T>
+inline T Vec3<T>::Angle(const Vec3& rhs) const
+{
+  return std::acos(Normalized().Dot(rhs.Normalized()));
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline T Vec3<T>::Angle_Safe(const Vec3& rhs) const
+{
+  return std::acos(SafeNormalized().Dot(rhs.SafeNormalized()));
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
 inline Vec3<T> Vec3<T>::ParallelProjection(const Vec3& rhs) const
 {
   Vec3 n = Normalized();
@@ -444,6 +504,22 @@ inline Vec3<T> Vec3<T>::PerpendicularProjection_Safe(const Vec3& rhs) const
 {
   return rhs - ParallelProjection_Safe(rhs);
 }
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+const Vec3<T> Vec3<T>::Zero(EZero::Constructor);
+template <typename T>
+const Vec3<T> Vec3<T>::Up(0, 1, 0);
+template <typename T>
+const Vec3<T> Vec3<T>::Down(0, -1, 0);
+template <typename T>
+const Vec3<T> Vec3<T>::Left(-1, 0, 0);
+template <typename T>
+const Vec3<T> Vec3<T>::Right(1, 0, 0);
+template <typename T>
+const Vec3<T> Vec3<T>::Forward(0, 0, 1);
+template <typename T>
+const Vec3<T> Vec3<T>::Back(0, 0, -1);
 
 ///////////////////////////////////////////////////////////////////////
 typedef Vec3<fworld> Vec3w;

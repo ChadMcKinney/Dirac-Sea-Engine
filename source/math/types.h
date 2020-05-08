@@ -5,8 +5,8 @@
 
 #pragma once
 
-#include <stdint.h>
 #include <limits>
+#include <stdint.h>
 
 ///////////////////////////////////////////////////////////////////////
 // FWorld
@@ -35,3 +35,23 @@ constexpr T epsilon()
 enum class EZero : uint8_t { Constructor };
 enum class EIdentity : uint8_t { Constructor };
 enum class EUninitialized : uint8_t { Constructor };
+
+
+///////////////////////////////////////////////////////////////////////
+// Constants
+template <typename T>
+static constexpr T kPi = T(3.14159265358979323846);
+
+template <typename T>
+static constexpr T kHalfPi = kPi<T> / T(2);
+
+template <typename T>
+static constexpr T kQuarterPi = kPi<T> / T(4);
+
+static constexpr fworld kFWorldPi = kPi<fworld>;
+static constexpr fworld kFWorldHalfPi = kHalfPi<fworld>;
+static constexpr fworld kFWorldQuarterPi = kQuarterPi<fworld>;
+
+static constexpr flocal kFLocalPi = kPi<flocal>;
+static constexpr flocal kFLocalHalfPi = flocal(kHalfPi<fworld>);
+static constexpr flocal kFLocalQuarterPi = flocal(kQuarterPi<fworld>);
