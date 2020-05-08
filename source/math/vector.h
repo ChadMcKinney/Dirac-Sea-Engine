@@ -26,6 +26,8 @@ struct Vec2
 
   inline Vec2 operator+(const Vec2& rhs) const;
   inline Vec2 operator-(const Vec2& rhs) const;
+  inline bool operator==(const Vec2& rhs) const;
+  inline bool operator!=(const Vec2& rhs) const;
 
   inline void Scale(T s);
   inline Vec2 Scaled(T s) const;
@@ -102,6 +104,20 @@ template <typename T>
 inline Vec2<T> Vec2<T>::operator-(const Vec2& rhs) const
 {
   return Vec2(x - rhs.x, y - rhs.y);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline bool Vec2<T>::operator==(const Vec2& rhs) const
+{
+  return x == rhs.x && y == rhs.y;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline bool Vec2<T>::operator!=(const Vec2& rhs) const
+{
+  return x != rhs.x || y != rhs.y;
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -277,6 +293,8 @@ struct Vec3
 
   inline Vec3 operator+(const Vec3& rhs) const;
   inline Vec3 operator-(const Vec3& rhs) const;
+  inline bool operator==(const Vec3& rhs) const;
+  inline bool operator!=(const Vec3& rhs) const;
 
   inline void Scale(T s);
   inline Vec3 Scaled(T s) const;
@@ -293,6 +311,7 @@ struct Vec3
   inline Vec3<T> SafeNormalized() const;
 
   inline T Dot(const Vec3& rhs) const;
+  inline Vec3<T> Cross(const Vec3& rhs) const;
 
   inline T Angle(const Vec3& rhs) const;
   inline T Angle_Safe(const Vec3& rhs) const;
@@ -358,6 +377,20 @@ template <typename T>
 inline Vec3<T> Vec3<T>::operator-(const Vec3& rhs) const
 {
 	return Vec3(x - rhs.x, y - rhs.y, z - rhs.z);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline bool Vec3<T>::operator==(const Vec3& rhs) const
+{
+  return x == rhs.x && y == rhs.y && z == rhs.z;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline bool Vec3<T>::operator!=(const Vec3& rhs) const
+{
+  return x != rhs.x || y != rhs.y || z != rhs.z;
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -455,6 +488,17 @@ template <typename T>
 inline T Vec3<T>::Dot(const Vec3& rhs) const
 {
   return (x * rhs.x) + (y * rhs.y) + (z * rhs.z);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Vec3<T> Vec3<T>::Cross(const Vec3& rhs) const
+{
+  Vec3<T> c(EUninitialized::Constructor);
+  c.x = (y * rhs.z) - (z * rhs.y);
+  c.y = (z * rhs.x) - (x * rhs.z);
+  c.z = (x * rhs.y) - (y * rhs.x);
+	return c;
 }
 
 ///////////////////////////////////////////////////////////////////////

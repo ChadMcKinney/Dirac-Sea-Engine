@@ -41,11 +41,28 @@ void RunVec2Tests()
 		TEST("Vec2: (1,1).Scale", a.x == 666 && a.y == 666);
 	}
 
-
 	{
 		Vec2<T> a(1, 1);
 		Vec2<T> b = a.Scaled(666);
 		TEST("Vec2: (1,1).Scaled", a.x == 1 && a.y == 1 && b.x == 666 && b.y == 666);
+	}
+
+	{
+		Vec2<T> a(1, 3);
+		Vec2<T> b(1, 3);
+		TEST("Vec3: (1,3) == (1, 3)", a == b);
+	}
+
+	{
+		Vec2<T> a(1, 3);
+		Vec2<T> b(0, 3);
+		TEST("Vec3: (1,3) != (0, 3)", a != b);
+	}
+
+	{
+		Vec2<T> a(1, 3);
+		Vec2<T> b(1, 0);
+		TEST("Vec3: (1,3) != (1, 0)", a != b);
 	}
 }
 
@@ -112,12 +129,12 @@ void RunFloatingVec2Tests()
 	}
 
 	{
-		T angle = Vec3<T>::Up.Angle(Vec3<T>::Right);
+		T angle = Vec2<T>::Up.Angle(Vec2<T>::Right);
 		TEST("Vec2: (0, 1).Angle(1, 0)", angle == kHalfPi<T>);
 	}
 
 	{
-		T angle = Vec3<T>::Left.Angle(Vec3<T>::Right);
+		T angle = Vec2<T>::Left.Angle(Vec2<T>::Right);
 		TEST("Vec3: (-1, 0).Angle(1, 0)", angle == kPi<T>);
 	}
 }
@@ -157,6 +174,31 @@ void RunVec3Tests()
 		Vec3<T> a(1, 1, 1);
 		Vec3<T> b = a.Scaled(666);
 		TEST("Vec3: (1,1,1).Scaled", a.x == 1 && a.y == 1 && a.z == 1 && b.x == 666 && b.y == 666 && b.z == 666);
+	}
+
+	{
+		Vec3<T> a(1, 3, 4);
+		Vec3<T> b(1, 3, 4);
+		TEST("Vec3: (1,3,4) == (1, 3, 4)", a == b);
+	}
+
+	{
+		Vec3<T> a(1, 3, 4);
+		Vec3<T> b(0, 3, 4);
+		TEST("Vec3: (1,3,4) != (0, 3, 4)", a != b);
+	}
+
+	{
+		Vec3<T> a(1, 3, 4);
+		Vec3<T> b(1, 0, 4);
+		TEST("Vec3: (1,3,4) != (1, 0, 4)", a != b);
+	}
+
+
+	{
+		Vec3<T> a(1, 3, 4);
+		Vec3<T> b(1, 3, 0);
+		TEST("Vec3: (1,3,4) != (1, 3, 0)", a != b);
 	}
 }
 
@@ -244,6 +286,20 @@ void RunFloatingVec3Tests()
 	{
 		T angle = Vec3<T>::Forward.Angle(Vec3<T>::Back);
 		TEST("Vec3: (0, 0, 1).Angle(0, 0, -1)", angle == kPi<T>);
+	}
+
+	{
+		Vec3<T> a(1, 3, 4);
+		Vec3<T> b(2, -5, 8);
+		Vec3<T> c = a.Cross(b);
+		TEST("Vec3: (1,3,4).Cross(2,-5,8)", c.x == 44 && c.y == 0 && c.z == -11);
+	}
+
+	{
+		Vec3<T> a(1, 3, 4);
+		Vec3<T> b(EZero::Constructor);
+		Vec3<T> c = a.Cross(b);
+		TEST("Vec3: (1,3,4).Cross(0, 0, 0)", c == b);
 	}
 }
 

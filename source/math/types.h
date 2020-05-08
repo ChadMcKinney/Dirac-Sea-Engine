@@ -43,10 +43,10 @@ template <typename T>
 static constexpr T kPi = T(3.14159265358979323846);
 
 template <typename T>
-static constexpr T kHalfPi = kPi<T> / T(2);
+static constexpr T kHalfPi = T(kPi<fworld> / fworld(2));
 
 template <typename T>
-static constexpr T kQuarterPi = kPi<T> / T(4);
+static constexpr T kQuarterPi = T(kPi<fworld> / fworld(4));
 
 static constexpr fworld kFWorldPi = kPi<fworld>;
 static constexpr fworld kFWorldHalfPi = kHalfPi<fworld>;
