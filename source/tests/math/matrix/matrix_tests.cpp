@@ -9,8 +9,9 @@
 
 #include <cassert>
 
+#include "math/matrix22.h"
+#include "math/matrix33.h"
 #include "tests/test_framework.h"
-#include "matrix22.h"
 
 template <typename T>
 void RunMatrix2x2Tests()
@@ -125,6 +126,16 @@ void RunMatrix2x2Tests()
   }
 }
 
+template <typename T>
+void RunMatrix3x3Tests()
+{
+  {
+    Matrix33<T> m;
+    Matrix33<T> m2;
+    TEST("m33: m == m2", m == m2);
+  }
+}
+
 void RunMatrixTests()
 {
 	puts("=====================================================");
@@ -134,4 +145,12 @@ void RunMatrixTests()
 	puts("=====================================================");
   puts("Running Matrix2x2<flocal> tests");
   RunMatrix2x2Tests<flocal>();
+
+	puts("=====================================================");
+  puts("Running Matrix3x3<fworld> tests");
+  RunMatrix3x3Tests<fworld>();
+
+	puts("=====================================================");
+  puts("Running Matrix3x3<flocal> tests");
+  RunMatrix3x3Tests<flocal>();
 }
