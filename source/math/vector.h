@@ -281,6 +281,13 @@ typedef Vec2<int32_t> Vec2i;
 typedef Vec2<uint32_t> Vec2u;
 
 ///////////////////////////////////////////////////////////////////////
+typedef Vec2w Point2w;
+typedef Vec2l Point2l;
+typedef Vec2i Point2i;
+typedef Vec2u Point2u;
+
+
+///////////////////////////////////////////////////////////////////////
 // Vec3
 ///////////////////////////////////////////////////////////////////////
 template <typename T>
@@ -570,3 +577,9 @@ typedef Vec3<fworld> Vec3w;
 typedef Vec3<flocal> Vec3l;
 typedef Vec3<int32_t> Vec3i;
 typedef Vec3<uint32_t> Vec3u;
+
+///////////////////////////////////////////////////////////////////////
+typedef Vec3w Point3w;
+typedef Vec3l Point3l;
+typedef Vec3i Point3i;
+typedef Vec3u Point3u;

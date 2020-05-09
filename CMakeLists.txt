@@ -16,6 +16,7 @@ set(CMAKE_BUILD_TYPE Debug)
 # include_directories(${LLVM_INCLUDE_DIRS})
 # add_definitions(${LLVM_DEFINITIONS})
 
+# C++ compiler flags
 if (CMAKE_COMPILER_IS_GNUCC)
     set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 endif()
@@ -25,6 +26,8 @@ if (MSVC)
 endif()
 
 add_definitions(${CMAKE_CXX_FLAGS})
+
+# SSE support
 
 set(INCLUDE_DIR
     source
@@ -38,6 +41,7 @@ include_directories(${INCLUDE_DIR})
 
 set(project_SOURCES
     source/main.cpp
+    source/math/coordinate_system.cpp
     source/tests/tests.cpp
     source/tests/test_framework.cpp
     source/tests/math/vector/vector_tests.cpp
@@ -46,6 +50,7 @@ set(project_SOURCES
 set(project_HEADERS
     source/math/types.h
     source/math/vector.h
+    source/math/coordinate_system.h
     source/tests/tests.h
     source/tests/test_framework.h
     source/tests/math/vector/vector_tests.h
