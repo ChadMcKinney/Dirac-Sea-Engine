@@ -39,6 +39,19 @@ void RunMatrix2x2Tests()
     Matrix22<T> m2 = m.Transposed().Transposed();
     TEST("m22: m.Transposed().Transposed() == m", m == m2);
   }
+
+  {
+    Matrix22<T> m(-3, 0, 5, T(0.5));
+    Matrix22<T> m2(-7, 2, 4, 6);
+    Matrix22<T> m3(21, -6, -33, 13);
+    TEST("m22: m * m2 == m3", (m * m2) == m3 &&  m != m3);
+  }
+
+  {
+    Matrix22<T> m(-3, 0, 5, T(0.5));
+    Matrix22<T> m2(-7, 2, 4, 6);
+    TEST("m22: (m * m2)T == (m2T * mT)", (m * m2).Transposed() == (m2.Transposed() * m.Transposed()));
+  }
 }
 
 void RunMatrixTests()

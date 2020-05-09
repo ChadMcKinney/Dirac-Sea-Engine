@@ -20,6 +20,10 @@ struct Matrix22
   Matrix22(T _m11, T _m12, T _m21, T _m22);
 
   inline bool operator==(const Matrix22& rhs) const;
+  inline bool operator!=(const Matrix22& rhs) const;
+
+  inline void operator*=(const Matrix22& rhs);
+  inline Matrix22<T> operator*(const Matrix22& rhs) const;
 
   inline void Transpose();
   inline Matrix22<T> Transposed() const;
@@ -79,6 +83,39 @@ template <typename T>
 inline bool Matrix22<T>::operator==(const Matrix22& rhs) const
 {
   return m11 == rhs.m11 && m12 == rhs.m12 && m21 == rhs.m21 && m22 == rhs.m22;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline bool Matrix22<T>::operator!=(const Matrix22& rhs) const
+{
+  return m11 != rhs.m11 || m12 != rhs.m12 || m21 != rhs.m21 || m22 != rhs.m22;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix22<T>::operator*=(const Matrix22& rhs)
+{
+  T _m11 = (m11 * rhs.m11) + (m12 * rhs.m21);
+  T _m12 = (m11 * rhs.m12) + (m12 * rhs.m22);
+  T _m21 = (m21 * rhs.m11) + (m22 * rhs.m21);
+  T _m22 = (m21 * rhs.m12) + (m22 * rhs.m22);
+  m11 = _m11;
+  m12 = _m12;
+  m21 = _m21;
+  m22 = _m22;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix22<T> Matrix22<T>::operator*(const Matrix22& rhs) const
+{
+  Matrix22<T> m(EUninitialized::Constructor);
+  m.m11 = (m11 * rhs.m11) + (m12 * rhs.m21);
+  m.m12 = (m11 * rhs.m12) + (m12 * rhs.m22);
+  m.m21 = (m21 * rhs.m11) + (m22 * rhs.m21);
+  m.m22 = (m21 * rhs.m12) + (m22 * rhs.m22);
+  return m;
 }
 
 ///////////////////////////////////////////////////////////////////////
