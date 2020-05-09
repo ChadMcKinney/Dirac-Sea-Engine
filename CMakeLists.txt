@@ -45,15 +45,18 @@ set(project_SOURCES
     source/tests/tests.cpp
     source/tests/test_framework.cpp
     source/tests/math/vector/vector_tests.cpp
+    source/tests/math/matrix/matrix_tests.cpp
     )
 
 set(project_HEADERS
     source/math/types.h
+    source/math/matrix22.h
     source/math/vector.h
     source/math/coordinate_system.h
     source/tests/tests.h
     source/tests/test_framework.h
     source/tests/math/vector/vector_tests.h
+    source/tests/math/matrix/matrix_tests.h
     )
 
 ADD_EXECUTABLE(DiracSea ${project_HEADERS} ${project_SOURCES})

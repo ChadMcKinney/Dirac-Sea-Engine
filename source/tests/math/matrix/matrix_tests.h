@@ -3,13 +3,6 @@
  * Proprietary and confidential
  */
 
-#include "tests.h"
+#pragma once
 
-#include "tests/math/vector/vector_tests.h"
-#include "tests/math/matrix/matrix_tests.h"
-
-void RunTests()
-{
-  RunVectorTests();
-  RunMatrixTests();
-}
+void RunMatrixTests();

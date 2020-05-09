@@ -9,9 +9,9 @@
 
 #include <cmath>
 
-// TODO: Cross Product etc...
+// TODO: Vec4 (x, y, z, w) -> maybe useful for projection mapping etc..
 
-// TO DO: SIMD SUPPORT!
+// TODO: SIMD SUPPORT!
 
 ///////////////////////////////////////////////////////////////////////
 // Vec2
