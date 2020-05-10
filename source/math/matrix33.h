@@ -42,6 +42,9 @@ struct Matrix33
   inline void SetRotationAA(T radians, const Vec3<T>& axis);
   inline static Matrix33<T> CreateRotationAA(T radians, const Vec3<T>& axis);
 
+  inline void SetScale(const Vec3<T>& s);
+  inline static Matrix33<T> CreateScale(const Vec3<T>& s);
+
   inline Vec3<T> GetRow1() const;
   inline void SetRow1(const Vec3<T>& row1);
 
@@ -128,15 +131,15 @@ template <typename T>
 inline bool Matrix33<T>::IsEquivalent(const Matrix33& rhs, T epsilon) const
 {
   return
-    (m11 - rhs.m11 < epsilon) &&
-    (m12 - rhs.m12 < epsilon) &&
-    (m13 - rhs.m13 < epsilon) &&
-    (m21 - rhs.m21 < epsilon) &&
-    (m22 - rhs.m22 < epsilon) &&
-    (m23 - rhs.m23 < epsilon) &&
-    (m31 - rhs.m31 < epsilon) &&
-    (m32 - rhs.m32 < epsilon) &&
-    (m33 - rhs.m33 < epsilon);
+    (abs(m11 - rhs.m11) < epsilon) &&
+    (abs(m12 - rhs.m12) < epsilon) &&
+    (abs(m13 - rhs.m13) < epsilon) &&
+    (abs(m21 - rhs.m21) < epsilon) &&
+    (abs(m22 - rhs.m22) < epsilon) &&
+    (abs(m23 - rhs.m23) < epsilon) &&
+    (abs(m31 - rhs.m31) < epsilon) &&
+    (abs(m32 - rhs.m32) < epsilon) &&
+    (abs(m33 - rhs.m33) < epsilon);
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -435,4 +438,92 @@ inline Matrix33<T> Matrix33<T>::CreateRotationAA(T radians, const Vec3<T>& axis)
   Matrix33<T> m(EUninitialized::Constructor);
   m.SetRotationAA(radians, axis);
   return m;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix33<T>::SetScale(const Vec3<T>& s)
+{
+  m11 = s.x;
+  m12 = 0;
+  m13 = 0;
+
+  m21 = 0;
+  m22 = s.y;
+  m23 = 0;
+
+  m31 = 0;
+  m32 = 0;
+  m33 = s.z;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> Matrix33<T>::CreateScale(const Vec3<T>& s)
+{
+  Matrix33<T> m(EUninitialized::Constructor);
+  m.SetScale(s);
+  return m;
+}
+
+///////////////////////////////////////////////////////////////////////
+// Post multiply -> Matrix33 x Column Vector
+template <typename T>
+inline Vec3<T> operator*(const Matrix33<T>& m, const Vec3<T>& v)
+{
+  Vec3<T> v2(EUninitialized::Constructor);
+  v2.x = (m.m11 * v.x) + (m.m12 * v.y) + (m.m13 * v.z);
+  v2.y = (m.m21 * v.x) + (m.m22 * v.y) + (m.m23 * v.z);
+  v2.z = (m.m31 * v.x) + (m.m32 * v.y) + (m.m33 * v.z);
+  return v2;
+}
+
+///////////////////////////////////////////////////////////////////////
+// Pre multiply -> Row Vector * Matrix22
+template <typename T>
+inline Vec3<T> operator*(const Vec3<T>& v, const Matrix33<T>& m)
+{
+  Vec3<T> v2(EUninitialized::Constructor);
+  v2.x = (v.x * m.m11) + (v.y * m.m21) + (v.z * m.m31);
+  v2.y = (v.x * m.m12) + (v.y * m.m22) + (v.z * m.m32);
+  v2.z = (v.x * m.m13) + (v.y * m.m23) + (v.z * m.m33);
+  return v2;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> operator*(T s, const Matrix33<T>& m)
+{
+  Matrix33<T> m2(EUninitialized::Constructor);
+  m2.m11 = m.m11 * s;
+  m2.m12 = m.m12 * s;
+  m2.m13 = m.m13 * s;
+
+  m2.m21 = m.m21 * s;
+  m2.m22 = m.m22 * s;
+  m2.m23 = m.m23 * s;
+
+  m2.m31 = m.m31 * s;
+  m2.m32 = m.m32 * s;
+  m2.m33 = m.m33 * s;
+  return m2;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> operator*(const Matrix33<T>& m, T s)
+{
+  Matrix33<T> m2(EUninitialized::Constructor);
+  m2.m11 = m.m11 * s;
+  m2.m12 = m.m12 * s;
+  m2.m13 = m.m13 * s;
+
+  m2.m21 = m.m21 * s;
+  m2.m22 = m.m22 * s;
+  m2.m23 = m.m23 * s;
+
+  m2.m31 = m.m31 * s;
+  m2.m32 = m.m32 * s;
+  m2.m33 = m.m33 * s;
+  return m2;
 }

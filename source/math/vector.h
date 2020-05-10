@@ -29,6 +29,8 @@ struct Vec2
   inline bool operator==(const Vec2& rhs) const;
   inline bool operator!=(const Vec2& rhs) const;
 
+  inline bool IsEquivalent(const Vec2& rhs, T epsilon) const;
+
   inline void Scale(T s);
   inline Vec2 Scaled(T s) const;
 
@@ -118,6 +120,13 @@ template <typename T>
 inline bool Vec2<T>::operator!=(const Vec2& rhs) const
 {
   return x != rhs.x || y != rhs.y;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline bool Vec2<T>::IsEquivalent(const Vec2& rhs, T epsilon) const
+{
+  return (abs(x - rhs.x) < epsilon) && (abs(y - rhs.y) < epsilon);
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -303,6 +312,8 @@ struct Vec3
   inline bool operator==(const Vec3& rhs) const;
   inline bool operator!=(const Vec3& rhs) const;
 
+  inline bool IsEquivalent(const Vec3& rhs, T epsilon) const;
+
   inline void Scale(T s);
   inline Vec3 Scaled(T s) const;
 
@@ -398,6 +409,16 @@ template <typename T>
 inline bool Vec3<T>::operator!=(const Vec3& rhs) const
 {
   return x != rhs.x || y != rhs.y || z != rhs.z;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline bool Vec3<T>::IsEquivalent(const Vec3& rhs, T epsilon) const
+{
+  return
+    (abs(x - rhs.x) < epsilon) &&
+    (abs(y - rhs.y) < epsilon) &&
+    (abs(z - rhs.z) < epsilon);
 }
 
 ///////////////////////////////////////////////////////////////////////

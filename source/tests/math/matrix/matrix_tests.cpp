@@ -198,7 +198,7 @@ void RunMatrix3x3Tests()
     const T sinTheta = std::sin(radians);
     Matrix33<T> m = Matrix33<T>::CreateRotationX(radians);
     Matrix33<T> m2 = Matrix33<T>::CreateRotationAA(radians, Vec3<T>(1, 0, 0));
-    TEST("m22: RotationX == m2", m == m2);
+    TEST("m22: RotationX == AA", m == m2);
   }
 
   {
@@ -207,7 +207,7 @@ void RunMatrix3x3Tests()
     const T sinTheta = std::sin(radians);
     Matrix33<T> m = Matrix33<T>::CreateRotationY(radians);
     Matrix33<T> m2 = Matrix33<T>::CreateRotationAA(radians, Vec3<T>(0, 1, 0));
-    TEST("m22: RotationZ == m2", m == m2);
+    TEST("m22: RotationZ == AA", m == m2);
   }
 
   {
@@ -216,16 +216,36 @@ void RunMatrix3x3Tests()
     const T sinTheta = std::sin(radians);
     Matrix33<T> m = Matrix33<T>::CreateRotationZ(radians);
     Matrix33<T> m2 = Matrix33<T>::CreateRotationAA(radians, Vec3<T>(0, 0, 1));
-    TEST("m22: RotationZ == m2", m == m2);
+    TEST("m22: RotationZ == AA", m == m2);
   }
 
   {
     const T radians = DegreesToRadians(T(-15));
-    const T cosTheta = std::cos(radians);
-    const T sinTheta = std::sin(radians);
     Matrix33<T> m2 = Matrix33<T>::CreateRotationAA(radians, Vec3<T>(T(0.267), T(-0.535), T(0.802)));
     Matrix33<T> m(T(0.968), T(-0.212), T(-0.131), T(0.203), T(0.976), T(-0.084), T(0.146), T(0.054), T(0.988));
-    TEST("m22: RotationZ == m2", m.IsEquivalent(m2, T(0.0005)));
+    TEST("m22: AA == AA", m.IsEquivalent(m2, T(0.0005)));
+  }
+
+  {
+    Matrix33<T> m(EIdentity::Constructor);
+    Matrix33<T> m2 = m * T(666);
+    Matrix33<T> m3(666, 0, 0, 0, 666, 0, 0, 0, 666);
+    TEST("m22: m * 666 == m2", m2 == m3 && m3 == (T(2) * m * T(333)));
+  }
+
+  {
+    Matrix33<T> m = Matrix33<T>::CreateScale(Vec3<T>(2, 2, 3));
+    Vec3<T> v(2, 2, 2);
+    Vec3<T> v2(4, 4, 6);
+    TEST("m * v == (4,4,6)", (v * m) == v2);
+  }
+
+  {
+    Matrix33<T> m = Matrix33<T>::CreateRotationZ(kPi<T>);
+    Vec3<T> v(1, 0, 0);
+    Vec3<T> v2(-1, 0, 0);
+    Vec3<T> v3 = v * m;
+    TEST("m * v == (0, -1, 0)", v2.IsEquivalent(v3, epsilon<T>()));
   }
 }
 
