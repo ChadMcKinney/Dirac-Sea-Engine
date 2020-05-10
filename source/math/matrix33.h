@@ -707,9 +707,7 @@ inline void Matrix33<T>::Orthonormalize()
   r2 = r2 - r1.Scaled(r2.Dot(r1));
   r2.Normalize();
 
-  Vec3<T> r3 = GetRow3();
-  r3 = r3 - r2.Scaled(r3.Dot(r2));
-  r3.Normalize();
+  const Vec3<T> r3 = r1.Cross(r2);
 
   SetRow1(r1);
   SetRow2(r2);
@@ -736,9 +734,7 @@ inline void Matrix33<T>::Orthonormalize_Safe()
   r2 = r2 - r1.Scaled(r2.Dot(r1));
   r2.SafeNormalize();
 
-  Vec3<T> r3 = GetRow3();
-  r3 = r3 - r2.Scaled(r3.Dot(r2));
-  r3.SafeNormalize();
+  const Vec3<T> r3 = r1.Cross(r2);
 
   SetRow1(r1);
   SetRow2(r2);
