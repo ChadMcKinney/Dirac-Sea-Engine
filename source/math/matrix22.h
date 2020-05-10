@@ -270,8 +270,8 @@ inline void Matrix22<T>::Invert()
   const T recipD = 1 / Determinant();
   // Classical Adjoint / Determinant
   const T _m11 = m22 * recipD;
-  const T _m12 = m21 * recipD;
-  const T _m21 = m12 * recipD;
+  const T _m12 = -m21 * recipD;
+  const T _m21 = -m12 * recipD;
   const T _m22 = m11 * recipD;
   m11 = _m11;
   m12 = _m12;

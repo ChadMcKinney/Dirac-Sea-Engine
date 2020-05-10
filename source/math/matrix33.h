@@ -5,8 +5,12 @@
 
 #pragma once
 
+#include "matrix22.h"
 #include "types.h"
 #include "vector.h"
+
+// TODO: Add Asserts for assumed normals!
+// TODO: SSE support!
 
 ///////////////////////////////////////////////////////////////////////
 // Matrix 3x3
@@ -82,6 +86,20 @@ struct Matrix33
 
   inline void Transpose();
   inline Matrix33<T> Transposed() const;
+
+  inline T Determinant() const;
+  
+  inline void Invert();
+  inline Matrix33<T> Inverted() const;
+
+  inline void Invert_Safe();
+  inline Matrix33<T> Inverted_Safe() const;
+
+  inline void Orthonormalize();
+  inline Matrix33<T> Orthonormalized() const;
+
+  inline void Orthonormalize_Safe();
+  inline Matrix33<T> Orthonormalized_Safe() const;
 
   T m11, m12, m13;
   T m21, m22, m23;
@@ -227,16 +245,16 @@ inline void Matrix33<T>::SetRow1(const Vec3<T>& row1)
 template <typename T>
 inline Vec3<T> Matrix33<T>::GetRow2() const
 {
-  return Vec3<T>(m21, m22, m33);
+  return Vec3<T>(m21, m22, m23);
 }
 
 ///////////////////////////////////////////////////////////////////////
 template <typename T>
 inline void Matrix33<T>::SetRow2(const Vec3<T>& row2)
 {
-  m21 = row.x;
-  m22 = row.y;
-  m23 = row.z;
+  m21 = row2.x;
+  m22 = row2.y;
+  m23 = row2.z;
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -584,6 +602,159 @@ inline Matrix33<T> Matrix33<T>::CreatePlaneProjection(const Vec3<T>& planeNormal
 }
 
 ///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline T Matrix33<T>::Determinant() const
+{
+  return (m11 * m22 * m33) + (m12 * m23 * m31) + (m13 * m21 * m32) -
+				 (m11 * m23 * m32) - (m12 * m21 * m31) - (m13 * m22 * m31);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix33<T>::Invert()
+{
+  const T recipD = 1 / Determinant();
+
+  const T c11D = Matrix22<T>(m22, m23, m32, m33).Determinant() * recipD;
+  const T c12D = Matrix22<T>(m21, m23, m31, m33).Determinant() * recipD * -1;
+  const T c13D = Matrix22<T>(m21, m22, m31, m32).Determinant() * recipD;
+
+  const T c21D = Matrix22<T>(m12, m13, m32, m33).Determinant() * recipD * -1;
+  const T c22D = Matrix22<T>(m11, m13, m31, m33).Determinant() * recipD;
+  const T c23D = Matrix22<T>(m11, m12, m31, m32).Determinant() * recipD * -1;
+
+  const T c31D = Matrix22<T>(m12, m13, m22, m23).Determinant() * recipD;
+  const T c32D = Matrix22<T>(m11, m13, m21, m23).Determinant() * recipD * -1;
+  const T c33D = Matrix22<T>(m11, m12, m21, m22).Determinant() * recipD;
+
+  m11 = c11D;
+  m12 = c21D;
+  m13 = c31D;
+
+  m21 = c12D;
+  m22 = c22D;
+  m23 = c32D;
+
+  m31 = c13D;
+  m32 = c23D;
+  m33 = c33D;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> Matrix33<T>::Inverted() const
+{
+  Matrix33<T> m(*this);
+  m.Invert();
+  return m;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix33<T>::Invert_Safe()
+{
+  const T d = Determinant();
+  if (abs(d) > epsilon<T>())
+  {
+    cosnt T recipD = 1 / d;
+		const T c11D = Matrix22<T>(m22, m23, m32, m33).Determinant() * recipD;
+		const T c12D = Matrix22<T>(m21, m23, m31, m33).Determinant() * recipD * -1;
+		const T c13D = Matrix22<T>(m21, m22, m31, m32).Determinant() * recipD;
+
+		const T c21D = Matrix22<T>(m12, m13, m32, m33).Determinant() * recipD * -1;
+		const T c22D = Matrix22<T>(m11, m13, m31, m33).Determinant() * recipD;
+		const T c23D = Matrix22<T>(m11, m12, m31, m32).Determinant() * recipD * -1;
+
+		const T c31D = Matrix22<T>(m12, m13, m22, m23).Determinant() * recipD;
+		const T c32D = Matrix22<T>(m11, m13, m21, m23).Determinant() * recipD * -1;
+		const T c33D = Matrix22<T>(m11, m12, m21, m22).Determinant() * recipD;
+
+		m11 = c11D;
+		m12 = c21D;
+		m13 = c31D;
+
+		m21 = c12D;
+		m22 = c22D;
+		m23 = c32D;
+
+		m31 = c13D;
+		m32 = c23D;
+		m33 = c33D;
+  }
+  else
+  {
+    m11 = m12 = m13 = m21 = m22 = m23 = m31 = m32 = m33 = 0;
+  }
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> Matrix33<T>::Inverted_Safe() const
+{
+  Matrix33<T> m(*this);
+  m.Invert_Safe();
+  return m;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix33<T>::Orthonormalize()
+{
+  Vec3<T> r1 = GetRow1();
+  r1.Normalize();
+
+  Vec3<T> r2 = GetRow2();
+  r2 = r2 - r1.Scaled(r2.Dot(r1));
+  r2.Normalize();
+
+  Vec3<T> r3 = GetRow3();
+  r3 = r3 - r2.Scaled(r3.Dot(r2));
+  r3.Normalize();
+
+  SetRow1(r1);
+  SetRow2(r2);
+  SetRow3(r3);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> Matrix33<T>::Orthonormalized() const
+{
+  Matrix33<T> m(*this);
+  m.Orthonormalize();
+  return m;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix33<T>::Orthonormalize_Safe()
+{
+  Vec3<T> r1 = GetRow1();
+  r1.SafeNormalize();
+
+  Vec3<T> r2 = GetRow2();
+  r2 = r2 - r1.Scaled(r2.Dot(r1));
+  r2.SafeNormalize();
+
+  Vec3<T> r3 = GetRow3();
+  r3 = r3 - r2.Scaled(r3.Dot(r2));
+  r3.SafeNormalize();
+
+  SetRow1(r1);
+  SetRow2(r2);
+  SetRow3(r3);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> Matrix33<T>::Orthonormalized_Safe() const
+{
+  Matrix33<T> m(*this);
+  m.Orthonormalize_Safe();
+  return m;
+}
+
+///////////////////////////////////////////////////////////////////////
 // Post multiply -> Matrix33 x Column Vector
 template <typename T>
 inline Vec3<T> operator*(const Matrix33<T>& m, const Vec3<T>& v)
@@ -596,7 +767,7 @@ inline Vec3<T> operator*(const Matrix33<T>& m, const Vec3<T>& v)
 }
 
 ///////////////////////////////////////////////////////////////////////
-// Pre multiply -> Row Vector * Matrix22
+// Pre multiply -> Row Vector * Matrix33
 template <typename T>
 inline Vec3<T> operator*(const Vec3<T>& v, const Matrix33<T>& m)
 {

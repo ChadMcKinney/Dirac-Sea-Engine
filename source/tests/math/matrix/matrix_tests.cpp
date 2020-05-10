@@ -291,6 +291,56 @@ void RunMatrix3x3Tests()
     Vec3<T> v3 = v * m;
     TEST("m33: (1,1,1).Project((1,1,1).Normalized())", v2.IsEquivalent(v3, epsilon<T>()*10));
   }
+
+  {
+    TEST("m33: Identity.Determinant == 1", Matrix33<T>(EIdentity::Constructor).Determinant() == T(1));
+  }
+
+  {
+    TEST("m33: Identity.Determinant == 1", Matrix33<T>::CreateXYPlaneProjection().Determinant() == T(0));
+  }
+
+  {
+    Matrix33<T> m(EIdentity::Constructor);
+    Matrix33<T> m2 = m.Inverted();
+    TEST("m33: Identity.Inverted() == Identity", m == m2);
+  }
+
+  {
+    Matrix33<T> m = Matrix33<T>::CreateReflection(Vec3<T>(-1, T(0.3), kPi<T>).Normalized());
+    Matrix33<T> m2 = m.Inverted();
+    Matrix33<T> m3 = m2.Inverted();
+    TEST("m33: m.Inverted().Inverted() == m", m.IsEquivalent(m3, epsilon<T>() * 10));
+  }
+
+  {
+    Matrix33<T> m = Matrix33<T>::CreateRotationAA(kPi<T>, Vec3<T>(1, 0, 0));
+    Matrix33<T> m2 = m.Inverted();
+    Matrix33<T> m3 = m2.Inverted();
+    TEST("m33: m.Inverted().Inverted() == m", m == m3);
+  }
+
+  {
+    Matrix33<T> m(1, 0, 0, 0, T(0.8), 0, 0, 0, T(0.75));
+    Matrix33<T> m2 = m.Orthonormalized();
+    Matrix33<T> m3(1, 0, 0, 0, 1, 0, 0, 0, 1);
+    TEST("m22: orthonormalize", m2 == m3);
+  }
+
+  {
+    Matrix33<T> m(T(0.3), 0, 0, 0, T(0.8), 0, 0, 0, T(0.76));
+    Matrix33<T> m2 = m.Orthonormalized();
+    Matrix33<T> m3(1, 0, 0, 0, 1, 0, 0, 0, 1);
+    TEST("m22: orthonormalize", m2 == m3);
+  }
+
+
+  {
+    Matrix33<T> m(T(0.3), 0, 0, 0, T(0.8), 0, 0, 0, T(0.76));
+    Matrix33<T> m2 = m.Orthonormalized_Safe();
+    Matrix33<T> m3(1, 0, 0, 0, 1, 0, 0, 0, 1);
+    TEST("m22: orthonormalize safe", m2 == m3);
+  }
 }
 
 void RunMatrixTests()
