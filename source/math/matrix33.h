@@ -45,6 +45,23 @@ struct Matrix33
   inline void SetScale(const Vec3<T>& s);
   inline static Matrix33<T> CreateScale(const Vec3<T>& s);
 
+  // create a reflection on a plane at origin with the normal provided 
+  inline void SetReflection(const Vec3<T>& planeNormal);
+  inline static Matrix33<T> CreateReflection(const Vec3<T>& planeNormal);
+
+  inline void SetXYPlaneProjection();
+  inline static Matrix33<T> CreateXYPlaneProjection();
+
+  inline void SetYZPlaneProjection();
+  inline static Matrix33<T> CreateYZPlaneProjection();
+
+  inline void SetZXPlaneProjection();
+  inline static Matrix33<T> CreateZXPlaneProjection();
+
+  // project onto a plane at origin with the normal provided
+  inline void SetPlaneProjection(const Vec3<T>& planeNormal);
+  inline static Matrix33<T> CreatePlaneProjection(const Vec3<T>& planeNormal);
+
   inline Vec3<T> GetRow1() const;
   inline void SetRow1(const Vec3<T>& row1);
 
@@ -463,6 +480,106 @@ inline Matrix33<T> Matrix33<T>::CreateScale(const Vec3<T>& s)
 {
   Matrix33<T> m(EUninitialized::Constructor);
   m.SetScale(s);
+  return m;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix33<T>::SetReflection(const Vec3<T>& planeNormal)
+{
+  m11 = 1 - (2 * (planeNormal.x * planeNormal.x));
+  m12 = -2 * planeNormal.x * planeNormal.y;
+  m13 = -2 * planeNormal.x * planeNormal.z;
+
+  m21 = -2 * planeNormal.x * planeNormal.y;
+  m22 = 1 - (2 * (planeNormal.y * planeNormal.y));
+  m23 = -2 * planeNormal.y * planeNormal.z;
+
+  m31 = -2 * planeNormal.x * planeNormal.z;
+  m32 = -2 * planeNormal.y * planeNormal.z;
+  m33 = 1 - (2 * (planeNormal.z * planeNormal.z));
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> Matrix33<T>::CreateReflection(const Vec3<T>& planeNormal)
+{
+  Matrix33<T> m(EUninitialized::Constructor);
+  m.SetReflection(planeNormal);
+  return m;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix33<T>::SetXYPlaneProjection()
+{
+  SetScale(Vec3<T>(1, 1, 0));
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> Matrix33<T>::CreateXYPlaneProjection()
+{
+  Matrix33<T> m(EUninitialized::Constructor);
+  m.SetXYPlaneProjection();
+  return m;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix33<T>::SetYZPlaneProjection()
+{
+  SetScale(Vec3<T>(0, 1, 1));
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> Matrix33<T>::CreateYZPlaneProjection()
+{
+  Matrix33<T> m(EUninitialized::Constructor);
+  m.SetYZPlaneProjection();
+  return m;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix33<T>::SetZXPlaneProjection()
+{
+  SetScale(Vec3<T>(1, 0, 1));
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> Matrix33<T>::CreateZXPlaneProjection()
+{
+  Matrix33<T> m(EUninitialized::Constructor);
+  m.SetZXPlaneProjection();
+  return m;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix33<T>::SetPlaneProjection(const Vec3<T>& planeNormal)
+{
+  m11 = 1 - (planeNormal.x * planeNormal.x);
+  m12 = -1 * planeNormal.x * planeNormal.y;
+  m13 = -1 * planeNormal.x * planeNormal.z;
+
+  m21 = -1 * planeNormal.y * planeNormal.x;
+  m22 = 1 - (planeNormal.y * planeNormal.y);
+  m23 = -1 * planeNormal.y * planeNormal.z;
+
+  m31 = -1 * planeNormal.z * planeNormal.x;
+  m32 = -1 * planeNormal.z * planeNormal.y;
+  m33 = 1 - (planeNormal.z * planeNormal.z);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> Matrix33<T>::CreatePlaneProjection(const Vec3<T>& planeNormal)
+{
+  Matrix33<T> m(EUninitialized::Constructor);
+  m.SetPlaneProjection(planeNormal);
   return m;
 }
 

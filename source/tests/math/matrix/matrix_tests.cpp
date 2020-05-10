@@ -162,7 +162,7 @@ void RunMatrix3x3Tests()
   {
     Matrix33<T> m(11, 12, 13, 21, 22, 23, 31, 32, 33);
     Matrix33<T> m2(111, 122, 133, 211, 222, 233, 311, 322, 333);
-    TEST("m22: (m * m2)T == (m2T * mT)", (m * m2).Transposed() == (m2.Transposed() * m.Transposed()));
+    TEST("m33: (m * m2)T == (m2T * mT)", (m * m2).Transposed() == (m2.Transposed() * m.Transposed()));
   }
 
   {
@@ -171,7 +171,7 @@ void RunMatrix3x3Tests()
     const T sinTheta = std::sin(radians);
     Matrix33<T> m = Matrix33<T>::CreateRotationX(radians);
     Matrix33<T> m2(1, 0, 0, 0, cosTheta, sinTheta, 0, -sinTheta, cosTheta);
-    TEST("m22: RotationX == m2", m == m2);
+    TEST("m33: RotationX == m2", m == m2);
   }
 
   {
@@ -180,7 +180,7 @@ void RunMatrix3x3Tests()
     const T sinTheta = std::sin(radians);
     Matrix33<T> m = Matrix33<T>::CreateRotationY(radians);
     Matrix33<T> m2(cosTheta, 0, -sinTheta, 0, 1, 0, sinTheta, 0, cosTheta);
-    TEST("m22: RotationZ == m2", m == m2);
+    TEST("m33: RotationZ == m2", m == m2);
   }
 
   {
@@ -189,7 +189,7 @@ void RunMatrix3x3Tests()
     const T sinTheta = std::sin(radians);
     Matrix33<T> m = Matrix33<T>::CreateRotationZ(radians);
     Matrix33<T> m2(cosTheta, sinTheta, 0, -sinTheta, cosTheta, 0, 0, 0, 1);
-    TEST("m22: RotationZ == m2", m == m2);
+    TEST("m33: RotationZ == m2", m == m2);
   }
 
   {
@@ -198,7 +198,7 @@ void RunMatrix3x3Tests()
     const T sinTheta = std::sin(radians);
     Matrix33<T> m = Matrix33<T>::CreateRotationX(radians);
     Matrix33<T> m2 = Matrix33<T>::CreateRotationAA(radians, Vec3<T>(1, 0, 0));
-    TEST("m22: RotationX == AA", m == m2);
+    TEST("m33: RotationX == AA", m == m2);
   }
 
   {
@@ -207,7 +207,7 @@ void RunMatrix3x3Tests()
     const T sinTheta = std::sin(radians);
     Matrix33<T> m = Matrix33<T>::CreateRotationY(radians);
     Matrix33<T> m2 = Matrix33<T>::CreateRotationAA(radians, Vec3<T>(0, 1, 0));
-    TEST("m22: RotationZ == AA", m == m2);
+    TEST("m33: RotationZ == AA", m == m2);
   }
 
   {
@@ -216,28 +216,28 @@ void RunMatrix3x3Tests()
     const T sinTheta = std::sin(radians);
     Matrix33<T> m = Matrix33<T>::CreateRotationZ(radians);
     Matrix33<T> m2 = Matrix33<T>::CreateRotationAA(radians, Vec3<T>(0, 0, 1));
-    TEST("m22: RotationZ == AA", m == m2);
+    TEST("m33: RotationZ == AA", m == m2);
   }
 
   {
     const T radians = DegreesToRadians(T(-15));
     Matrix33<T> m2 = Matrix33<T>::CreateRotationAA(radians, Vec3<T>(T(0.267), T(-0.535), T(0.802)));
     Matrix33<T> m(T(0.968), T(-0.212), T(-0.131), T(0.203), T(0.976), T(-0.084), T(0.146), T(0.054), T(0.988));
-    TEST("m22: AA == AA", m.IsEquivalent(m2, T(0.0005)));
+    TEST("m33: AA == AA", m.IsEquivalent(m2, T(0.0005)));
   }
 
   {
     Matrix33<T> m(EIdentity::Constructor);
     Matrix33<T> m2 = m * T(666);
     Matrix33<T> m3(666, 0, 0, 0, 666, 0, 0, 0, 666);
-    TEST("m22: m * 666 == m2", m2 == m3 && m3 == (T(2) * m * T(333)));
+    TEST("m33: m * 666 == m2", m2 == m3 && m3 == (T(2) * m * T(333)));
   }
 
   {
     Matrix33<T> m = Matrix33<T>::CreateScale(Vec3<T>(2, 2, 3));
     Vec3<T> v(2, 2, 2);
     Vec3<T> v2(4, 4, 6);
-    TEST("m * v == (4,4,6)", (v * m) == v2);
+    TEST("m33: m * v == (4,4,6)", (v * m) == v2);
   }
 
   {
@@ -245,7 +245,51 @@ void RunMatrix3x3Tests()
     Vec3<T> v(1, 0, 0);
     Vec3<T> v2(-1, 0, 0);
     Vec3<T> v3 = v * m;
-    TEST("m * v == (0, -1, 0)", v2.IsEquivalent(v3, epsilon<T>()));
+    TEST("m33: m * v == (0, -1, 0)", v2.IsEquivalent(v3, epsilon<T>()));
+  }
+
+  {
+    Matrix33<T> m = Matrix33<T>::CreateReflection(Vec3<T>(0, 1, 0));
+    Vec3<T> v(1, 1, 1);
+    Vec3<T> v2(1, -1, 1);
+    Vec3<T> v3 = v * m;
+    TEST("m33: (1, 0, 0) * reflection == (-1, 0, 0)", v2 == v3);
+  }
+
+  {
+    Matrix33<T> m = Matrix33<T>::CreateXYPlaneProjection();
+    Vec3<T> v(1, 1, 1);
+    Vec3<T> v2(1, 1, 0);
+    Vec3<T> v3 = v * m;
+    TEST("m33: (1, 1, 1) * XY Project == (1, 1, 0)", v2 == v3);
+  }
+
+  {
+    Matrix33<T> m = Matrix33<T>::CreateYZPlaneProjection();
+    Vec3<T> v(1, 1, 1);
+    Vec3<T> v2(0, 1, 1);
+    Vec3<T> v3 = v * m;
+    TEST("m33: (1, 1, 1) * YZ Project == (1, 1, 0)", v2 == v3);
+  }
+
+  {
+    Matrix33<T> m = Matrix33<T>::CreateZXPlaneProjection();
+    Vec3<T> v(1, 1, 1);
+    Vec3<T> v2(1, 0, 1);
+    Vec3<T> v3 = v * m;
+    TEST("m33: (1, 1, 1) * ZX Project == (1, 1, 0)", v2 == v3);
+  }
+
+  {
+    Vec3<T> planeNormal = Vec3<T>(1, 1, 1);
+    planeNormal.Normalize();
+    Matrix33<T> m = Matrix33<T>::CreatePlaneProjection(planeNormal);
+    Vec3<T> v(1, 1, 1);
+    v.Normalize();
+    v.Scale(6);
+    Vec3<T> v2(EZero::Constructor);
+    Vec3<T> v3 = v * m;
+    TEST("m33: (1,1,1).Project((1,1,1).Normalized())", v2.IsEquivalent(v3, epsilon<T>()*10));
   }
 }
 
