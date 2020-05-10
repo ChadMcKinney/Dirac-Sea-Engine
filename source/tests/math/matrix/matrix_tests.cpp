@@ -134,6 +134,36 @@ void RunMatrix3x3Tests()
     Matrix33<T> m2;
     TEST("m33: m == m2", m == m2);
   }
+
+  {
+    Matrix33<T> m(11, 12, 13, 21, 22, 23, 31, 32, 33);
+    Matrix33<T> m2 = m * Matrix33<T>(EIdentity::Constructor);
+    TEST("m33: (m * Identity) == m", m2 == m);
+  }
+
+  {
+    Matrix33<T> m(11, 12, 13, 21, 22, 23, 31, 32, 33);
+    Matrix33<T> mz(EZero::Constructor);
+		Matrix33<T> m2 = m * mz;
+    TEST("m33: (m * zero) == zero", m2 == mz);
+  }
+
+  {
+    Matrix33<T> m(11, 12, 13, 21, 22, 23, 31, 32, 33);
+    TEST("m33: m.Transposed().Transposed() == m", m == m.Transposed().Transposed());
+  }
+
+  {
+    Matrix33<T> m(11, 12, 13, 21, 22, 23, 31, 32, 33);
+    Matrix33<T> m2(11, 21, 31, 12, 22, 32, 13, 23, 33);
+    TEST("m33: m.Transposed() == m2", m.Transposed() == m2);
+  }
+
+  {
+    Matrix33<T> m(11, 12, 13, 21, 22, 23, 31, 32, 33);
+    Matrix33<T> m2(111, 122, 133, 211, 222, 233, 311, 322, 333);
+    TEST("m22: (m * m2)T == (m2T * mT)", (m * m2).Transposed() == (m2.Transposed() * m.Transposed()));
+  }
 }
 
 void RunMatrixTests()
