@@ -30,6 +30,8 @@ struct Vec2
   inline bool operator!=(const Vec2& rhs) const;
 
   inline bool IsEquivalent(const Vec2& rhs, T epsilon) const;
+  inline bool IsZero(T epsilon) const;
+  inline bool IsUnit(T epsilon) const;
 
   inline void Scale(T s);
   inline Vec2 Scaled(T s) const;
@@ -127,6 +129,20 @@ template <typename T>
 inline bool Vec2<T>::IsEquivalent(const Vec2& rhs, T epsilon) const
 {
   return (abs(x - rhs.x) < epsilon) && (abs(y - rhs.y) < epsilon);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline bool Vec2<T>::IsZero(T epsilon) const
+{
+  return abs(x) < epsilon && abs(y) < epsilon;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline bool Vec2<T>::IsUnit(T epsilon) const
+{
+  return !IsZero(epsilon) && IsEquivalent(Normalized(), epsilon);
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -313,6 +329,8 @@ struct Vec3
   inline bool operator!=(const Vec3& rhs) const;
 
   inline bool IsEquivalent(const Vec3& rhs, T epsilon) const;
+  inline bool IsZero(T epsilon) const;
+  inline bool IsUnit(T epsilon) const;
 
   inline void Scale(T s);
   inline Vec3 Scaled(T s) const;
@@ -423,6 +441,20 @@ inline bool Vec3<T>::IsEquivalent(const Vec3& rhs, T epsilon) const
 
 ///////////////////////////////////////////////////////////////////////
 template <typename T>
+inline bool Vec3<T>::IsZero(T epsilon) const
+{
+  return abs(x) < epsilon && abs(y) < epsilon && abs(z) < epsilon;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline bool Vec3<T>::IsUnit(T epsilon) const
+{
+  return !IsZero(epsilon) && IsEquivalent(Normalized(), epsilon);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
 inline void Vec3<T>::Scale(T s)
 {
   x *= s;
@@ -471,6 +503,7 @@ template <typename T>
 inline void Vec3<T>::Normalize()
 {
   const T magnitude = Magnitude();
+  assert(magnitude > epsilon<T>());
   x /= magnitude;
   y /= magnitude;
   z /= magnitude;

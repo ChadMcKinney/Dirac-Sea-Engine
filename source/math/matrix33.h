@@ -5,11 +5,13 @@
 
 #pragma once
 
+#include <cassert>
+
 #include "matrix22.h"
 #include "types.h"
 #include "vector.h"
 
-// TODO: Add Asserts for assumed normals!
+// TODO: Orthonormal basis rotation!
 // TODO: SSE support!
 
 ///////////////////////////////////////////////////////////////////////
@@ -450,6 +452,7 @@ inline Matrix33<T> Matrix33<T>::CreateRotationZ(T radians)
 template <typename T>
 inline void Matrix33<T>::SetRotationAA(T radians, const Vec3<T>& axis)
 {
+  assert(axis.IsUnit(epsilon<T>()));
   const T cosTheta = std::cos(radians);
   const T sinTheta = std::sin(radians);
 
@@ -505,6 +508,7 @@ inline Matrix33<T> Matrix33<T>::CreateScale(const Vec3<T>& s)
 template <typename T>
 inline void Matrix33<T>::SetReflection(const Vec3<T>& planeNormal)
 {
+  assert(planeNormal.IsUnit(epsilon<T>()));
   m11 = 1 - (2 * (planeNormal.x * planeNormal.x));
   m12 = -2 * planeNormal.x * planeNormal.y;
   m13 = -2 * planeNormal.x * planeNormal.z;
@@ -579,6 +583,7 @@ inline Matrix33<T> Matrix33<T>::CreateZXPlaneProjection()
 template <typename T>
 inline void Matrix33<T>::SetPlaneProjection(const Vec3<T>& planeNormal)
 {
+  assert(planeNormal.IsUnit(epsilon<T>()));
   m11 = 1 - (planeNormal.x * planeNormal.x);
   m12 = -1 * planeNormal.x * planeNormal.y;
   m13 = -1 * planeNormal.x * planeNormal.z;
@@ -613,6 +618,8 @@ inline T Matrix33<T>::Determinant() const
 template <typename T>
 inline void Matrix33<T>::Invert()
 {
+  const T d = Determinant();
+  assert(abs(d) > epsilon<T>());
   const T recipD = 1 / Determinant();
 
   const T c11D = Matrix22<T>(m22, m23, m32, m33).Determinant() * recipD;
