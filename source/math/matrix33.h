@@ -45,6 +45,18 @@ struct Matrix33
   inline void SetRotationAA(T radians, const Vec3<T>& axis);
   inline static Matrix33<T> CreateRotationAA(T radians, const Vec3<T>& axis);
 
+  // Assumes forward/up are perpendicular
+  inline void SetOrthonormalBasisRotation(const Vec3<T>& forward, const Vec3<T>& up);
+  inline static Matrix33<T> CreateOrthonormalBasisRotation(const Vec3<T>& forward, const Vec3<T>& up);
+
+  // Keeps forward fixed will correct up to be perpendicular to forward/right basis vectors
+  inline void SetOrthonormalBasisRotation_FixedForward(const Vec3<T>& forward, const Vec3<T>& up);
+  inline static Matrix33<T> CreateOrthonormalBasisRotation_FixedForward(const Vec3<T>& forward, const Vec3<T>& up);
+
+  // Keeps up fixed will correct forward to be perpendicular to right/up basis vectors
+  inline void SetOrthonormalBasisRotation_FixedUp(const Vec3<T>& forward, const Vec3<T>& up);
+  inline static Matrix33<T> CreateOrthonormalBasisRotation_FixedUp(const Vec3<T>& forward, const Vec3<T>& up);
+
   inline void SetScale(const Vec3<T>& s);
   inline static Matrix33<T> CreateScale(const Vec3<T>& s);
 
@@ -472,6 +484,72 @@ inline Matrix33<T> Matrix33<T>::CreateRotationAA(T radians, const Vec3<T>& axis)
 {
   Matrix33<T> m(EUninitialized::Constructor);
   m.SetRotationAA(radians, axis);
+  return m;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix33<T>::SetOrthonormalBasisRotation(const Vec3<T>& forward, const Vec3<T>& up)
+{
+  assert(forward.IsUnit(epsilon<T>()));
+  assert(up.IsUnit(epsilon<T>()));
+  assert((up.Cross(forward).Cross(up) - forward).Magnitude() < epsilon<T>());
+  assert((forward.Cross(up.Cross(forward)) - up).Magnitude() < epsilon<T>());
+  SetRow1(up.Cross(forward));
+  SetRow2(up);
+  SetRow3(forward);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> Matrix33<T>::CreateOrthonormalBasisRotation(const Vec3<T>& forward, const Vec3<T>& up)
+{
+  Matrix33<T> m(EUninitialized::Constructor);
+  m.SetOrthonormalBasisRotation(forward, up);
+  return m;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix33<T>::SetOrthonormalBasisRotation_FixedForward(const Vec3<T>& forward, const Vec3<T>& up)
+{
+  assert(forward.IsUnit(epsilon<T>()));
+  assert(up.IsUnit(epsilon<T>()));
+  const Vec3<T> right = up.Cross(forward).SafeNormalized();
+  const Vec3<T> fixedUp = forward.Cross(right).SafeNormalized();
+  SetRow1(right);
+  SetRow2(fixedUp);
+  SetRow3(forward);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> Matrix33<T>::CreateOrthonormalBasisRotation_FixedForward(const Vec3<T>& forward, const Vec3<T>& up)
+{
+  Matrix33<T> m(EUninitialized::Constructor);
+  m.SetOrthonormalBasisRotation_FixedForward(forward, up);
+  return m;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix33<T>::SetOrthonormalBasisRotation_FixedUp(const Vec3<T>& forward, const Vec3<T>& up)
+{
+  assert(forward.IsUnit(epsilon<T>()));
+  assert(up.IsUnit(epsilon<T>()));
+  const Vec3<T> right = up.Cross(forward).SafeNormalized();
+  const Vec3<T> fixedForward = right.Cross(up).SafeNormalized();
+  SetRow1(right);
+  SetRow2(up);
+  SetRow3(fixedForward);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> Matrix33<T>::CreateOrthonormalBasisRotation_FixedUp(const Vec3<T>& forward, const Vec3<T>& up)
+{
+  Matrix33<T> m(EUninitialized::Constructor);
+  m.SetOrthonormalBasisRotation_FixedUp(forward, up);
   return m;
 }
 
