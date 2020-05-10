@@ -29,6 +29,24 @@ struct Matrix33
   inline void operator*=(const Matrix33& rhs);
   inline Matrix33<T> operator*(const Matrix33& rhs) const;
 
+  inline Vec3<T> GetRow1() const;
+  inline void SetRow1(const Vec3<T>& row1);
+
+  inline Vec3<T> GetRow2() const;
+  inline void SetRow2(const Vec3<T>& row2);
+
+  inline Vec3<T> GetRow3() const;
+  inline void SetRow3(const Vec3<T>& row3);
+
+  inline Vec3<T> GetColumn1() const;
+  inline void SetColumn1(const Vec3<T>& column1);
+
+  inline Vec3<T> GetColumn2() const;
+  inline void SetColumn2(const Vec3<T>& column2);
+
+  inline Vec3<T> GetColumn3() const;
+  inline void SetColumn3(const Vec3<T>& column3);
+
   inline void Transpose();
   inline Matrix33<T> Transposed() const;
 
@@ -138,6 +156,102 @@ inline Matrix33<T> Matrix33<T>::operator*(const Matrix33& rhs) const
   Matrix33<T> m(*this);
   m *= rhs;
   return m;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Vec3<T> Matrix33<T>::GetRow1() const
+{
+  return Vec3<T>(m11, m12, m13);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix33<T>::SetRow1(const Vec3<T>& row1)
+{
+  m11 = row1.x;
+  m12 = row1.y;
+  m13 = row1.z;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Vec3<T> Matrix33<T>::GetRow2() const
+{
+  return Vec3<T>(m21, m22, m33);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix33<T>::SetRow2(const Vec3<T>& row2)
+{
+  m21 = row.x;
+  m22 = row.y;
+  m23 = row.z;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Vec3<T> Matrix33<T>::GetRow3() const
+{
+  return Vec3<T>(m31, m32, m33);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix33<T>::SetRow3(const Vec3<T>& row3)
+{
+  m31 = row3.x;
+  m32 = row3.y;
+  m33 = row3.z;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Vec3<T> Matrix33<T>::GetColumn1() const
+{
+  return Vec3<T>(m11, m21, m31);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix33<T>::SetColumn1(const Vec3<T>& column1)
+{
+  m11 = column1.x;
+  m21 = column1.y;
+  m31 = column1.z;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Vec3<T> Matrix33<T>::GetColumn2() const
+{
+  return Vec3<T>(m12, m22, m32);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix33<T>::SetColumn2(const Vec3<T>& column2)
+{
+  m12 = column2.x;
+  m22 = column2.y;
+  m32 = column2.z;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Vec3<T> Matrix33<T>::GetColumn3() const
+{
+  return Vec3<T>(m13, m23, m33);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix33<T>::SetColumn3(const Vec3<T>& column3)
+{
+  m13 = column3.x;
+  m23 = column3.y;
+  m33 = column3.z;
 }
 
 ///////////////////////////////////////////////////////////////////////
