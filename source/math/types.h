@@ -55,3 +55,11 @@ static constexpr fworld kFWorldQuarterPi = kQuarterPi<fworld>;
 static constexpr flocal kFLocalPi = kPi<flocal>;
 static constexpr flocal kFLocalHalfPi = flocal(kHalfPi<fworld>);
 static constexpr flocal kFLocalQuarterPi = flocal(kQuarterPi<fworld>);
+
+///////////////////////////////////////////////////////////////////////
+// Conversions
+template <typename T>
+static constexpr T DegreesToRadians(T d) { return d * kPi<T> / T(180); }
+
+template <typename T>
+static constexpr T RadiansToDegrees(T r) { return r * 180 / kPi<T>; }

@@ -29,6 +29,15 @@ struct Matrix33
   inline void operator*=(const Matrix33& rhs);
   inline Matrix33<T> operator*(const Matrix33& rhs) const;
 
+  inline void SetRotationX(T radians);
+  inline static Matrix33<T> CreateRotationX(T radians);
+
+  inline void SetRotationY(T radians);
+  inline static Matrix33<T> CreateRotationY(T radians);
+
+  inline void SetRotationZ(T radians);
+  inline static Matrix33<T> CreateRotationZ(T radians);
+
   inline Vec3<T> GetRow1() const;
   inline void SetRow1(const Vec3<T>& row1);
 
@@ -124,17 +133,17 @@ inline bool Matrix33<T>::operator!=(const Matrix33& rhs) const
 template <typename T>
 inline void Matrix33<T>::operator*=(const Matrix33& rhs)
 {
-  T _m11 = (m11 * rhs.m11) + (m12 * rhs.m21) + (m13 * rhs.m31);
-  T _m12 = (m11 * rhs.m12) + (m12 * rhs.m22) + (m13 * rhs.m32);
-  T _m13 = (m11 * rhs.m13) + (m12 * rhs.m23) + (m13 * rhs.m33);
+  const T _m11 = (m11 * rhs.m11) + (m12 * rhs.m21) + (m13 * rhs.m31);
+  const T _m12 = (m11 * rhs.m12) + (m12 * rhs.m22) + (m13 * rhs.m32);
+  const T _m13 = (m11 * rhs.m13) + (m12 * rhs.m23) + (m13 * rhs.m33);
 
-  T _m21 = (m21 * rhs.m11) + (m22 * rhs.m21) + (m23 * rhs.m31);
-  T _m22 = (m21 * rhs.m12) + (m22 * rhs.m22) + (m23 * rhs.m32);
-  T _m23 = (m21 * rhs.m13) + (m22 * rhs.m23) + (m23 * rhs.m33);
+  const T _m21 = (m21 * rhs.m11) + (m22 * rhs.m21) + (m23 * rhs.m31);
+  const T _m22 = (m21 * rhs.m12) + (m22 * rhs.m22) + (m23 * rhs.m32);
+  const T _m23 = (m21 * rhs.m13) + (m22 * rhs.m23) + (m23 * rhs.m33);
 
-  T _m31 = (m31 * rhs.m11) + (m32 * rhs.m21) + (m33 * rhs.m31);
-  T _m32 = (m31 * rhs.m12) + (m32 * rhs.m22) + (m33 * rhs.m32);
-  T _m33 = (m31 * rhs.m13) + (m32 * rhs.m23) + (m33 * rhs.m33);
+  const T _m31 = (m31 * rhs.m11) + (m32 * rhs.m21) + (m33 * rhs.m31);
+  const T _m32 = (m31 * rhs.m12) + (m32 * rhs.m22) + (m33 * rhs.m32);
+  const T _m33 = (m31 * rhs.m13) + (m32 * rhs.m23) + (m33 * rhs.m33);
 
   m11 = _m11;
   m12 = _m12;
@@ -258,17 +267,17 @@ inline void Matrix33<T>::SetColumn3(const Vec3<T>& column3)
 template <typename T>
 inline void Matrix33<T>::Transpose()
 {
-  // T _m11 = m11; // no change
-  T _m12 = m21;
-  T _m13 = m31;
+  // const T _m11 = m11; // no change
+  const T _m12 = m21;
+  const T _m13 = m31;
 
-  T _m21 = m12;
-  // T _m22 = m22; // no change
-  T _m23 = m32;
+  const T _m21 = m12;
+  // const T _m22 = m22; // no change
+  const T _m23 = m32;
 
-  T _m31 = m13;
-  T _m32 = m23;
-  // T _m33 = m33; // no change
+  const T _m31 = m13;
+  const T _m32 = m23;
+  // const T _m33 = m33; // no change
 
   // m11 = _m11; // no change
   m12 = _m12;
@@ -289,5 +298,92 @@ inline Matrix33<T> Matrix33<T>::Transposed() const
 {
   Matrix33<T> m(*this);
   m.Transpose();
+  return m;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix33<T>::SetRotationX(T radians)
+{
+  const T sinTheta = std::sin(radians);
+  const T cosTheta = std::cos(radians);
+
+  m11 = 1;
+  m12 = 0;
+  m13 = 0;
+
+  m21 = 0;
+  m22 = cosTheta;
+  m23 = sinTheta;
+
+  m31 = 0;
+  m32 = -sinTheta;
+  m33 = cosTheta;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> Matrix33<T>::CreateRotationX(T radians)
+{
+  Matrix33<T> m(EUninitialized::Constructor);
+  m.SetRotationX(radians);
+  return m;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix33<T>::SetRotationY(T radians)
+{
+  const T sinTheta = std::sin(radians);
+  const T cosTheta = std::cos(radians);
+
+  m11 = cosTheta;
+  m12 = 0;
+  m13 = -sinTheta;
+
+  m21 = 0;
+  m22 = 1;
+  m23 = 0;
+
+  m31 = sinTheta;
+  m32 = 0;
+  m33 = cosTheta;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> Matrix33<T>::CreateRotationY(T radians)
+{
+  Matrix33<T> m(EUninitialized::Constructor);
+  m.SetRotationY(radians);
+  return m;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix33<T>::SetRotationZ(T radians)
+{
+  const T sinTheta = std::sin(radians);
+  const T cosTheta = std::cos(radians);
+
+  m11 = cosTheta;
+  m12 = sinTheta;
+  m13 = 0;
+
+  m21 = -sinTheta;
+  m22 = cosTheta;
+  m23 = 0;
+
+  m31 = 0;
+  m32 = 0;
+  m33 = 1;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> Matrix33<T>::CreateRotationZ(T radians)
+{
+  Matrix33<T> m(EUninitialized::Constructor);
+  m.SetRotationZ(radians);
   return m;
 }

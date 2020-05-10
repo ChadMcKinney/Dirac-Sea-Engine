@@ -119,10 +119,10 @@ inline bool Matrix22<T>::operator!=(const Matrix22& rhs) const
 template <typename T>
 inline void Matrix22<T>::operator*=(const Matrix22& rhs)
 {
-  T _m11 = (m11 * rhs.m11) + (m12 * rhs.m21);
-  T _m12 = (m11 * rhs.m12) + (m12 * rhs.m22);
-  T _m21 = (m21 * rhs.m11) + (m22 * rhs.m21);
-  T _m22 = (m21 * rhs.m12) + (m22 * rhs.m22);
+  const T _m11 = (m11 * rhs.m11) + (m12 * rhs.m21);
+  const T _m12 = (m11 * rhs.m12) + (m12 * rhs.m22);
+  const T _m21 = (m21 * rhs.m11) + (m22 * rhs.m21);
+  const T _m22 = (m21 * rhs.m12) + (m22 * rhs.m22);
   m11 = _m11;
   m12 = _m12;
   m21 = _m21;
@@ -145,7 +145,7 @@ inline Matrix22<T> Matrix22<T>::operator*(const Matrix22& rhs) const
 template <typename T>
 inline void Matrix22<T>::Transpose()
 {
-  T _m12 = m12;
+  const T _m12 = m12;
   m12 = m21;
   m21 = _m12;
 }
@@ -161,8 +161,8 @@ inline Matrix22<T> Matrix22<T>::Transposed() const
 template <typename T>
 inline void Matrix22<T>::SetRotationZ(T radians)
 {
-  T cosTheta = std::cos(radians);
-  T sinTheta = std::sin(radians);
+  const T cosTheta = std::cos(radians);
+  const T sinTheta = std::sin(radians);
   m11 = cosTheta;
   m12 = sinTheta;
   m21 = -sinTheta;
@@ -267,12 +267,12 @@ inline T Matrix22<T>::Determinant() const
 template <typename T>
 inline void Matrix22<T>::Invert()
 {
-  T recipD = 1 / Determinant();
+  const T recipD = 1 / Determinant();
   // Classical Adjoint / Determinant
-  T _m11 = m22 * recipD;
-  T _m12 = m21 * recipD;
-  T _m21 = m12 * recipD;
-  T _m22 = m11 * recipD;
+  const T _m11 = m22 * recipD;
+  const T _m12 = m21 * recipD;
+  const T _m21 = m12 * recipD;
+  const T _m22 = m11 * recipD;
   m11 = _m11;
   m12 = _m12;
   m21 = _m21;
@@ -292,14 +292,14 @@ inline Matrix22<T> Matrix22<T>::Inverted() const
 template <typename T>
 inline void Matrix22<T>::Invert_Safe()
 {
-  T d = Determinant();
+  const T d = Determinant();
   if (abs(d) > epsilon<T>())
   {
 		// Classical Adjoint / Determinant
-		T _m11 = m22 * recipD;
-		T _m12 = m21 * recipD;
-		T _m21 = m12 * recipD;
-		T _m22 = m11 * recipD;
+		const T _m11 = m22 * recipD;
+		const T _m12 = m21 * recipD;
+		const T _m21 = m12 * recipD;
+		const T _m22 = m11 * recipD;
 		m11 = _m11;
 		m12 = _m12;
 		m21 = _m21;

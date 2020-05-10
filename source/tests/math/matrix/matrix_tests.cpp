@@ -164,6 +164,33 @@ void RunMatrix3x3Tests()
     Matrix33<T> m2(111, 122, 133, 211, 222, 233, 311, 322, 333);
     TEST("m22: (m * m2)T == (m2T * mT)", (m * m2).Transposed() == (m2.Transposed() * m.Transposed()));
   }
+
+  {
+    const T radians = DegreesToRadians(T(-22.0));
+    const T cosTheta = std::cos(radians);
+    const T sinTheta = std::sin(radians);
+    Matrix33<T> m = Matrix33<T>::CreateRotationX(radians);
+    Matrix33<T> m2(1, 0, 0, 0, cosTheta, sinTheta, 0, -sinTheta, cosTheta);
+    TEST("m22: RotationX == m2", m == m2);
+  }
+
+  {
+    const T radians = DegreesToRadians(T(30));
+    const T cosTheta = std::cos(radians);
+    const T sinTheta = std::sin(radians);
+    Matrix33<T> m = Matrix33<T>::CreateRotationY(radians);
+    Matrix33<T> m2(cosTheta, 0, -sinTheta, 0, 1, 0, sinTheta, 0, cosTheta);
+    TEST("m22: RotationZ == m2", m == m2);
+  }
+
+  {
+    const T radians = DegreesToRadians(T(30));
+    const T cosTheta = std::cos(radians);
+    const T sinTheta = std::sin(radians);
+    Matrix33<T> m = Matrix33<T>::CreateRotationZ(radians);
+    Matrix33<T> m2(cosTheta, sinTheta, 0, -sinTheta, cosTheta, 0, 0, 0, 1);
+    TEST("m22: RotationZ == m2", m == m2);
+  }
 }
 
 void RunMatrixTests()
