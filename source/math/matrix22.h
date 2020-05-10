@@ -267,7 +267,9 @@ inline T Matrix22<T>::Determinant() const
 template <typename T>
 inline void Matrix22<T>::Invert()
 {
-  const T recipD = 1 / Determinant();
+  const T d = Determinant();
+  assert(abs(d) > epsilon<T>());
+  const T recipD = 1 / d;
   // Classical Adjoint / Determinant
   const T _m11 = m22 * recipD;
   const T _m12 = -m21 * recipD;

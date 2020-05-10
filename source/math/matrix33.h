@@ -620,7 +620,7 @@ inline void Matrix33<T>::Invert()
 {
   const T d = Determinant();
   assert(abs(d) > epsilon<T>());
-  const T recipD = 1 / Determinant();
+  const T recipD = 1 / d;
 
   const T c11D = Matrix22<T>(m22, m23, m32, m33).Determinant() * recipD;
   const T c12D = Matrix22<T>(m21, m23, m31, m33).Determinant() * recipD * -1;
