@@ -225,7 +225,7 @@ void RunMatrix3x3Tests()
     const T sinTheta = std::sin(radians);
     Matrix33<T> m2 = Matrix33<T>::CreateRotationAA(radians, Vec3<T>(T(0.267), T(-0.535), T(0.802)));
     Matrix33<T> m(T(0.968), T(-0.212), T(-0.131), T(0.203), T(0.976), T(-0.084), T(0.146), T(0.054), T(0.988));
-    TEST("m22: RotationZ == m2", m.Equivalent(m2, T(0.0005)));
+    TEST("m22: RotationZ == m2", m.IsEquivalent(m2, T(0.0005)));
   }
 }
 

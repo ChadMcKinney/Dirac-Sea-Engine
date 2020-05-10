@@ -25,7 +25,7 @@ struct Matrix33
 
   inline bool operator==(const Matrix33& rhs) const;
   inline bool operator!=(const Matrix33& rhs) const;
-  inline bool Equivalent(const Matrix33& rhs, T epsilon) const;
+  inline bool IsEquivalent(const Matrix33& rhs, T epsilon) const;
 
   inline void operator*=(const Matrix33& rhs);
   inline Matrix33<T> operator*(const Matrix33& rhs) const;
@@ -125,7 +125,7 @@ inline bool Matrix33<T>::operator==(const Matrix33& rhs) const
 
 ///////////////////////////////////////////////////////////////////////
 template <typename T>
-inline bool Matrix33<T>::Equivalent(const Matrix33& rhs, T epsilon) const
+inline bool Matrix33<T>::IsEquivalent(const Matrix33& rhs, T epsilon) const
 {
   return
     (m11 - rhs.m11 < epsilon) &&
