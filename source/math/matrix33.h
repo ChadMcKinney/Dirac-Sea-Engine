@@ -25,6 +25,7 @@ struct Matrix33
 
   inline bool operator==(const Matrix33& rhs) const;
   inline bool operator!=(const Matrix33& rhs) const;
+  inline bool Equivalent(const Matrix33& rhs, T epsilon) const;
 
   inline void operator*=(const Matrix33& rhs);
   inline Matrix33<T> operator*(const Matrix33& rhs) const;
@@ -37,6 +38,9 @@ struct Matrix33
 
   inline void SetRotationZ(T radians);
   inline static Matrix33<T> CreateRotationZ(T radians);
+
+  inline void SetRotationAA(T radians, const Vec3<T>& axis);
+  inline static Matrix33<T> CreateRotationAA(T radians, const Vec3<T>& axis);
 
   inline Vec3<T> GetRow1() const;
   inline void SetRow1(const Vec3<T>& row1);
@@ -117,6 +121,22 @@ inline bool Matrix33<T>::operator==(const Matrix33& rhs) const
     m11 == rhs.m11 && m12 == rhs.m12 && m13 == rhs.m13 &&
     m21 == rhs.m21 && m22 == rhs.m22 && m23 == rhs.m23 &&
     m31 == rhs.m31 && m32 == rhs.m32 && m33 == rhs.m33;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline bool Matrix33<T>::Equivalent(const Matrix33& rhs, T epsilon) const
+{
+  return
+    (m11 - rhs.m11 < epsilon) &&
+    (m12 - rhs.m12 < epsilon) &&
+    (m13 - rhs.m13 < epsilon) &&
+    (m21 - rhs.m21 < epsilon) &&
+    (m22 - rhs.m22 < epsilon) &&
+    (m23 - rhs.m23 < epsilon) &&
+    (m31 - rhs.m31 < epsilon) &&
+    (m32 - rhs.m32 < epsilon) &&
+    (m33 - rhs.m33 < epsilon);
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -385,5 +405,34 @@ inline Matrix33<T> Matrix33<T>::CreateRotationZ(T radians)
 {
   Matrix33<T> m(EUninitialized::Constructor);
   m.SetRotationZ(radians);
+  return m;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix33<T>::SetRotationAA(T radians, const Vec3<T>& axis)
+{
+  const T cosTheta = std::cos(radians);
+  const T sinTheta = std::sin(radians);
+
+  m11 = (axis.x * axis.x) * (1 - cosTheta) + cosTheta;
+  m12 = (axis.x * axis.y) * (1 - cosTheta) + (axis.z * sinTheta);
+  m13 = (axis.x * axis.z) * (1 - cosTheta) - (axis.y * sinTheta);
+
+  m21 = (axis.y * axis.x) * (1 - cosTheta) - (axis.z * sinTheta);
+  m22 = (axis.y * axis.y) * (1 - cosTheta) + cosTheta;
+  m23 = (axis.y * axis.z) * (1 - cosTheta) + (axis.x * sinTheta);
+
+  m31 = (axis.z * axis.x) * (1 - cosTheta) + (axis.y * sinTheta);
+  m32 = (axis.z * axis.y) * (1 - cosTheta) - (axis.x * sinTheta);
+  m33 = (axis.z * axis.z) * (1 - cosTheta) + cosTheta;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> Matrix33<T>::CreateRotationAA(T radians, const Vec3<T>& axis)
+{
+  Matrix33<T> m(EUninitialized::Constructor);
+  m.SetRotationAA(radians, axis);
   return m;
 }
