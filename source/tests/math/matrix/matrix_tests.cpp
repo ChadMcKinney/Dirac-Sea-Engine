@@ -532,6 +532,19 @@ void RunMatrix4x4Tests()
 		Matrix44<T> mii = m * m;
 		TEST("m44: identity * identity == identity", mii == m);
 	}
+
+
+	/*
+	{
+		Matrix44<T> m = Matrix33<T>::CreateOrientation(Vec3<T>::Right, Vec3<T>::Up, kPi<T>);
+		Matrix44<T> m2 = Matrix33<T>::CreateOrientation(Vec3<T>::Right, Vec3<T>::Up, 0);
+		Vec3<T> v = Vec3<T>::Right * m;
+		Vec3<T> v1 = m * Vec3<T>::Right;
+		Vec3<T> v2 = Vec3<T>::Right * m2;
+		TEST("m44: CreateOrientation Right Up", v.IsEquivalent(Vec3<T>::Forward, epsilon<T>()));
+		TEST("m44: CreateOrientation Right Up", v2.IsEquivalent(Vec3<T>::Back, epsilon<T>()));
+	}
+	*/
 }
 
 void RunMatrixTests()

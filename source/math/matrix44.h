@@ -26,6 +26,7 @@ struct Matrix44
     T _m21, T _m22, T _m23, T _m24,
     T _m31, T _m32, T _m33, T _m34,
     T _m41, T _m42, T _m43, T _m44);
+	Matrix44(const Matrix33<T>& matrix33);
 
 	inline bool operator==(const Matrix44& rhs) const;
 	inline bool operator!=(const Matrix44& rhs) const;
@@ -87,6 +88,16 @@ Matrix44<T>::Matrix44(
 	, m21(_m21), m22(_m22), m23(_m23), m24(_m24)
 	, m31(_m31), m32(_m32), m33(_m33), m34(_m34)
 	, m41(_m41), m42(_m42), m43(_m43), m44(_m44)
+{
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+Matrix44<T>::Matrix44(const Matrix33<T>& matrix33)
+	: m11(matrix33.m11), m12(matrix33.m12), m13(matrix33.m13), m14(0)
+	, m21(matrix33.m21), m22(matrix33.m22), m23(matrix33.m23), m24(0)
+	, m31(matrix33.m31), m32(matrix33.m32), m33(matrix33.m33), m34(0)
+	, m41(0),						 m42(0),						m43(0),						 m44(1)
 {
 }
 
@@ -156,3 +167,67 @@ inline Matrix44<T> Matrix44<T>::operator*(const Matrix44& rhs) const
   m.m44 = (m41 * rhs.m14) + (m42 * rhs.m24) + (m43 * rhs.m34) + (m44 * rhs.m44);
 	return m;
 }
+
+/*
+///////////////////////////////////////////////////////////////////////
+// Post multiply -> Matrix44 x Column Vector
+template <typename T>
+inline Vec3<T> operator*(const Matrix44<T>& m, const Vec3<T>& v)
+{
+  Vec3<T> v2(EUninitialized::Constructor);
+  v2.x = (m.m11 * v.x) + (m.m12 * v.y) + (m.m13 * v.z);
+  v2.y = (m.m21 * v.x) + (m.m22 * v.y) + (m.m23 * v.z);
+  v2.z = (m.m31 * v.x) + (m.m32 * v.y) + (m.m33 * v.z);
+  return v2;
+}
+
+///////////////////////////////////////////////////////////////////////
+// Pre multiply -> Row Vector * Matrix33
+template <typename T>
+inline Vec3<T> operator*(const Vec3<T>& v, const Matrix44<T>& m)
+{
+  Vec3<T> v2(EUninitialized::Constructor);
+  v2.x = (v.x * m.m11) + (v.y * m.m21) + (v.z * m.m31);
+  v2.y = (v.x * m.m12) + (v.y * m.m22) + (v.z * m.m32);
+  v2.z = (v.x * m.m13) + (v.y * m.m23) + (v.z * m.m33);
+  return v2;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix44<T> operator*(T s, const Matrix44<T>& m)
+{
+  Matrix33<T> m2(EUninitialized::Constructor);
+  m2.m11 = m.m11 * s;
+  m2.m12 = m.m12 * s;
+  m2.m13 = m.m13 * s;
+
+  m2.m21 = m.m21 * s;
+  m2.m22 = m.m22 * s;
+  m2.m23 = m.m23 * s;
+
+  m2.m31 = m.m31 * s;
+  m2.m32 = m.m32 * s;
+  m2.m33 = m.m33 * s;
+  return m2;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix44<T> operator*(const Matrix44<T>& m, T s)
+{
+  Matrix33<T> m2(EUninitialized::Constructor);
+  m2.m11 = m.m11 * s;
+  m2.m12 = m.m12 * s;
+  m2.m13 = m.m13 * s;
+
+  m2.m21 = m.m21 * s;
+  m2.m22 = m.m22 * s;
+  m2.m23 = m.m23 * s;
+
+  m2.m31 = m.m31 * s;
+  m2.m32 = m.m32 * s;
+  m2.m33 = m.m33 * s;
+  return m2;
+}
+*/
