@@ -43,6 +43,9 @@ struct Matrix43
 	inline void SetTranslation(const Vec3<T>& t);
 	inline static Matrix43<T> CreateTranslation(const Vec3<T>& t);
 
+	inline void SetRotationAndTranslation(const Matrix33<T>& m, const Vec3<T>& t);
+	inline static Matrix43<T> CreateRotationAndTranslation(const Matrix33<T>& m, const Vec3<T>& t);
+
 	inline T Determinant() const;
 
 	inline void Invert();
@@ -209,6 +212,83 @@ inline Matrix43<T> Matrix43<T>::operator*(const Matrix43& rhs) const
 }
 
 ///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix43<T> operator*(const Matrix43<T>& lhs, const Matrix33<T>& rhs)
+{
+	Matrix43<T> m(EUninitialized::Constructor);
+	m.m11 = (lhs.m11 * rhs.m11) + (lhs.m12 * rhs.m21) + (lhs.m13 * rhs.m31);
+	m.m12 = (lhs.m11 * rhs.m12) + (lhs.m12 * rhs.m22) + (lhs.m13 * rhs.m32);
+	m.m13 = (lhs.m11 * rhs.m13) + (lhs.m12 * rhs.m23) + (lhs.m13 * rhs.m33);
+
+	m.m21 = (lhs.m21 * rhs.m11) + (lhs.m22 * rhs.m21) + (lhs.m23 * rhs.m31);
+	m.m22 = (lhs.m21 * rhs.m12) + (lhs.m22 * rhs.m22) + (lhs.m23 * rhs.m32);
+	m.m23 = (lhs.m21 * rhs.m13) + (lhs.m22 * rhs.m23) + (lhs.m23 * rhs.m33);
+
+	m.m31 = (lhs.m31 * rhs.m11) + (lhs.m32 * rhs.m21) + (lhs.m33 * rhs.m31);
+	m.m32 = (lhs.m31 * rhs.m12) + (lhs.m32 * rhs.m22) + (lhs.m33 * rhs.m32);
+	m.m33 = (lhs.m31 * rhs.m13) + (lhs.m32 * rhs.m23) + (lhs.m33 * rhs.m33);
+
+	m.m41 = (lhs.m41 * rhs.m11) + (lhs.m42 * rhs.m21) + (lhs.m43 * rhs.m31);
+	m.m42 = (lhs.m41 * rhs.m12) + (lhs.m42 * rhs.m22) + (lhs.m43 * rhs.m32);
+	m.m43 = (lhs.m41 * rhs.m13) + (lhs.m42 * rhs.m23) + (lhs.m43 * rhs.m33);
+	return m;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix44<T> operator*(const Matrix43<T>& lhs, const Matrix44<T>& rhs)
+{
+	Matrix44<T> m(EUninitialized::Constructor);
+	m.m11 = (lhs.m11 * rhs.m11) + (lhs.m12 * rhs.m21) + (lhs.m13 * rhs.m31);
+	m.m12 = (lhs.m11 * rhs.m12) + (lhs.m12 * rhs.m22) + (lhs.m13 * rhs.m32);
+	m.m13 = (lhs.m11 * rhs.m13) + (lhs.m12 * rhs.m23) + (lhs.m13 * rhs.m33);
+	m.m14 = (lhs.m11 * rhs.m14) + (lhs.m12 * rhs.m24) + (lhs.m13 * rhs.m34);
+
+	m.m21 = (lhs.m21 * rhs.m11) + (lhs.m22 * rhs.m21) + (lhs.m23 * rhs.m31);
+	m.m22 = (lhs.m21 * rhs.m12) + (lhs.m22 * rhs.m22) + (lhs.m23 * rhs.m32);
+	m.m23 = (lhs.m21 * rhs.m13) + (lhs.m22 * rhs.m23) + (lhs.m23 * rhs.m33);
+	m.m24 = (lhs.m21 * rhs.m14) + (lhs.m22 * rhs.m24) + (lhs.m23 * rhs.m34);
+
+	m.m31 = (lhs.m31 * rhs.m11) + (lhs.m32 * rhs.m21) + (lhs.m33 * rhs.m31);
+	m.m32 = (lhs.m31 * rhs.m12) + (lhs.m32 * rhs.m22) + (lhs.m33 * rhs.m32);
+	m.m33 = (lhs.m31 * rhs.m13) + (lhs.m32 * rhs.m23) + (lhs.m33 * rhs.m33);
+	m.m34 = (lhs.m31 * rhs.m14) + (lhs.m32 * rhs.m24) + (lhs.m33 * rhs.m34);
+
+	m.m41 = (lhs.m41 * rhs.m11) + (lhs.m42 * rhs.m21) + (lhs.m43 * rhs.m31) + rhs.m41;
+	m.m42 = (lhs.m41 * rhs.m12) + (lhs.m42 * rhs.m22) + (lhs.m43 * rhs.m32) + rhs.m42;
+	m.m43 = (lhs.m41 * rhs.m13) + (lhs.m42 * rhs.m23) + (lhs.m43 * rhs.m33) + rhs.m43;
+	m.m44 = (lhs.m41 * rhs.m14) + (lhs.m42 * rhs.m24) + (lhs.m43 * rhs.m34) + rhs.m44;
+	return m;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix44<T> operator*(const Matrix44<T>& lhs, const Matrix43<T>& rhs)
+{
+	Matrix44<T> m(EUninitialized::Constructor);
+	m.m11 = (lhs.m11 * rhs.m11) + (lhs.m12 * rhs.m21) + (lhs.m13 * rhs.m31) + (lhs.m14 * rhs.m41);
+	m.m12 = (lhs.m11 * rhs.m12) + (lhs.m12 * rhs.m22) + (lhs.m13 * rhs.m32) + (lhs.m14 * rhs.m42);
+	m.m13 = (lhs.m11 * rhs.m13) + (lhs.m12 * rhs.m23) + (lhs.m13 * rhs.m33) + (lhs.m14 * rhs.m43);
+	m.m14 = lhs.m14;
+
+	m.m21 = (lhs.m21 * rhs.m11) + (lhs.m22 * rhs.m21) + (lhs.m23 * rhs.m31) + (lhs.m24 * rhs.m41);
+	m.m22 = (lhs.m21 * rhs.m12) + (lhs.m22 * rhs.m22) + (lhs.m23 * rhs.m32) + (lhs.m24 * rhs.m42);
+	m.m23 = (lhs.m21 * rhs.m13) + (lhs.m22 * rhs.m23) + (lhs.m23 * rhs.m33) + (lhs.m24 * rhs.m43);
+	m.m24 = lhs.m24;
+
+	m.m31 = (lhs.m31 * rhs.m11) + (lhs.m32 * rhs.m21) + (lhs.m33 * rhs.m31) + (lhs.m34 * rhs.m41);
+	m.m32 = (lhs.m31 * rhs.m12) + (lhs.m32 * rhs.m22) + (lhs.m33 * rhs.m32) + (lhs.m34 * rhs.m42);
+	m.m33 = (lhs.m31 * rhs.m13) + (lhs.m32 * rhs.m23) + (lhs.m33 * rhs.m33) + (lhs.m34 * rhs.m43);
+	m.m34 = lhs.m34;
+
+	m.m41 = (lhs.m41 * rhs.m11) + (lhs.m42 * rhs.m21) + (lhs.m43 * rhs.m31) + (lhs.m44 * rhs.m41);
+	m.m42 = (lhs.m41 * rhs.m12) + (lhs.m42 * rhs.m22) + (lhs.m43 * rhs.m32) + (lhs.m44 * rhs.m42);
+	m.m43 = (lhs.m41 * rhs.m13) + (lhs.m42 * rhs.m23) + (lhs.m43 * rhs.m33) + (lhs.m44 * rhs.m43);
+	m.m44 = lhs.m44;
+	return m;
+}
+
+///////////////////////////////////////////////////////////////////////
 // Vec4 Post multiply -> Matrix43 x Column Vector
 template <typename T>
 inline Vec4<T> operator*(const Matrix44<T>& m, const Vec3<T>& v)
@@ -310,6 +390,36 @@ inline Matrix43<T> Matrix43<T>::CreateTranslation(const Vec3<T>& t)
 {
 	Matrix43<T> m(EUninitialized::Constructor);
 	m.SetTranslation(t);
+	return m;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix43<T>::SetRotationAndTranslation(const Matrix33<T>& m, const Vec3<T>& t)
+{
+	m11 = m.m11;
+	m12 = m.m12;
+	m13 = m.m13;
+
+	m21 = m.m21;
+	m22 = m.m22;
+	m23 = m.m23;
+
+	m31 = m.m31;
+	m32 = m.m32;
+	m33 = m.m33;
+
+	m41 = t.x;
+	m42 = t.y;
+	m43 = t.z;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline static Matrix43<T> Matrix43<T>::CreateRotationAndTranslation(const Matrix33<T>& m, const Vec3<T>& t)
+{
+	Matrix43<T> m(EUninitialized::Constructor);
+	m.SetRotationAndTranslation(m, t);
 	return m;
 }
 

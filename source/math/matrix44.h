@@ -75,6 +75,12 @@ struct Matrix44
 	inline void SetPerspectiveProjection(T d);
 	inline static Matrix44<T> CreatePerspectiveProjection(T d);
 
+	inline void SetRotationAndTranslation(const Matrix33<T>& m, const Vec3<T>& t);
+	inline static Matrix44<T> CreateRotationAndTranslation(const Matrix33<T>& m, const Vec3<T>& t);
+
+	inline void SetRotationAndTranslation4D(const Matrix33<T>& m, const Vec4<T>& t);
+	inline static Matrix44<T> CreateRotationAndTranslation4D(const Matrix33<T>& m, const Vec4<T>& t);
+
 	inline Matrix33<T> Minor11() const;
 	inline Matrix33<T> Minor12() const;
 	inline Matrix33<T> Minor13() const;
@@ -728,6 +734,74 @@ inline Matrix44<T> Matrix44<T>::CreatePerspectiveProjection(T d)
 {
 	Matrix44<T> m(EUninitialized::Constructor);
 	m.SetPerspectiveProjection(d);
+	return m;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix44<T>::SetRotationAndTranslation(const Matrix33<T>& m, const Vec3<T>& t)
+{
+	m11 = m.m11;
+	m12 = m.m12;
+	m13 = m.m13;
+	m14 = 0;
+
+	m21 = m.m21;
+	m22 = m.m22;
+	m23 = m.m23;
+	m24 = 0;
+
+	m31 = m.m31;
+	m32 = m.m32;
+	m33 = m.m33;
+	m34 = 0;
+
+	m41 = t.x;
+	m42 = t.y;
+	m43 = t.z;
+	m44 = 1;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline static Matrix44<T> Matrix44<T>::CreateRotationAndTranslation(const Matrix33<T>& m, const Vec3<T>& t)
+{
+	Matrix44<T> m(EUninitialized::Constructor);
+	m.SetRotationAndTranslation(m, t);
+	return m;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix44<T>::SetRotationAndTranslation4D(const Matrix33<T>& m, const Vec4<T>& t)
+{
+	m11 = m.m11;
+	m12 = m.m12;
+	m13 = m.m13;
+	m14 = 0;
+
+	m21 = m.m21;
+	m22 = m.m22;
+	m23 = m.m23;
+	m24 = 0;
+
+	m31 = m.m31;
+	m32 = m.m32;
+	m33 = m.m33;
+	m34 = 0;
+
+	m41 = t.x;
+	m42 = t.y;
+	m43 = t.z;
+	m44 = t.w;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline static Matrix44<T> Matrix44<T>::CreateRotationAndTranslation4D(const Matrix33<T>& m, const Vec4<T>& t)
+{
+	Matrix44<T> m(EUninitialized::Constructor);
+	m.SetRotationAndTranslation4D(m, t);
 	return m;
 }
 
