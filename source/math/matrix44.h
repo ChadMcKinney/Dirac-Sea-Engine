@@ -9,7 +9,7 @@
 
 #include "matrix33.h"
 #include "types.h"
-#include "vector.h"
+#include "vector4.h"
 
 ///////////////////////////////////////////////////////////////////////
 // Matrix 4x4

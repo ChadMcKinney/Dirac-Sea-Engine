@@ -9,7 +9,7 @@
 
 #include "matrix22.h"
 #include "types.h"
-#include "vector.h"
+#include "vector3.h"
 
 ///////////////////////////////////////////////////////////////////////
 // Matrix 3x3

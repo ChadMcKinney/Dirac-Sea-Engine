@@ -5,7 +5,8 @@
 
 #pragma once
 
-#include "vector.h"
+#include "vector2.h"
+#include "vector3.h"
 
 template <typename T>
 Vec2<T>  transform_vector_from_basis_2D(const Vec2<T>& v_localSpace, const Vec2<T> basisVectors[2], const Vec2<T>& system_origin)

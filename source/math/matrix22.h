@@ -6,7 +6,7 @@
 #pragma once
 
 #include "types.h"
-#include "vector.h"
+#include "vector2.h"
 
 ///////////////////////////////////////////////////////////////////////
 // Matrix 2x2

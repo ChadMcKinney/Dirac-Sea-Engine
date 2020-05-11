@@ -53,7 +53,9 @@ set(project_HEADERS
     source/math/matrix22.h
     source/math/matrix33.h
     source/math/matrix44.h
-    source/math/vector.h
+    source/math/vector2.h
+    source/math/vector3.h
+    source/math/vector4.h
     source/math/coordinate_system.h
     source/tests/tests.h
     source/tests/test_framework.h
