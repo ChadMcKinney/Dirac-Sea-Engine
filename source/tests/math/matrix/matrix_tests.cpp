@@ -519,12 +519,19 @@ void RunMatrix4x4Tests()
 	{
 		TEST("m44: 0 isEquivalent 0", Matrix44<T>(EZero::Constructor).IsEquivalent(Matrix44<T>(EZero::Constructor), epsilon<T>()));
 	}
-	// {
-	// 	Matrix44<T> m(EIdentity::Constructor);
-	// 	Matrix44<T> m0(EZero::Constructor);
-	// 	Matrix44<T> mi0 = m0 * m;
-	// 	TEST("m44: identity * 0 == 0", mi0 == m0);
-	// }
+
+	{
+		Matrix44<T> m(EIdentity::Constructor);
+		Matrix44<T> m0(EZero::Constructor);
+		Matrix44<T> mi0 = m0 * m;
+		TEST("m44: identity * 0 == 0", mi0 == m0);
+	}
+
+	{
+		Matrix44<T> m(EIdentity::Constructor);
+		Matrix44<T> mii = m * m;
+		TEST("m44: identity * identity == identity", mii == m);
+	}
 }
 
 void RunMatrixTests()
