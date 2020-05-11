@@ -570,12 +570,36 @@ void RunMatrix4x4Tests()
 		TEST("m44: CreateOrientation Right Up", v3.IsEquivalent(right, epsilon<T>()));
 		TEST("m44: CreateOrientation Right Up", v4.IsEquivalent(right, epsilon<T>()));
 	}
+
+	{
+		Matrix44<T> m(EIdentity::Constructor);
+		Matrix44<T> m2 = m.Orthonormalized();
+		TEST("m44: Identity.Orthonormalize() == Identity", m == m2);
+	}
+
+	{
+		Matrix44<T> m(
+			T(0.9), 0, 0, 0,
+			0, T(0.89), 0, 0,
+			0, 0, T(0.92), 0,
+			0, 0, 0, T(0.99123));
+		Matrix44<T> m2 = m.Orthonormalized();
+		Vec4<T> v(1, 2, 3, 4);
+		Vec4<T> v2 = v * m2;
+		TEST("m44: Identity.Orthonormalize() == Identity", v == v2);
+	}
+
+	{
+		Matrix44<T> m = Matrix44<T>::CreatePerspectiveProjection(2);
+		Vec4<T> v(2, 4, 8, 1);
+		Vec4<T> v2 = v * m;
+		Vec4<T> v3(2, 4, 8, 4);
+		TEST("m44: Perspective * V", v2 == v3);
+	}
 }
 
 void RunMatrixTests()
-{
-	puts("=====================================================");
-	puts("Running Matrix2x2<fworld> tests");
+{ puts("====================================================="); puts("Running Matrix2x2<fworld> tests");
 	RunMatrix2x2Tests<fworld>();
 
 	puts("=====================================================");

@@ -52,6 +52,29 @@ struct Matrix44
   inline void Orthonormalize_Safe();
   inline Matrix44<T> Orthonormalized_Safe() const;
 
+  inline Vec4<T> GetRow1() const;
+  inline void SetRow1(const Vec4<T>& r);
+  inline Vec4<T> GetRow2() const;
+  inline void SetRow2(const Vec4<T>& r);
+  inline Vec4<T> GetRow3() const;
+  inline void SetRow3(const Vec4<T>& r);
+  inline Vec4<T> GetRow4() const;
+  inline void SetRow4(const Vec4<T>& r);
+
+  inline Vec4<T> GetColumn1() const;
+  inline void SetColumn1(const Vec4<T>& c);
+  inline Vec4<T> GetColumn2() const;
+  inline void SetColumn2(const Vec4<T>& c);
+  inline Vec4<T> GetColumn3() const;
+  inline void SetColumn3(const Vec4<T>& c);
+  inline Vec4<T> GetColumn4() const;
+  inline void SetColumn4(const Vec4<T>& c);
+
+  // TODO: add w normalizing for depth buffer precision
+  // TODO: add FOV for X/Y
+  inline void SetPerspectiveProjection(T d);
+  inline static Matrix44<T> CreatePerspectiveProjection(T d);
+
   inline Matrix33<T> Minor11() const;
   inline Matrix33<T> Minor12() const;
   inline Matrix33<T> Minor13() const;
@@ -469,19 +492,242 @@ inline Matrix44<T> Matrix44<T>::Inverted_Safe() const
 
 ///////////////////////////////////////////////////////////////////////
 template <typename T>
-inline void Matrix44<T>::Orthonormalize();
+inline void Matrix44<T>::Orthonormalize()
+{
+  Vec4<T> r1 = GetRow1();
+  r1.Normalize();
+
+  Vec4<T> r2 = GetRow2();
+  r2 = r2 - r1.Scaled(r1.Dot(r2));
+  r2.Normalize();
+
+  Vec4<T> r3 = GetRow3();
+  r3 = r3 - r2.Scaled(r2.Dot(r3));
+  r3.Normalize();
+
+  Vec4<T> r4 = GetRow4();
+  r4 = r4 - r3.Scaled(r3.Dot(r4));
+  r4.Normalize();
+
+  SetRow1(r1);
+  SetRow2(r2);
+  SetRow3(r3);
+  SetRow4(r4);
+}
 
 ///////////////////////////////////////////////////////////////////////
 template <typename T>
-inline Matrix44<T> Matrix44<T>::Orthonormalized() const;
+inline Matrix44<T> Matrix44<T>::Orthonormalized() const
+{
+  Matrix44<T> m(*this);
+  m.Orthonormalize();
+  return m;
+}
 
 ///////////////////////////////////////////////////////////////////////
 template <typename T>
-inline void Matrix44<T>::Orthonormalize_Safe();
+inline void Matrix44<T>::Orthonormalize_Safe()
+{
+  Vec4<T> r1 = GetRow1();
+  r1.SafeNormalize();
+
+  Vec4<T> r2 = GetRow2();
+  r2 = r2 - r1.Scaled(r1.Dot(r2));
+  r2.SafeNormalize();
+
+  Vec4<T> r3 = GetRow3();
+  r3 = r3 - r2.Scaled(r2.Dot(r3));
+  r3.SafeNormalize();
+
+  Vec4<T> r4 = GetRow4();
+  r4 = r4 - r3.Scaled(r3.Dot(r4));
+  r4.SafeNormalize();
+
+  SetRow1(r1);
+  SetRow2(r2);
+  SetRow3(r3);
+  SetRow4(r4);
+}
 
 ///////////////////////////////////////////////////////////////////////
 template <typename T>
-inline Matrix44<T> Matrix44<T>::Orthonormalized_Safe() const;
+inline Matrix44<T> Matrix44<T>::Orthonormalized_Safe() const
+{
+  Matrix44<T> m(*this);
+  m.Orthonormalize_Safe();
+  return m;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Vec4<T> Matrix44<T>::GetRow1() const
+{
+  return Vec4<T>(m11, m12, m13, m14);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix44<T>::SetRow1(const Vec4<T>& r)
+{
+  m11 = r.x;
+  m12 = r.y;
+  m13 = r.z;
+  m14 = r.w;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Vec4<T> Matrix44<T>::GetRow2() const
+{
+  return Vec4<T>(m21, m22, m23, m24);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix44<T>::SetRow2(const Vec4<T>& r)
+{
+  m21 = r.x;
+  m22 = r.y;
+  m23 = r.z;
+  m24 = r.w;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Vec4<T> Matrix44<T>::GetRow3() const
+{
+  return Vec4<T>(m31, m32, m33, m34);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix44<T>::SetRow3(const Vec4<T>& r)
+{
+  m31 = r.x;
+  m32 = r.y;
+  m33 = r.z;
+  m34 = r.w;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Vec4<T> Matrix44<T>::GetRow4() const
+{
+  return Vec4<T>(m41, m42, m43, m44);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix44<T>::SetRow4(const Vec4<T>& r)
+{
+  m41 = r.x;
+  m42 = r.y;
+  m43 = r.z;
+  m44 = r.w;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Vec4<T> Matrix44<T>::GetColumn1() const
+{
+  return Vec4<T>(m11, m21, m31, m41);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix44<T>::SetColumn1(const Vec4<T>& c)
+{
+  m11 = c.x;
+  m21 = c.y;
+  m31 = c.z;
+  m41 = c.w;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Vec4<T> Matrix44<T>::GetColumn2() const
+{
+  return Vec4<T>(m12, m22, m32, m42);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix44<T>::SetColumn2(const Vec4<T>& c)
+{
+  m12 = c.x;
+  m22 = c.y;
+  m32 = c.z;
+  m42 = c.w;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Vec4<T> Matrix44<T>::GetColumn3() const
+{
+  return Vec4<T>(m13, m23, m33, m43);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix44<T>::SetColumn3(const Vec4<T>& c)
+{
+  m13 = c.x;
+  m23 = c.y;
+  m33 = c.z;
+  m43 = c.w;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Vec4<T> Matrix44<T>::GetColumn4() const
+{
+  return Vec4<T>(m14, m24, m34, m44);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix44<T>::SetColumn4(const Vec4<T>& c)
+{
+  m14 = c.x;
+  m24 = c.y;
+  m34 = c.z;
+  m44 = c.w;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix44<T>::SetPerspectiveProjection(T d)
+{
+  assert(d > epsilon<T>());
+  m11 = 1;
+  m12 = 0;
+  m13 = 0;
+  m14 = 0;
+
+  m21 = 0;
+  m22 = 1;
+  m23 = 0;
+  m24 = 0;
+
+  m31 = 0;
+  m32 = 0;
+  m33 = 1;
+  m34 = 1 / d;
+
+  m41 = 0;
+  m42 = 0;
+  m43 = 0;
+  m44 = 0;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix44<T> Matrix44<T>::CreatePerspectiveProjection(T d)
+{
+  Matrix44<T> m(EUninitialized::Constructor);
+  m.SetPerspectiveProjection(d);
+  return m;
+}
 
 ///////////////////////////////////////////////////////////////////////
 template <typename T>
