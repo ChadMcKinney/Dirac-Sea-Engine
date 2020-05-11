@@ -11,6 +11,7 @@
 
 #include "math/matrix22.h"
 #include "math/matrix33.h"
+#include "math/matrix44.h"
 #include "tests/test_framework.h"
 
 template <typename T>
@@ -508,6 +509,24 @@ void RunMatrix3x3Tests()
 	}
 }
 
+template<typename T>
+void RunMatrix4x4Tests()
+{
+	{
+		TEST("m44: 0 == 0", Matrix44<T>(EZero::Constructor) == Matrix44<T>(EZero::Constructor));
+	}
+
+	{
+		TEST("m44: 0 isEquivalent 0", Matrix44<T>(EZero::Constructor).IsEquivalent(Matrix44<T>(EZero::Constructor), epsilon<T>()));
+	}
+	// {
+	// 	Matrix44<T> m(EIdentity::Constructor);
+	// 	Matrix44<T> m0(EZero::Constructor);
+	// 	Matrix44<T> mi0 = m0 * m;
+	// 	TEST("m44: identity * 0 == 0", mi0 == m0);
+	// }
+}
+
 void RunMatrixTests()
 {
 	puts("=====================================================");
@@ -525,4 +544,12 @@ void RunMatrixTests()
 	puts("=====================================================");
 	puts("Running Matrix3x3<flocal> tests");
 	RunMatrix3x3Tests<flocal>();
+
+	puts("=====================================================");
+	puts("Running Matrix4x4<fworld> tests");
+	RunMatrix4x4Tests<fworld>();
+
+	puts("=====================================================");
+	puts("Running Matrix4x4<flocal> tests");
+	RunMatrix4x4Tests<flocal>();
 }
