@@ -2,6 +2,8 @@
 = TODO
 ===================================
 
+* Quaternions
+* Polar Coordinates
 * SSE support
 * Projection Matrix: add w normalization for depth buffer precision
 * Add FOV calculation for X/Y
