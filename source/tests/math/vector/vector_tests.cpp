@@ -351,6 +351,52 @@ void RunFloatingVec3Tests()
 	}
 }
 
+template <typename T>
+void RunVec4Tests()
+{
+	{
+		Vec4<T> a(T(0.5), T(4) / T(6), T(-3.3166247903554 / 6.0), 1);
+		a.Normalize();
+		Vec4<T> b(T(-0.5), -(T(4) / T(6)), T(3.3166247903554 / 6.0), -1);
+		b.Normalize();
+		T c = a.Dot(b);
+		TEST("Vec4: (0.5, 0.666666666..., -1).Dot(-0.5, -0.66666..., 1)", c < 0 && abs(c - -1) < epsilon<T>() * 2);
+	}
+
+	{
+		Vec4<T> a(T(0.5), T(4) / T(6), T(-3.3166247903554 / 6.0), 0);
+		T magnitude = a.Magnitude();
+		TEST("Vec4: (0.5, 0.666666666..., -1).Magnitude()", magnitude == T(1));
+	}
+
+	{
+		Vec4<T> a(epsilon<T>() * T(0.1), epsilon<T>() * T(0.1), epsilon<T>() * T(0.1), epsilon<T>() * T(0.1));
+		Vec4<T> aNormalized = a.SafeNormalized();
+		T magnitude = aNormalized.Magnitude();
+		TEST("Vec2: (epsilon, epslion).Magnitude()", magnitude == T(0));
+	}
+	
+	{
+		Vec4<T> a(T(1.337), 666, 9999999, -6);
+		Vec4<T> aNormalized = a.Normalized();
+		T magnitude = aNormalized.Magnitude();
+		TEST("Vec4: (1.337, 666, 9999999).SafeNormalized().Magnitude()", magnitude == T(1));
+	}
+
+	{
+		Vec4<T> a(T(3), T(4), T(-3.3166247903554), 1);
+		T sqrMagnitude = a.SqrMagnitude();
+		TEST("Vec4: (3, 4, -3.3166247903554).SqrMagnitude()", sqrMagnitude == T(37));
+	}
+
+	{
+		Vec4<T> a(0, 5, 6, -7);
+		Vec4<T> b(0, -1, 8, 1337);
+		T d = a.Distance(b);
+		TEST("Vec4: (5,6,7).Distance(-1,8,1337)", d == std::sqrt(T(1806376)));
+	}
+}
+
 void RunVec2Tests()
 {
 	puts("=====================================================");
@@ -397,6 +443,15 @@ void RunVec3Tests()
 	puts("=====================================================");
   puts("Running Vec3u tests");
   RunVec3Tests<uint32_t>();
+
+	puts("=====================================================");
+  puts("Running Vec4w tests");
+  RunVec4Tests<fworld>();
+
+	puts("=====================================================");
+  puts("Running Vec4l tests");
+  RunVec4Tests<flocal>();
+
 }
 
 void RunVectorTests()
