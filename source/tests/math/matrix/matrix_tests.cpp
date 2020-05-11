@@ -519,6 +519,143 @@ void RunMatrix4x3Tests()
 	{
 		TEST("m43: 0 isEquivalent 0", Matrix43<T>(EZero::Constructor).IsEquivalent(Matrix43<T>(EZero::Constructor), epsilon<T>()));
 	}
+
+	{
+		Matrix43<T> m(EIdentity::Constructor);
+		TEST("m43: Identity * Identity == Identity", (m * m) == m);
+	}
+
+	{
+		Matrix43<T> m(EIdentity::Constructor);
+		Matrix43<T> m2(EZero::Constructor);
+		TEST("m43: Identity * Zero == Zero", (m * m2) == m2);
+	}
+
+	{
+		Matrix43<T> m(EIdentity::Constructor);
+		Matrix44<T> m2 = m.Transposed();
+		Matrix44<T> m3(EIdentity::Constructor);
+		TEST("m43: Identity.Transposed() == m44.Identity", m2 == m3);
+	}
+
+	{
+		Matrix43<T> m(EIdentity::Constructor);
+		Matrix43<T> m2 = m.Inverted();
+		TEST("m43: Identity.Invert() == Identity", m == m2);
+	}
+
+	{
+		Matrix43<T> m(EIdentity::Constructor);
+		Vec4<T> v(2, 4, 8, 1);
+		Vec4<T> v2 = v * m;
+		Vec3<T> v3(1, 2, 3);
+		Vec3<T> v4 = v3 * m;
+		TEST("m44: identity * v == v", v == v2 && v3 == v4);
+	}
+
+	{
+		Matrix43<T> m = Matrix43<T>::CreateTranslation(Vec3<T>(10, 20, 30));
+		Vec3<T> v(2, 4, 8);
+		Vec3<T> v2 = v * m;
+		Vec3<T> v3(12, 24, 38);
+		Vec3<T> v4(1, 2, 3);
+		Vec3<T> v5 = v3 * m;
+		Vec3<T> v6(11, 22, 33);
+		TEST("m44: translation * v", v2 == v3 && v5 == v5);
+	}
+
+
+	{
+		Matrix43<T> m = Matrix43<T>::CreateTranslation(Vec3<T>(10, 20, 30));
+		Vec3<T> v(2, 4, 8);
+		Vec3<T> v2 = v * m;
+		Vec3<T> v3 = v2 * m.Inverted();
+		Vec3<T> v4(1, 2, 3);
+		Vec3<T> v5 = v4 * m;
+		Vec3<T> v6 = v5 * m.Inverted();
+		TEST("m44: translation * v * translation.inverted() == v", v.IsEquivalent(v3, epsilon<T>()));
+		TEST("m44: translation * v * translation.inverted() == v", v4.IsEquivalent(v6, epsilon<T>()));
+	}
+
+	{
+		Matrix43<T> m = Matrix33<T>::CreateRotationAA(kHalfPi<T>, Vec3<T>(1, 0, 0));
+		Vec3<T> v(1, 2, 3);
+		Vec3<T> v2 = v * m;
+		Vec3<T> v3 = v2 * m.Inverted();
+		TEST("m43: (v * m) * m.Inverted() == v", v.IsEquivalent(v3, epsilon<T>() * 4));
+	}
+
+	{
+		Matrix43<T> m = Matrix33<T>::CreateRotationAA(kHalfPi<T>, Vec3<T>(1, 0, 0));
+		m = m * Matrix43<T>::CreateTranslation(Vec3<T>(10, 20, 30));
+		Vec3<T> v(1, 2, 4);
+		Vec3<T> v2 = v * m;
+		Vec3<T> v3 = v2 * m.Inverted();
+		TEST("m43: (v * m) * m.Inverted() == v", v.IsEquivalent(v3, epsilon<T>() * 100));
+	}
+
+	{
+		Matrix43<T> m = Matrix33<T>::CreateOrientation(Vec3<T>::Right, Vec3<T>::Up, kPi<T>);
+		Matrix43<T> m2 = Matrix33<T>::CreateOrientation(Vec3<T>::Right, Vec3<T>::Up, 0);
+		Matrix43<T> rightM = Matrix43<T>::CreateTranslation(Vec3<T>::Right);
+		Matrix43<T> upM = Matrix43<T>::CreateTranslation(Vec3<T>::Up);
+		Vec3<T> right = Vec3<T>(EZero::Constructor) * rightM;
+		Vec3<T> v =  Vec3<T>(EZero::Constructor) * (rightM * m);
+		Vec3<T> v2 = right * m2;
+		Vec3<T> v3 = v * m.Inverted();
+		Vec3<T> v4 = v2 * m2.Inverted();
+		TEST("m43: CreateOrientation Right Up with translation", v3.IsEquivalent(right, epsilon<T>()));
+		TEST("m43: CreateOrientation Right Up with translation", v4.IsEquivalent(right, epsilon<T>()));
+	}
+
+	{
+		Matrix43<T> m = Matrix33<T>::CreateOrientation(Vec3<T>::Right, Vec3<T>::Up, kPi<T>);
+		Matrix43<T> m2 = Matrix33<T>::CreateOrientation(Vec3<T>::Right, Vec3<T>::Up, 0);
+		Matrix43<T> rightM = Matrix43<T>::CreateTranslation(Vec3<T>::Right);
+		Vec3<T> right = Vec3<T>(EZero::Constructor) * rightM;
+		Vec3<T> v = Vec3<T>(EZero::Constructor) * (rightM * m);
+		Vec3<T> v2 = Vec3<T>(EZero::Constructor) * (rightM * m2);
+		TEST("m43: CreateOrientation Right Up", v.IsEquivalent(Vec3<T>::Forward, epsilon<T>()));
+		TEST("m43: CreateOrientation Right Up", v2.IsEquivalent(Vec3<T>::Back, epsilon<T>()));
+	}
+
+	{
+		Matrix43<T> m(
+			T(0.9), 0, 0, 
+			0, T(0.89), 0,
+			0, 0, T(0.92),
+			0, 0, 0);
+		Matrix43<T> m2 = m.Orthonormalized();
+		Vec4<T> v(1, 2, 3, 4);
+		Vec4<T> v2 = v * m2;
+		TEST("m43: almostIdentity.Orthonormalize() == Identity", v == v2);
+	}
+
+	{
+		Matrix43<T> m(
+			T(0.9), 0, 0, 
+			0, T(0.89), 0,
+			0, 0, T(0.92),
+			10, 20, 30);
+		Matrix43<T> m2 = m.Orthonormalized();
+		Vec4<T> v(1, 2, 3, 1);
+		Vec4<T> v2 = v * m2;
+		Vec4<T> v3(11, 22, 33, 1);
+		TEST("m43: almostIdentity.Orthonormalize() == Identity", v2 == v3);
+	}
+
+	{
+		Matrix43<T> m(
+			T(0.9), 0, 0, 
+			0, T(0.89), 0,
+			0, 0, T(0.92),
+			10, 20, 30);
+		Matrix43<T> m2 = m.Orthonormalized();
+		Vec3<T> v(1, 2, 3);
+		Vec3<T> v2 = v * m2;
+		Vec3<T> v3(11, 22, 33);
+		TEST("m43: almostIdentity.Orthonormalize() == Identity", v2 == v3);
+	}
 }
 
 template<typename T>
