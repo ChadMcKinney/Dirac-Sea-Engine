@@ -612,6 +612,20 @@ void RunMatrix4x3Tests()
 		Matrix43<T> m = Matrix33<T>::CreateOrientation(Vec3<T>::Right, Vec3<T>::Up, kPi<T>);
 		Matrix43<T> m2 = Matrix33<T>::CreateOrientation(Vec3<T>::Right, Vec3<T>::Up, 0);
 		Matrix43<T> rightM = Matrix43<T>::CreateTranslation(Vec3<T>::Right);
+		Matrix43<T> upM = Matrix43<T>::CreateTranslation(Vec3<T>::Up);
+		Vec3<T> right = Vec3<T>(EZero::Constructor) * rightM;
+		Vec3<T> v =  Vec3<T>(EZero::Constructor) * (rightM * m);
+		Vec3<T> v2 = right * m2;
+		Vec3<T> v3 = v * m.Inverted_Safe();
+		Vec3<T> v4 = v2 * m2.Inverted_Safe();
+		TEST("m43: CreateOrientation Right Up with translation", v3.IsEquivalent(right, epsilon<T>()));
+		TEST("m43: CreateOrientation Right Up with translation", v4.IsEquivalent(right, epsilon<T>()));
+	}
+
+	{
+		Matrix43<T> m = Matrix33<T>::CreateOrientation(Vec3<T>::Right, Vec3<T>::Up, kPi<T>);
+		Matrix43<T> m2 = Matrix33<T>::CreateOrientation(Vec3<T>::Right, Vec3<T>::Up, 0);
+		Matrix43<T> rightM = Matrix43<T>::CreateTranslation(Vec3<T>::Right);
 		Vec3<T> right = Vec3<T>(EZero::Constructor) * rightM;
 		Vec3<T> v = Vec3<T>(EZero::Constructor) * (rightM * m);
 		Vec3<T> v2 = Vec3<T>(EZero::Constructor) * (rightM * m2);
@@ -717,6 +731,20 @@ void RunMatrix4x4Tests()
 		Vec4<T> v2 = right * m2;
 		Vec4<T> v3 = v * m.Inverted();
 		Vec4<T> v4 = v2 * m2.Inverted();
+		TEST("m44: CreateOrientation Right Up", v3.IsEquivalent(right, epsilon<T>()));
+		TEST("m44: CreateOrientation Right Up", v4.IsEquivalent(right, epsilon<T>()));
+	}
+
+	{
+		Matrix44<T> m = Matrix33<T>::CreateOrientation(Vec3<T>::Right, Vec3<T>::Up, kPi<T>);
+		Matrix44<T> m2 = Matrix33<T>::CreateOrientation(Vec3<T>::Right, Vec3<T>::Up, 0);
+		Vec4<T> right(1, 0, 0, 1);
+		Vec4<T> forward(0, 0, 1, 1);
+		Vec4<T> back(0, 0, -1, 1);
+		Vec4<T> v = right * m;
+		Vec4<T> v2 = right * m2;
+		Vec4<T> v3 = v * m.Inverted_Safe();
+		Vec4<T> v4 = v2 * m2.Inverted_Safe();
 		TEST("m44: CreateOrientation Right Up", v3.IsEquivalent(right, epsilon<T>()));
 		TEST("m44: CreateOrientation Right Up", v4.IsEquivalent(right, epsilon<T>()));
 	}
