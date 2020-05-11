@@ -1,4 +1,3 @@
-
 /* Copyright (C) Chad McKinney - All Rights Reserved
  * Unauthorized copying of this file, via any medium is strictly prohibited
  * Proprietary and confidential
@@ -533,18 +532,44 @@ void RunMatrix4x4Tests()
 		TEST("m44: identity * identity == identity", mii == m);
 	}
 
+	{
+		Matrix44<T> m(EIdentity::Constructor);
+		Vec4<T> v(1, 0, 0, 1);
+		Vec4<T> v2 = v * m;
+		TEST("m44: v * identity == v", v == v2);
+	}
 
-	/*
 	{
 		Matrix44<T> m = Matrix33<T>::CreateOrientation(Vec3<T>::Right, Vec3<T>::Up, kPi<T>);
 		Matrix44<T> m2 = Matrix33<T>::CreateOrientation(Vec3<T>::Right, Vec3<T>::Up, 0);
-		Vec3<T> v = Vec3<T>::Right * m;
-		Vec3<T> v1 = m * Vec3<T>::Right;
-		Vec3<T> v2 = Vec3<T>::Right * m2;
-		TEST("m44: CreateOrientation Right Up", v.IsEquivalent(Vec3<T>::Forward, epsilon<T>()));
-		TEST("m44: CreateOrientation Right Up", v2.IsEquivalent(Vec3<T>::Back, epsilon<T>()));
+		Vec4<T> right(1, 0, 0, 1);
+		Vec4<T> forward(0, 0, 1, 1);
+		Vec4<T> back(0, 0, -1, 1);
+		Vec4<T> v = right * m;
+		Vec4<T> v2 = right * m2;
+		TEST("m44: CreateOrientation Right Up", v.IsEquivalent(forward, epsilon<T>()));
+		TEST("m44: CreateOrientation Right Up", v2.IsEquivalent(back, epsilon<T>()));
 	}
-	*/
+
+	{
+		Matrix44<T> m(EIdentity::Constructor);
+		Matrix44<T> m2 = m.Inverted();
+		TEST("m44: Identity.inverted() == identity", m == m2);
+	}
+
+	{
+		Matrix44<T> m = Matrix33<T>::CreateOrientation(Vec3<T>::Right, Vec3<T>::Up, kPi<T>);
+		Matrix44<T> m2 = Matrix33<T>::CreateOrientation(Vec3<T>::Right, Vec3<T>::Up, 0);
+		Vec4<T> right(1, 0, 0, 1);
+		Vec4<T> forward(0, 0, 1, 1);
+		Vec4<T> back(0, 0, -1, 1);
+		Vec4<T> v = right * m;
+		Vec4<T> v2 = right * m2;
+		Vec4<T> v3 = v * m.Inverted();
+		Vec4<T> v4 = v2 * m2.Inverted();
+		TEST("m44: CreateOrientation Right Up", v3.IsEquivalent(right, epsilon<T>()));
+		TEST("m44: CreateOrientation Right Up", v4.IsEquivalent(right, epsilon<T>()));
+	}
 }
 
 void RunMatrixTests()

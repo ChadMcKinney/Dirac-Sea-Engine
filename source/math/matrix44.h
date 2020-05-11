@@ -35,6 +35,40 @@ struct Matrix44
 	inline void operator*=(const Matrix44& rhs);
 	inline Matrix44<T> operator*(const Matrix44& rhs) const;
 
+  inline void Transpose();
+  inline Matrix44<T> Transposed() const;
+
+  inline T Determinant() const;
+  
+  inline void Invert();
+  inline Matrix44<T> Inverted() const;
+
+  inline void Invert_Safe();
+  inline Matrix44<T> Inverted_Safe() const;
+
+  inline void Orthonormalize();
+  inline Matrix44<T> Orthonormalized() const;
+
+  inline void Orthonormalize_Safe();
+  inline Matrix44<T> Orthonormalized_Safe() const;
+
+  inline Matrix33<T> Minor11() const;
+  inline Matrix33<T> Minor12() const;
+  inline Matrix33<T> Minor13() const;
+  inline Matrix33<T> Minor14() const;
+  inline Matrix33<T> Minor21() const;
+  inline Matrix33<T> Minor22() const;
+  inline Matrix33<T> Minor23() const;
+  inline Matrix33<T> Minor24() const;
+  inline Matrix33<T> Minor31() const;
+  inline Matrix33<T> Minor32() const;
+  inline Matrix33<T> Minor33() const;
+  inline Matrix33<T> Minor34() const;
+  inline Matrix33<T> Minor41() const;
+  inline Matrix33<T> Minor42() const;
+  inline Matrix33<T> Minor43() const;
+  inline Matrix33<T> Minor44() const;
+
 	T m11, m12, m13, m14;
 	T m21, m22, m23, m24;
 	T m31, m32, m33, m34;
@@ -168,28 +202,29 @@ inline Matrix44<T> Matrix44<T>::operator*(const Matrix44& rhs) const
 	return m;
 }
 
-/*
 ///////////////////////////////////////////////////////////////////////
 // Post multiply -> Matrix44 x Column Vector
 template <typename T>
-inline Vec3<T> operator*(const Matrix44<T>& m, const Vec3<T>& v)
+inline Vec4<T> operator*(const Matrix44<T>& m, const Vec4<T>& v)
 {
-  Vec3<T> v2(EUninitialized::Constructor);
-  v2.x = (m.m11 * v.x) + (m.m12 * v.y) + (m.m13 * v.z);
-  v2.y = (m.m21 * v.x) + (m.m22 * v.y) + (m.m23 * v.z);
-  v2.z = (m.m31 * v.x) + (m.m32 * v.y) + (m.m33 * v.z);
+  Vec4<T> v2(EUninitialized::Constructor);
+  v2.x = (m.m11 * v.x) + (m.m12 * v.y) + (m.m13 * v.z) + (m14 * v.w);
+  v2.y = (m.m21 * v.x) + (m.m22 * v.y) + (m.m23 * v.z) + (m24 * v.w);
+  v2.z = (m.m31 * v.x) + (m.m32 * v.y) + (m.m33 * v.z) + (m34 * v.w);
+  v2.w = (m.m41 * v.x) + (m.m42 * v.y) + (m.m43 * v.z) + (m44 * v.w);
   return v2;
 }
 
 ///////////////////////////////////////////////////////////////////////
-// Pre multiply -> Row Vector * Matrix33
+// Pre multiply -> Row Vector * Matrix44
 template <typename T>
-inline Vec3<T> operator*(const Vec3<T>& v, const Matrix44<T>& m)
+inline Vec4<T> operator*(const Vec4<T>& v, const Matrix44<T>& m)
 {
-  Vec3<T> v2(EUninitialized::Constructor);
-  v2.x = (v.x * m.m11) + (v.y * m.m21) + (v.z * m.m31);
-  v2.y = (v.x * m.m12) + (v.y * m.m22) + (v.z * m.m32);
-  v2.z = (v.x * m.m13) + (v.y * m.m23) + (v.z * m.m33);
+  Vec4<T> v2(EUninitialized::Constructor);
+  v2.x = (v.x * m.m11) + (v.y * m.m21) + (v.z * m.m31) + (v.w * m.m41);
+  v2.y = (v.x * m.m12) + (v.y * m.m22) + (v.z * m.m32) + (v.w * m.m42);
+  v2.z = (v.x * m.m13) + (v.y * m.m23) + (v.z * m.m33) + (v.w * m.m43);
+  v2.w = (v.x * m.m14) + (v.y * m.m24) + (v.z * m.m34) + (v.w * m.m44);
   return v2;
 }
 
@@ -197,18 +232,26 @@ inline Vec3<T> operator*(const Vec3<T>& v, const Matrix44<T>& m)
 template <typename T>
 inline Matrix44<T> operator*(T s, const Matrix44<T>& m)
 {
-  Matrix33<T> m2(EUninitialized::Constructor);
+  Matrix44<T> m2(EUninitialized::Constructor);
   m2.m11 = m.m11 * s;
   m2.m12 = m.m12 * s;
   m2.m13 = m.m13 * s;
+  m2.m14 = m.m14 * s;
 
   m2.m21 = m.m21 * s;
   m2.m22 = m.m22 * s;
   m2.m23 = m.m23 * s;
+  m2.m24 = m.m24 * s;
 
   m2.m31 = m.m31 * s;
   m2.m32 = m.m32 * s;
   m2.m33 = m.m33 * s;
+  m2.m34 = m.m34 * s;
+
+  m2.m41 = m.m41 * s;
+  m2.m42 = m.m42 * s;
+  m2.m43 = m.m43 * s;
+  m2.m44 = m.m44 * s;
   return m2;
 }
 
@@ -216,18 +259,402 @@ inline Matrix44<T> operator*(T s, const Matrix44<T>& m)
 template <typename T>
 inline Matrix44<T> operator*(const Matrix44<T>& m, T s)
 {
-  Matrix33<T> m2(EUninitialized::Constructor);
+  Matrix44<T> m2(EUninitialized::Constructor);
   m2.m11 = m.m11 * s;
   m2.m12 = m.m12 * s;
   m2.m13 = m.m13 * s;
+  m2.m14 = m.m14 * s;
 
   m2.m21 = m.m21 * s;
   m2.m22 = m.m22 * s;
   m2.m23 = m.m23 * s;
+  m2.m24 = m.m24 * s;
 
   m2.m31 = m.m31 * s;
   m2.m32 = m.m32 * s;
   m2.m33 = m.m33 * s;
+  m2.m34 = m.m34 * s;
+
+  m2.m41 = m.m41 * s;
+  m2.m42 = m.m42 * s;
+  m2.m43 = m.m43 * s;
+  m2.m44 = m.m44 * s;
   return m2;
 }
-*/
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix44<T>::Transpose()
+{
+  // const T _m11 = m11; // no change
+  const T _m12 = m21;
+  const T _m13 = m31;
+  const T _m14 = m41;
+
+  const T _m21 = m12;
+  // const T _m22 = m22; // no change
+  const T _m23 = m32;
+  const T _m24 = m42;
+
+  const T _m31 = m13;
+  const T _m32 = m23;
+  // const T _m33 = m33; // no change
+  const T _m34 = m43;
+
+  const T _m41 = m14;
+  const T _m42 = m24;
+  const T _m43 = m34;
+  // const T _m44 = m44; // no change
+
+  // m11 = _m11; // no change
+  m12 = _m12;
+  m13 = _m13;
+  m14 = _m14;
+
+  m21 = _m21;
+  // m22 = _m22; // no change
+  m23 = _m23;
+  m24 = _m24;
+
+  m31 = _m31;
+  m32 = _m32;
+  // m33 = _m33; // no change
+  m34 = _m34;
+
+  m41 = _m41;
+  m42 = _m42;
+  m43 = _m43;
+  // m44 = _m44; // no change
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix44<T> Matrix44<T>::Transposed() const
+{
+  Matrix44<T> m(*this);
+  m.Transpose();
+  return m;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline T Matrix44<T>::Determinant() const
+{
+  return (m11 * m22 * m33 * m44) + (m12 * m23 * m34 * m41) + (m13 * m24 * m31 * m42) + (m14 * m21 * m32 * m43) -
+				 (m11 * m24 * m33 * m42) - (m12 * m21 * m34 * m43) - (m13 * m22 * m31 * m44) - (m14 * m23 * m32 * m41);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix44<T>::Invert()
+{
+  const T d = Determinant();
+  assert(abs(d) > epsilon<T>());
+  const T recipD = 1 / d;
+  const T negRecipD = -recipD;
+
+  const T c11D = Minor11().Determinant() * recipD;
+  const T c12D = Minor12().Determinant() * negRecipD;
+  const T c13D = Minor13().Determinant() * recipD;
+  const T c14D = Minor14().Determinant() * negRecipD;
+
+  const T c21D = Minor21().Determinant() * negRecipD;
+  const T c22D = Minor22().Determinant() * recipD;
+  const T c23D = Minor23().Determinant() * negRecipD;
+  const T c24D = Minor24().Determinant() * recipD;
+
+  const T c31D = Minor31().Determinant() * recipD;
+  const T c32D = Minor32().Determinant() * negRecipD;
+  const T c33D = Minor33().Determinant() * recipD;
+  const T c34D = Minor34().Determinant() * negRecipD;
+
+  const T c41D = Minor41().Determinant() * negRecipD;
+  const T c42D = Minor42().Determinant() * recipD;
+  const T c43D = Minor43().Determinant() * negRecipD;
+  const T c44D = Minor44().Determinant() * recipD;
+
+  m11 = c11D;
+  m12 = c21D;
+  m13 = c31D;
+  m14 = c41D;
+
+  m21 = c12D;
+  m22 = c22D;
+  m23 = c32D;
+  m24 = c42D;
+
+  m31 = c13D;
+  m32 = c23D;
+  m33 = c33D;
+  m34 = c43D;
+
+  m41 = c14D;
+  m42 = c24D;
+  m43 = c34D;
+  m44 = c44D;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix44<T> Matrix44<T>::Inverted() const
+{
+  Matrix44<T> m(*this);
+  m.Invert();
+  return m;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix44<T>::Invert_Safe()
+{
+  const T d = Determinant();
+  if (d > epsilon<T>())
+  {
+		const T recipD = 1 / d;
+
+		const T c11D = Minor11().Determinant() * recipD;
+		const T c12D = Minor12().Determinant() * recipD * -1;
+		const T c13D = Minor13().Determinant() * recipD;
+		const T c14D = Minor14().Determinant() * recipD * -1;
+
+		const T c21D = Minor21().Determinant() * recipD;
+		const T c22D = Minor22().Determinant() * recipD * -1;
+		const T c23D = Minor23().Determinant() * recipD;
+		const T c24D = Minor24().Determinant() * recipD * -1;
+
+		const T c31D = Minor31().Determinant() * recipD;
+		const T c32D = Minor32().Determinant() * recipD * -1;
+		const T c33D = Minor33().Determinant() * recipD;
+		const T c34D = Minor34().Determinant() * recipD * -1;
+
+		const T c41D = Minor41().Determinant() * recipD;
+		const T c42D = Minor42().Determinant() * recipD * -1;
+		const T c43D = Minor43().Determinant() * recipD;
+		const T c44D = Minor44().Determinant() * recipD * -1;
+
+		m11 = c11D;
+		m12 = c21D;
+		m13 = c31D;
+		m14 = c41D;
+
+		m21 = c12D;
+		m22 = c22D;
+		m23 = c32D;
+		m24 = c42D;
+
+		m31 = c13D;
+		m32 = c23D;
+		m33 = c33D;
+		m34 = c43D;
+
+		m41 = c14D;
+		m42 = c24D;
+		m43 = c34D;
+		m44 = c44D;
+  }
+  else
+  {
+    *this = Matrix44<T>(EZero::Constructor);
+  }
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix44<T> Matrix44<T>::Inverted_Safe() const
+{
+  Matrix44<T> m(*this);
+  m.Invert_Safe();
+  return m;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix44<T>::Orthonormalize();
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix44<T> Matrix44<T>::Orthonormalized() const;
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix44<T>::Orthonormalize_Safe();
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix44<T> Matrix44<T>::Orthonormalized_Safe() const;
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> Matrix44<T>::Minor11() const
+{
+  return Matrix33<T>(
+    m22, m23, m24,
+    m32, m33, m34,
+    m42, m43, m44
+	);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> Matrix44<T>::Minor12() const
+{
+  return Matrix33<T>(
+    m21, m23, m24,
+    m31, m33, m34,
+    m41, m43, m44
+	);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> Matrix44<T>::Minor13() const
+{
+  return Matrix33<T>(
+    m21, m22, m24,
+    m31, m32, m34,
+    m41, m42, m44
+	);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> Matrix44<T>::Minor14() const
+{
+  return Matrix33<T>(
+    m21, m22, m23,
+    m31, m32, m33,
+    m41, m42, m43
+	);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> Matrix44<T>::Minor21() const
+{
+  return Matrix33<T>(
+    m12, m13, m14,
+    m32, m33, m34,
+    m42, m43, m44
+	);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> Matrix44<T>::Minor22() const
+{
+  return Matrix33<T>(
+    m11, m13, m14,
+    m31, m33, m34,
+    m41, m43, m44
+	);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> Matrix44<T>::Minor23() const
+{
+  return Matrix33<T>(
+    m11, m12, m14,
+    m31, m32, m34,
+    m41, m42, m44
+	);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> Matrix44<T>::Minor24() const
+{
+  return Matrix33<T>(
+    m11, m12, m13,
+    m31, m32, m33,
+    m41, m42, m43
+	);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> Matrix44<T>::Minor31() const
+{
+  return Matrix33<T>(
+    m12, m13, m14,
+    m22, m23, m24,
+    m42, m43, m44
+  );
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> Matrix44<T>::Minor32() const
+{
+  return Matrix33<T>(
+    m11, m13, m14,
+    m21, m23, m24,
+    m41, m43, m44
+  );
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> Matrix44<T>::Minor33() const
+{
+  return Matrix33<T>(
+    m11, m12, m14,
+    m21, m22, m24,
+    m41, m42, m44
+  );
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> Matrix44<T>::Minor34() const
+{
+  return Matrix33<T>(
+    m11, m12, m13,
+    m21, m22, m23,
+    m41, m42, m43
+  );
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> Matrix44<T>::Minor41() const
+{
+  return Matrix33<T>(
+    m12, m13, m14,
+    m22, m23, m24,
+    m32, m33, m34
+  );
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> Matrix44<T>::Minor42() const
+{
+  return Matrix33<T>(
+    m11, m13, m14,
+    m21, m23, m24,
+    m31, m33, m34
+  );
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> Matrix44<T>::Minor43() const
+{
+  return Matrix33<T>(
+    m11, m12, m14,
+    m21, m22, m24,
+    m31, m32, m34
+  );
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> Matrix44<T>::Minor44() const
+{
+  return Matrix33<T>(
+    m11, m12, m13,
+    m21, m22, m23,
+    m31, m32, m33
+  );
+}

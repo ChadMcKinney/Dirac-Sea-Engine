@@ -700,7 +700,7 @@ template <typename T>
 inline T Matrix33<T>::Determinant() const
 {
   return (m11 * m22 * m33) + (m12 * m23 * m31) + (m13 * m21 * m32) -
-				 (m11 * m23 * m32) - (m12 * m21 * m31) - (m13 * m22 * m31);
+				 (m11 * m23 * m32) - (m12 * m21 * m33) - (m13 * m22 * m31);
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -710,17 +710,18 @@ inline void Matrix33<T>::Invert()
   const T d = Determinant();
   assert(abs(d) > epsilon<T>());
   const T recipD = 1 / d;
+  const T negRecipD = -recipD;
 
   const T c11D = Matrix22<T>(m22, m23, m32, m33).Determinant() * recipD;
-  const T c12D = Matrix22<T>(m21, m23, m31, m33).Determinant() * recipD * -1;
+  const T c12D = Matrix22<T>(m21, m23, m31, m33).Determinant() * negRecipD;
   const T c13D = Matrix22<T>(m21, m22, m31, m32).Determinant() * recipD;
 
-  const T c21D = Matrix22<T>(m12, m13, m32, m33).Determinant() * recipD * -1;
+  const T c21D = Matrix22<T>(m12, m13, m32, m33).Determinant() * negRecipD;
   const T c22D = Matrix22<T>(m11, m13, m31, m33).Determinant() * recipD;
-  const T c23D = Matrix22<T>(m11, m12, m31, m32).Determinant() * recipD * -1;
+  const T c23D = Matrix22<T>(m11, m12, m31, m32).Determinant() * negRecipD;
 
   const T c31D = Matrix22<T>(m12, m13, m22, m23).Determinant() * recipD;
-  const T c32D = Matrix22<T>(m11, m13, m21, m23).Determinant() * recipD * -1;
+  const T c32D = Matrix22<T>(m11, m13, m21, m23).Determinant() * negRecipD;
   const T c33D = Matrix22<T>(m11, m12, m21, m22).Determinant() * recipD;
 
   m11 = c11D;
@@ -752,18 +753,20 @@ inline void Matrix33<T>::Invert_Safe()
   const T d = Determinant();
   if (abs(d) > epsilon<T>())
   {
-    cosnt T recipD = 1 / d;
-		const T c11D = Matrix22<T>(m22, m23, m32, m33).Determinant() * recipD;
-		const T c12D = Matrix22<T>(m21, m23, m31, m33).Determinant() * recipD * -1;
-		const T c13D = Matrix22<T>(m21, m22, m31, m32).Determinant() * recipD;
+    const T recipD = 1 / d;
+		const T negRecipD = -recipD;
 
-		const T c21D = Matrix22<T>(m12, m13, m32, m33).Determinant() * recipD * -1;
-		const T c22D = Matrix22<T>(m11, m13, m31, m33).Determinant() * recipD;
-		const T c23D = Matrix22<T>(m11, m12, m31, m32).Determinant() * recipD * -1;
+  const T c11D = Matrix22<T>(m22, m23, m32, m33).Determinant() * recipD;
+  const T c12D = Matrix22<T>(m21, m23, m31, m33).Determinant() * negRecipD;
+  const T c13D = Matrix22<T>(m21, m22, m31, m32).Determinant() * recipD;
 
-		const T c31D = Matrix22<T>(m12, m13, m22, m23).Determinant() * recipD;
-		const T c32D = Matrix22<T>(m11, m13, m21, m23).Determinant() * recipD * -1;
-		const T c33D = Matrix22<T>(m11, m12, m21, m22).Determinant() * recipD;
+  const T c21D = Matrix22<T>(m12, m13, m32, m33).Determinant() * negRecipD;
+  const T c22D = Matrix22<T>(m11, m13, m31, m33).Determinant() * recipD;
+  const T c23D = Matrix22<T>(m11, m12, m31, m32).Determinant() * negRecipD;
+
+  const T c31D = Matrix22<T>(m12, m13, m22, m23).Determinant() * recipD;
+  const T c32D = Matrix22<T>(m11, m13, m21, m23).Determinant() * negRecipD;
+  const T c33D = Matrix22<T>(m11, m12, m21, m22).Determinant() * recipD;
 
 		m11 = c11D;
 		m12 = c21D;
