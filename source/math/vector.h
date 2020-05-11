@@ -36,6 +36,9 @@ struct Vec2
   inline void Scale(T s);
   inline Vec2 Scaled(T s) const;
 
+  inline void Negate();
+  inline Vec2 Negated() const;
+
   inline T Magnitude() const;
   inline T SqrMagnitude() const;
 
@@ -158,6 +161,21 @@ template <typename T>
 inline Vec2<T> Vec2<T>::Scaled(T s) const
 {
   return Vec2<T>(x * s, y * s);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Vec2<T>::Negate()
+{
+  x = -x;
+  y = -y;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Vec2<T> Vec2<T>::Negated() const
+{
+  return Vec2(-x, -y);
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -335,6 +353,9 @@ struct Vec3
   inline void Scale(T s);
   inline Vec3 Scaled(T s) const;
 
+  inline void Negate();
+  inline Vec3 Negated() const;
+
   inline T Magnitude() const;
   inline T SqrMagnitude() const;
 
@@ -467,6 +488,22 @@ template <typename T>
 inline Vec3<T> Vec3<T>::Scaled(T s) const
 {
   return Vec3<T>(x * s, y * s, z * s);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Vec3<T>::Negate()
+{
+  x = -x;
+  y = -y;
+  z = -z;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Vec3<T> Vec3<T>::Negated() const
+{
+  return Vec3<T>(-x, -y, -z);
 }
 
 ///////////////////////////////////////////////////////////////////////

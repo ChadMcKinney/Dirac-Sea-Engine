@@ -57,6 +57,9 @@ struct Matrix33
   inline void SetOrthonormalBasisRotation_FixedUp(const Vec3<T>& forward, const Vec3<T>& up);
   inline static Matrix33<T> CreateOrthonormalBasisRotation_FixedUp(const Vec3<T>& forward, const Vec3<T>& up);
 
+  inline void SetOrientation(const Vec3<T>& forward, const Vec3<T>& up, T rollRadians);
+  inline static Matrix33<T> CreateOrientation(const Vec3<T>& forward, const Vec3<T>& up, T rollRadians);
+
   inline void SetScale(const Vec3<T>& s);
   inline static Matrix33<T> CreateScale(const Vec3<T>& s);
 
@@ -202,37 +205,25 @@ inline bool Matrix33<T>::operator!=(const Matrix33& rhs) const
 template <typename T>
 inline void Matrix33<T>::operator*=(const Matrix33& rhs)
 {
-  const T _m11 = (m11 * rhs.m11) + (m12 * rhs.m21) + (m13 * rhs.m31);
-  const T _m12 = (m11 * rhs.m12) + (m12 * rhs.m22) + (m13 * rhs.m32);
-  const T _m13 = (m11 * rhs.m13) + (m12 * rhs.m23) + (m13 * rhs.m33);
-
-  const T _m21 = (m21 * rhs.m11) + (m22 * rhs.m21) + (m23 * rhs.m31);
-  const T _m22 = (m21 * rhs.m12) + (m22 * rhs.m22) + (m23 * rhs.m32);
-  const T _m23 = (m21 * rhs.m13) + (m22 * rhs.m23) + (m23 * rhs.m33);
-
-  const T _m31 = (m31 * rhs.m11) + (m32 * rhs.m21) + (m33 * rhs.m31);
-  const T _m32 = (m31 * rhs.m12) + (m32 * rhs.m22) + (m33 * rhs.m32);
-  const T _m33 = (m31 * rhs.m13) + (m32 * rhs.m23) + (m33 * rhs.m33);
-
-  m11 = _m11;
-  m12 = _m12;
-  m13 = _m13;
-
-  m21 = _m21;
-  m22 = _m22;
-  m23 = _m23;
-
-  m31 = _m31;
-  m32 = _m32;
-  m33 = _m33;
+  *this = *this * rhs;
 }
 
 ///////////////////////////////////////////////////////////////////////
 template <typename T>
 inline Matrix33<T> Matrix33<T>::operator*(const Matrix33& rhs) const
 {
-  Matrix33<T> m(*this);
-  m *= rhs;
+  Matrix33<T> m(EUninitialized::Constructor);
+  m.m11 = (m11 * rhs.m11) + (m12 * rhs.m21) + (m13 * rhs.m31);
+  m.m12 = (m11 * rhs.m12) + (m12 * rhs.m22) + (m13 * rhs.m32);
+  m.m13 = (m11 * rhs.m13) + (m12 * rhs.m23) + (m13 * rhs.m33);
+
+  m.m21 = (m21 * rhs.m11) + (m22 * rhs.m21) + (m23 * rhs.m31);
+  m.m22 = (m21 * rhs.m12) + (m22 * rhs.m22) + (m23 * rhs.m32);
+  m.m23 = (m21 * rhs.m13) + (m22 * rhs.m23) + (m23 * rhs.m33);
+
+  m.m31 = (m31 * rhs.m11) + (m32 * rhs.m21) + (m33 * rhs.m31);
+  m.m32 = (m31 * rhs.m12) + (m32 * rhs.m22) + (m33 * rhs.m32);
+  m.m33 = (m31 * rhs.m13) + (m32 * rhs.m23) + (m33 * rhs.m33);
   return m;
 }
 
@@ -493,6 +484,7 @@ inline void Matrix33<T>::SetOrthonormalBasisRotation(const Vec3<T>& forward, con
 {
   assert(forward.IsUnit(epsilon<T>()));
   assert(up.IsUnit(epsilon<T>()));
+  // assert that forward and up are perpendicular
   assert((up.Cross(forward).Cross(up) - forward).Magnitude() < epsilon<T>());
   assert((forward.Cross(up.Cross(forward)) - up).Magnitude() < epsilon<T>());
   SetRow1(up.Cross(forward));
@@ -550,6 +542,28 @@ inline Matrix33<T> Matrix33<T>::CreateOrthonormalBasisRotation_FixedUp(const Vec
 {
   Matrix33<T> m(EUninitialized::Constructor);
   m.SetOrthonormalBasisRotation_FixedUp(forward, up);
+  return m;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix33<T>::SetOrientation(const Vec3<T>& forward, const Vec3<T>& up, T rollRadians)
+{
+  assert(forward.IsUnit(epsilon<T>()));
+  assert(up.IsUnit(epsilon<T>()));
+  SetOrthonormalBasisRotation_FixedForward(forward, up);
+  if (rollRadians > epsilon<T>())
+  {
+    *this = Matrix33<T>::CreateRotationZ(rollRadians) * *this;
+  }
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> Matrix33<T>::CreateOrientation(const Vec3<T>& forward, const Vec3<T>& up, T rollRadians)
+{
+  Matrix33<T> m(EUninitialized::Constructor);
+  m.SetOrientation(forward, up, rollRadians);
   return m;
 }
 

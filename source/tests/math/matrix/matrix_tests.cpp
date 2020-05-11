@@ -326,28 +326,28 @@ void RunMatrix3x3Tests()
 		Matrix33<T> m(1, 0, 0, 0, T(0.8), 0, 0, 0, T(0.75));
 		Matrix33<T> m2 = m.Orthonormalized();
 		Matrix33<T> m3(1, 0, 0, 0, 1, 0, 0, 0, 1);
-		TEST("m22: orthonormalize", m2 == m3);
+		TEST("m33: orthonormalize", m2 == m3);
 	}
 
 	{
 		Matrix33<T> m(T(0.3), 0, 0, 0, T(0.8), 0, 0, 0, T(0.76));
 		Matrix33<T> m2 = m.Orthonormalized();
 		Matrix33<T> m3(1, 0, 0, 0, 1, 0, 0, 0, 1);
-		TEST("m22: orthonormalize", m2 == m3);
+		TEST("m33: orthonormalize", m2 == m3);
 	}
 
 	{
 		Matrix33<T> m(T(0.3), 0, 0, 0, T(0.8), 0, 0, 0, T(0.76));
 		Matrix33<T> m2 = m.Orthonormalized_Safe();
 		Matrix33<T> m3(1, 0, 0, 0, 1, 0, 0, 0, 1);
-		TEST("m22: orthonormalize safe", m2 == m3);
+		TEST("m33: orthonormalize safe", m2 == m3);
 	}
 
 	{
 		Matrix33<T> m = Matrix33<T>::CreateOrthonormalBasisRotation(Vec3<T>::Forward, Vec3<T>::Up);
 		Vec3<T> v(666, 1337, kPi<T>);
 		Vec3<T> v2 = v * m;
-		TEST("m22: ((right) (up) (forward)) * v == v", v == v2);
+		TEST("m33: ((right) (up) (forward)) * v == v", v == v2);
 	}
 
 	{
@@ -356,7 +356,7 @@ void RunMatrix3x3Tests()
 		Matrix33<T> m = Matrix33<T>::CreateOrthonormalBasisRotation_FixedForward(Vec3<T>::Forward, up);
 		Vec3<T> v(666, 1337, kPi<T>);
 		Vec3<T> v2 = v * m;
-		TEST("m22: ((right) (up) (forward)) * v == v", v == v2);
+		TEST("m33: ((right) (up) (forward)) * v == v", v == v2);
 	}
 
 	{
@@ -365,7 +365,146 @@ void RunMatrix3x3Tests()
 		Matrix33<T> m = Matrix33<T>::CreateOrthonormalBasisRotation_FixedUp(forward, Vec3<T>::Up);
 		Vec3<T> v(666, 1337, kPi<T>);
 		Vec3<T> v2 = v * m;
-		TEST("m22: ((right) (up) (forward)) * v == v", v == v2);
+		TEST("m33: ((right) (up) (forward)) * v == v", v == v2);
+	}
+
+	{
+		Matrix33<T> m = Matrix33<T>::CreateRotationZ(kHalfPi<T>);
+		Vec3<T> v = Vec3<T>::Right * m;
+		Vec3<T> v2 = Vec3<T>::Up * m;
+		Vec3<T> v3 = Vec3<T>::Forward * m;
+		TEST("m33: CreateRotation Z Right", v.IsEquivalent(Vec3<T>::Up, epsilon<T>()));
+		TEST("m33: CreateRotation Z Up", v2.IsEquivalent(Vec3<T>::Left, epsilon<T>()));
+		TEST("m33: CreateRotation Z Forward", v3.IsEquivalent(Vec3<T>::Forward, epsilon<T>()));
+	}
+
+	{
+		Matrix33<T> m = Matrix33<T>::CreateOrthonormalBasisRotation(Vec3<T>::Up, Vec3<T>::Back);
+		Vec3<T> v = Vec3<T>::Up * m;
+		Vec3<T> v2 = Vec3<T>::Forward * m;
+		Vec3<T> v3 = Vec3<T>::Right * m;
+		TEST("m33: CreateOrthonormalBasisRotation Up Back", v.IsEquivalent(Vec3<T>::Back, epsilon<T>()));
+		TEST("m33: CreateOrthonormalBasisRotation Up Back", v2.IsEquivalent(Vec3<T>::Up, epsilon<T>()));
+		TEST("m33: CreateOrthonormalBasisRotation Up Back", v3.IsEquivalent(Vec3<T>::Right, epsilon<T>()));
+	}
+
+	{
+		Matrix33<T> m = Matrix33<T>::CreateOrthonormalBasisRotation_FixedForward(Vec3<T>::Up, Vec3<T>::Back);
+		Vec3<T> v = Vec3<T>::Up * m;
+		Vec3<T> v2 = Vec3<T>::Forward * m;
+		Vec3<T> v3 = Vec3<T>::Right * m;
+		TEST("m33: CreateOrthonormalBasisRotation_FixedForward Up Back", v.IsEquivalent(Vec3<T>::Back, epsilon<T>()));
+		TEST("m33: CreateOrthonormalBasisRotation_FixedForward Up Back", v2.IsEquivalent(Vec3<T>::Up, epsilon<T>()));
+		TEST("m33: CreateOrthonormalBasisRotation_FixedForward Up Back", v3.IsEquivalent(Vec3<T>::Right, epsilon<T>()));
+	}
+
+	{
+		Matrix33<T> m = Matrix33<T>::CreateOrientation(Vec3<T>::Up, Vec3<T>::Back, 0);
+		Vec3<T> v = Vec3<T>::Up * m;
+		Vec3<T> v2 = Vec3<T>::Forward * m;
+		Vec3<T> v3 = Vec3<T>::Right * m;
+		TEST("m33: CreateOrientation Up Back", v.IsEquivalent(Vec3<T>::Back, epsilon<T>()));
+		TEST("m33: CreateOrientation Up Back", v2.IsEquivalent(Vec3<T>::Up, epsilon<T>()));
+		TEST("m33: CreateOrientation Up Back", v3.IsEquivalent(Vec3<T>::Right, epsilon<T>()));
+	}
+
+	{
+		Matrix33<T> m = Matrix33<T>::CreateOrientation(Vec3<T>::Up, Vec3<T>::Back, 0);
+		Vec3<T> v = Vec3<T>::Up * m * m;
+		Vec3<T> v2 = Vec3<T>::Forward * m * m;
+		Vec3<T> v3 = Vec3<T>::Right * m * m;
+		TEST("m33: CreateOrientation Up Back", v.IsEquivalent(Vec3<T>::Down, epsilon<T>()));
+		TEST("m33: CreateOrientation Up Back", v2.IsEquivalent(Vec3<T>::Back, epsilon<T>()));
+		TEST("m33: CreateOrientation Up Back", v3.IsEquivalent(Vec3<T>::Right, epsilon<T>()));
+	}
+
+	{
+		Matrix33<T> m = Matrix33<T>::CreateOrientation(Vec3<T>::Forward, Vec3<T>::Up, kPi<T> * 2);
+		Vec3<T> v = Vec3<T>::Up * m;
+		Vec3<T> v2 = Vec3<T>::Forward;
+		Vec3<T> v3 = Vec3<T>::Right * m;
+		TEST("m33: CreateOrientation Up Back", v.IsEquivalent(Vec3<T>::Up, epsilon<T>() * 4));
+		TEST("m33: CreateOrientation Up Back", v2.IsEquivalent(Vec3<T>::Forward, epsilon<T>() * 4));
+		TEST("m33: CreateOrientation Up Back", v3.IsEquivalent(Vec3<T>::Right, epsilon<T>() * 4));
+	}
+
+	{
+		Matrix33<T> m = Matrix33<T>::CreateOrientation(Vec3<T>::Up, Vec3<T>::Back, kPi<T> * 2);
+		Vec3<T> v = Vec3<T>::Up * m * m;
+		Vec3<T> v2 = Vec3<T>::Forward * m * m;
+		Vec3<T> v3 = Vec3<T>::Right * m * m;
+		TEST("m33: CreateOrientation Up Back", v.IsEquivalent(Vec3<T>::Down, epsilon<T>() * 4));
+		TEST("m33: CreateOrientation Up Back", v2.IsEquivalent(Vec3<T>::Back, epsilon<T>() * 4));
+		TEST("m33: CreateOrientation Up Back", v3.IsEquivalent(Vec3<T>::Right, epsilon<T>() * 4));
+	}
+
+	{
+		Matrix33<T> m = Matrix33<T>::CreateOrientation(Vec3<T>::Forward, Vec3<T>::Up, kPi<T>);
+		Matrix33<T> m2 = Matrix33<T>::CreateOrientation(Vec3<T>::Forward, Vec3<T>::Up, 0);
+		Vec3<T> v = Vec3<T>::Right * m;
+		Vec3<T> v2 = Vec3<T>::Right * m2;
+		Vec3<T> v3 = Vec3<T>::Up * m;
+		Vec3<T> v4 = Vec3<T>::Up * m2;
+		TEST("m33: CreateOrientation Forward Up", v.IsEquivalent(Vec3<T>::Left, epsilon<T>()));
+		TEST("m33: CreateOrientation Forward Up", v2.IsEquivalent(Vec3<T>::Right, epsilon<T>()));
+		TEST("m33: CreateOrientation Forward Up", v3.IsEquivalent(Vec3<T>::Down, epsilon<T>()));
+		TEST("m33: CreateOrientation Forward Up", v4.IsEquivalent(Vec3<T>::Up, epsilon<T>()));
+	}
+
+	{
+		Matrix33<T> m = Matrix33<T>::CreateOrientation(Vec3<T>::Forward, Vec3<T>::Up, kHalfPi<T>);
+		Vec3<T> v = Vec3<T>::Right * m;
+		Vec3<T> v2 = Vec3<T>::Up * m;
+		TEST("m33: CreateOrientation Forward Up", v.IsEquivalent(Vec3<T>::Up, epsilon<T>()));
+		TEST("m33: CreateOrientation Forward Up", v2.IsEquivalent(Vec3<T>::Left, epsilon<T>()));
+	}
+
+	{
+		Matrix33<T> m = Matrix33<T>::CreateOrientation(Vec3<T>::Forward, Vec3<T>::Up, kHalfPi<T>);
+		Vec3<T> v = Vec3<T>::Right * m;
+		Vec3<T> v2 = Vec3<T>::Up * m;
+		Vec3<T> v3 = v * m;
+		Vec3<T> v4 = v2 * m;
+		TEST("m33: CreateOrientation Forward Up", v3.IsEquivalent(Vec3<T>::Left, epsilon<T>()));
+		TEST("m33: CreateOrientation Forward Up", v4.IsEquivalent(Vec3<T>::Down, epsilon<T>()));
+	}
+
+	{
+		Matrix33<T> m = Matrix33<T>::CreateOrientation(Vec3<T>::Forward, Vec3<T>::Up, kHalfPi<T>);
+		Matrix33<T> m2 = Matrix33<T>::CreateOrientation(Vec3<T>::Forward, Vec3<T>::Up, kPi<T>);
+		Matrix33<T> m3 = Matrix33<T>::CreateOrientation(Vec3<T>::Forward, Vec3<T>::Up, kPi<T> * 2);
+		Matrix33<T> m4 = Matrix33<T>::CreateOrientation(Vec3<T>::Forward, Vec3<T>::Up, 0);
+		Vec3<T> v1 = Vec3<T>::Right * m * m * m * m;
+		Vec3<T> v2 = Vec3<T>::Right * m2 * m2;
+		Vec3<T> v3 = Vec3<T>::Right * m3;
+		Vec3<T> v4 = Vec3<T>::Right * m4;
+		TEST("m33: CreateOrientation rotating identities", v1.IsEquivalent(Vec3<T>::Right, epsilon<T>() * 4));
+		TEST("m33: CreateOrientation rotating identities", v2.IsEquivalent(Vec3<T>::Right, epsilon<T>() * 4));
+		TEST("m33: CreateOrientation rotating identities", v3.IsEquivalent(Vec3<T>::Right, epsilon<T>() * 4));
+		TEST("m33: CreateOrientation rotating identities", v4.IsEquivalent(Vec3<T>::Right, epsilon<T>() * 4));
+	}
+
+	{
+		Matrix33<T> m = Matrix33<T>::CreateOrientation(Vec3<T>::Up, Vec3<T>::Right, kHalfPi<T>);
+		Matrix33<T> m2 = Matrix33<T>::CreateOrientation(Vec3<T>::Up, Vec3<T>::Right, 0);
+		Vec3<T> v = Vec3<T>::Right * m;
+		Vec3<T> v2 = Vec3<T>::Up * m;
+		Vec3<T> v3 = Vec3<T>::Right * m2;
+		Vec3<T> v4 = Vec3<T>::Up * m2;
+		TEST("m33: CreateOrientation Forward Up", v.IsEquivalent(Vec3<T>::Right, epsilon<T>()));
+		TEST("m33: CreateOrientation Forward Up", v2.IsEquivalent(Vec3<T>::Back, epsilon<T>()));
+		TEST("m33: CreateOrientation Forward Up", v3.IsEquivalent(Vec3<T>::Forward, epsilon<T>()));
+		TEST("m33: CreateOrientation Forward Up", v4.IsEquivalent(Vec3<T>::Right, epsilon<T>()));
+	}
+
+	{
+		Matrix33<T> m = Matrix33<T>::CreateOrientation(Vec3<T>::Right, Vec3<T>::Up, kPi<T>);
+		Matrix33<T> m2 = Matrix33<T>::CreateOrientation(Vec3<T>::Right, Vec3<T>::Up, 0);
+		Vec3<T> v = Vec3<T>::Right * m;
+		Vec3<T> v1 = m * Vec3<T>::Right;
+		Vec3<T> v2 = Vec3<T>::Right * m2;
+		TEST("m33: CreateOrientation Right Up", v.IsEquivalent(Vec3<T>::Forward, epsilon<T>()));
+		TEST("m33: CreateOrientation Right Up", v2.IsEquivalent(Vec3<T>::Back, epsilon<T>()));
 	}
 }
 
