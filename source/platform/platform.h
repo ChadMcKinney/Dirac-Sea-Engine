@@ -3,11 +3,10 @@
  * Proprietary and confidential
  */
 
-#include "platform/platform.h"
-#include "tests/tests.h"
+#pragma once
 
-int main()
+namespace platform
 {
-    RunTests();
-    return platform::RunPlatform();
-}
+	int RunPlatform();
+} // platform namespace
+
