@@ -7,3 +7,5 @@
 * SSE support
 * Projection Matrix: add w normalization for depth buffer precision
 * Add FOV calculation for X/Y
+* Update GL code for 4.6
+* Cleanup CMake behavior with dlls
