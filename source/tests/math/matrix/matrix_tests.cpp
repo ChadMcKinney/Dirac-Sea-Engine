@@ -507,6 +507,30 @@ void RunMatrix3x3Tests()
 		TEST("m33: CreateOrientation Right Up", v.IsEquivalent(Vec3<T>::Forward, epsilon<T>()));
 		TEST("m33: CreateOrientation Right Up", v2.IsEquivalent(Vec3<T>::Back, epsilon<T>()));
 	}
+
+	{
+		Vec3<T> v = Vec3<T>::Right;
+		Vec3<T> v2 = Vec3<T>::Forward;
+		T vDot = v.Dot(v2);
+		T angle = std::acos(vDot);
+		Vec3<T> c = v.Cross(v2);
+		Matrix33<T> m = Matrix33<T>::CreateRotationAA(angle, c);
+		Vec3<T> v3 = v * m;
+		TEST("m33: v.Cross(v2)", v3.IsEquivalent(v2, epsilon<T>()));
+	}
+
+	{
+		Vec3<T> v(1, 666, -1337);
+		v.Normalize();
+		Vec3<T> v2 = Vec3<T>::Forward;
+		T vDot = v.Dot(v2);
+		T angle = std::acos(vDot);
+		Vec3<T> c = v.Cross(v2);
+		c.Normalize();
+		Matrix33<T> m = Matrix33<T>::CreateRotationAA(angle, c);
+		Vec3<T> v3 = v * m;
+		TEST("m33: v.Cross(v2)", v3.IsEquivalent(v2, epsilon<T>() * 10));
+	}
 }
 
 template<typename T>
