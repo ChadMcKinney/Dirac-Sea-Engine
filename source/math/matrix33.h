@@ -109,6 +109,11 @@ struct Matrix33
 	inline void Invert_Safe();
 	inline Matrix33<T> Inverted_Safe() const;
 
+	// Assumes matrix is orthonormalized, only containing rotation
+	// This is simply a transpose, but aliased to make intention clear
+	inline void Invert_Rotation();
+	inline Matrix33<T> Inverted_Rotation() const;
+
 	inline void Orthonormalize();
 	inline Matrix33<T> Orthonormalized() const;
 
@@ -793,6 +798,20 @@ inline Matrix33<T> Matrix33<T>::Inverted_Safe() const
 	Matrix33<T> m(*this);
 	m.Invert_Safe();
 	return m;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Matrix33<T>::Invert_Rotation()
+{
+	Transpose();
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> Matrix33<T>::Inverted_Rotation() const
+{
+	return Transposed();
 }
 
 ///////////////////////////////////////////////////////////////////////

@@ -531,6 +531,22 @@ void RunMatrix3x3Tests()
 		Vec3<T> v3 = v * m;
 		TEST("m33: v.Cross(v2)", v3.IsEquivalent(v2, epsilon<T>() * 10));
 	}
+
+	{
+		Vec3<T> v(1, 666, -1337);
+		v.Normalize();
+		Vec3<T> v2 = Vec3<T>::Forward;
+		T vDot = v.Dot(v2);
+		T angle = std::acos(vDot);
+		Vec3<T> c = v.Cross(v2);
+		c.Normalize();
+		Matrix33<T> m = Matrix33<T>::CreateRotationAA(angle, c);
+		Vec3<T> v3 = v * m;
+		Matrix33<T> m2 = m.Inverted_Rotation();
+		Matrix33<T> m3 = m.Transposed();
+		Vec3<T> v4 = v3 * m.Inverted_Rotation();
+		TEST("m33: Inverted_Rotation == Transpose", m2 == m3 && v.IsEquivalent(v4, epsilon<T>()));
+	}
 }
 
 template<typename T>
