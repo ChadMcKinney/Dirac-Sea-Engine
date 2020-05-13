@@ -11,6 +11,9 @@
 #include "types.h"
 #include "vector4.h"
 
+template <typename T>
+struct Matrix43;
+
  ///////////////////////////////////////////////////////////////////////
  // Matrix 4x4
  ///////////////////////////////////////////////////////////////////////
@@ -27,6 +30,7 @@ struct Matrix44
 		T _m31, T _m32, T _m33, T _m34,
 		T _m41, T _m42, T _m43, T _m44);
 	Matrix44(const Matrix33<T>& matrix33);
+	Matrix44(const Matrix43<T>& matrix43);
 
 	inline bool operator==(const Matrix44& rhs) const;
 	inline bool operator!=(const Matrix44& rhs) const;
@@ -254,6 +258,19 @@ inline Vec4<T> operator*(const Vec4<T>& v, const Matrix44<T>& m)
 	v2.y = (v.x * m.m12) + (v.y * m.m22) + (v.z * m.m32) + (v.w * m.m42);
 	v2.z = (v.x * m.m13) + (v.y * m.m23) + (v.z * m.m33) + (v.w * m.m43);
 	v2.w = (v.x * m.m14) + (v.y * m.m24) + (v.z * m.m34) + (v.w * m.m44);
+	return v2;
+}
+
+///////////////////////////////////////////////////////////////////////
+// Pre multiply -> Row Vector * Matrix44
+template <typename T>
+inline Vec4<T> operator*(const Vec3<T>& v, const Matrix44<T>& m)
+{
+	Vec4<T> v2(EUninitialized::Constructor);
+	v2.x = (v.x * m.m11) + (v.y * m.m21) + (v.z * m.m31) + m.m41;
+	v2.y = (v.x * m.m12) + (v.y * m.m22) + (v.z * m.m32) + m.m42;
+	v2.z = (v.x * m.m13) + (v.y * m.m23) + (v.z * m.m33) + m.m43;
+	v2.w = (v.x * m.m14) + (v.y * m.m24) + (v.z * m.m34) + m.m44;
 	return v2;
 }
 

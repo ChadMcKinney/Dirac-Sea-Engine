@@ -358,6 +358,16 @@ inline Matrix44<T> Matrix43<T>::Transposed() const
 
 ///////////////////////////////////////////////////////////////////////
 template <typename T>
+Matrix44<T>::Matrix44(const Matrix43<T>& matrix43)
+	: m11(matrix43.m11), m12(matrix43.m12), m13(matrix43.m13), m14(0)
+	, m21(matrix43.m21), m22(matrix43.m22), m23(matrix43.m23), m24(0)
+	, m31(matrix43.m31), m32(matrix43.m32), m33(matrix43.m33), m34(0)
+	, m41(matrix43.m41), m42(matrix43.m42), m43(matrix43.m43), m44(1)
+{
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
 inline Matrix33<T> Matrix43<T>::WithoutTranslation() const
 {
 	return Matrix33<T>(m11, m12, m13, m21, m22, m23, m31, m32, m33);

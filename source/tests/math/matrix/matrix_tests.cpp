@@ -774,6 +774,16 @@ void RunMatrix4x4Tests()
 		Vec4<T> v3(2, 4, 8, 4);
 		TEST("m44: Perspective * V", v2 == v3);
 	}
+
+	{
+		Matrix43<T> m = Matrix43<T>::CreateTranslation(Vec3<T>(10, 20, 30));
+		Matrix44<T> m2(m);
+		Vec3<T> v(1, 2, 3);
+		Vec3<T> v2 = v * m;
+		Vec4<T> v3 = v * m2;
+		Vec3<T> v4(v3.x, v3.y, v3.z);
+		TEST("m44: m44(m43) * v == v * m43", v2 == v4);
+	}
 }
 
 void RunMatrixTests()
