@@ -54,6 +54,7 @@ set(project_SOURCES
     source/platform/platform.cpp
     source/tests/tests.cpp
     source/tests/test_framework.cpp
+    source/tests/math/quaternion/quaternion_tests.cpp
     source/tests/math/vector/vector_tests.cpp
     source/tests/math/matrix/matrix_tests.cpp
     )
@@ -64,6 +65,7 @@ set(project_HEADERS
     source/math/matrix33.h
     source/math/matrix43.h
     source/math/matrix44.h
+    source/math/quaternion.h
     source/math/vector2.h
     source/math/vector3.h
     source/math/vector4.h
@@ -71,6 +73,7 @@ set(project_HEADERS
     source/platform/platform.h
     source/tests/tests.h
     source/tests/test_framework.h
+    source/tests/math/quaternion/quaternion_tests.h
     source/tests/math/vector/vector_tests.h
     source/tests/math/matrix/matrix_tests.h
     )
