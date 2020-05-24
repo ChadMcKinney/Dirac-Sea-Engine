@@ -34,9 +34,19 @@ struct Quaternion
 	inline void operator/=(const Quaternion& rhs);
 	inline Quaternion operator/(const Quaternion& rhs) const;
 
-	inline Quaternion Dot(const Quaternion& rhs) const;
+	inline T Dot(const Quaternion& rhs) const;
+
 	inline static Vec3<T> Log(const Quaternion& q); // Real part is always 0
 	inline static Quaternion Exp(const Vec3<T>& v);
+
+	inline void ScalarExponentiate(T s);
+	inline Quaternion ScalarExponentiated(T s) const;
+
+	inline void SetNLerp(const Quaternion& q1, const Quaternion& q2, T t);
+	inline static Quaternion CreateNLerp(const Quaternion& q1, const Quaternion& q2, T t);
+
+	inline void SetSlerp(Quaternion q1, const Quaternion& q2, T t);
+	inline static Quaternion CreateSlerp(const Quaternion& q1, const Quaternion& q2, T t);
 
 	inline T Magnitude() const;
 	inline bool IsUnit(T epsilon) const;
@@ -66,10 +76,6 @@ struct Quaternion
 
 	inline void SetRotationZ(T radians);
 	inline static Quaternion CreateRotationZ(T radians);
-
-	// Assumes forward/up are perpendicular
-	inline void SetOrthonormalBasisRotation(const Vec3<T>& forward, const Vec3<T>& up);
-	inline static Quaternion CreateOrthonormalBasisRotation(const Vec3<T>& forward, const Vec3<T>& up);
 
 	T x, y, z, w;
 };
@@ -200,7 +206,7 @@ Quaternion<T>::Quaternion(const Matrix33<T>& m)
 		break;
 	}
 
-	assert(IsUnit(epsilon<T>() * 2));
+	assert(IsUnit(epsilon<T>() * 4));
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -233,6 +239,100 @@ template <typename T>
 inline T Quaternion<T>::Magnitude() const
 {
 	return sqrt((x * x) + (y * y) + (z * z) + (w * w));
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Quaternion<T>::ScalarExponentiate(T s)
+{
+	// do nothing for identity
+	if (std::abs(w) < (1 - epsilon<T>()))
+	{
+		const T halfTheta = std::acos(w);
+		const T newHalfTheta = halfTheta * s;
+		w = std::cos(newHalfTheta);
+
+		// scale xyz
+		const T mult = std::sin(newHalfTheta) / std::sin(halfTheta);
+		x *= mult;
+		y *= mult;
+		z *= mult;
+	}
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Quaternion<T> Quaternion<T>::ScalarExponentiated(T s) const
+{
+	Quaternion<T> q(*this);
+	q.ScalarExponentiate(s);
+	return q;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Quaternion<T>::SetNLerp(const Quaternion& q1, const Quaternion& q2, T t)
+{
+	const T t1 = T(1) - t;
+	x = (q1.x * t1) + (q2.x * t);
+	y = (q1.y * t1) + (q2.y * t);
+	z = (q1.z * t1) + (q2.z * t);
+	w = (q1.w * t1) + (q2.w * t);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Quaternion<T> Quaternion<T>::CreateNLerp(const Quaternion& q1, const Quaternion& q2, T t)
+{
+	Quaternion q(EUninitialized::Constructor);
+	q.SetNLerp(q1, q2, t);
+	return q;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Quaternion<T>::SetSlerp(Quaternion q1, const Quaternion& q2, T t)
+{
+	assert(q1.IsUnit(epsilon<T>() * 4));
+	assert(q2.IsUnit(epsilon<T>() * 4));
+	T cosOmega = q1.Dot(q2);
+
+	// If cosOmega is negative then negate one of the quaternions to take the shortest path
+	if (cosOmega < T(0))
+	{
+		q1.Negate();
+		cosOmega = -cosOmega;
+	}
+
+	static constexpr T threshold = T(1) - (epsilon<T>() * 4);
+	if (cosOmega > threshold)
+	{
+		SetNLerp(q1, q2, t);
+	}
+	else
+	{
+		// Compute the sin of the angle using
+		// trig identity sin^2(omega) + cos^2(omega) = 1
+		const T sinOmega = std::sqrt(T(1) - (cosOmega * cosOmega));
+		const T omega = std::atan2(sinOmega, cosOmega);
+		const T recipSinOmega = T(1) / sinOmega;
+		const T t1 = std::sin((T(1) - t) * omega) * recipSinOmega;
+		const T t2 = std::sin(t * omega) * recipSinOmega;
+
+		x = (q1.x * t1) + (q2.x * t2);
+		y = (q1.y * t1) + (q2.y * t2);
+		z = (q1.z * t1) + (q2.z * t2);
+		w = (q1.w * t1) + (q2.w * t2);
+	}
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Quaternion<T> Quaternion<T>::CreateSlerp(const Quaternion& q1, const Quaternion& q2, T s)
+{
+	Quaternion<T> q(EUninitialized::Constructor);
+	q.SetSlerp(q1, q2, s);
+	return q;
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -270,7 +370,7 @@ inline Quaternion<T> Quaternion<T>::operator/(const Quaternion& rhs) const
 
 ///////////////////////////////////////////////////////////////////////
 template <typename T>
-inline Quaternion<T> Quaternion<T>::Dot(const Quaternion& rhs) const
+inline T Quaternion<T>::Dot(const Quaternion& rhs) const
 {
 	return (x * rhs.x) + (y * rhs.y) + (z * rhs.z) + (w * rhs.w);
 }
@@ -471,26 +571,6 @@ inline void Quaternion<T>::SetRotationZ(T radians)
 	x = 0;
 	y = 0;
 	z = sinHalfTheta;
-}
-
-///////////////////////////////////////////////////////////////////////
-template <typename T>
-inline void Quaternion<T>::SetOrthonormalBasisRotation(const Vec3<T>& forward, const Vec3<T>& up)
-{
-	assert(forward.IsUnit(epsilon<T>()));
-	assert(up.IsUnit(epsilon<T>()));
-	// assert that forward and up are perpendicular
-	assert((up.Cross(forward).Cross(up) - forward).Magnitude() < epsilon<T>());
-	assert((forward.Cross(up.Cross(forward)) - up).Magnitude() < epsilon<T>());
-
-	SetAxisAngle(const Vec3<T>& forward, 1 - up.Dot(Vec3<T>::))
-}
-
-///////////////////////////////////////////////////////////////////////
-template <typename T>
-inline Quaternion<T> Quaternion<T>::CreateOrthonormalBasisRotation(const Vec3<T>& forward, const Vec3<T>& up)
-{
-	return Quaternion<T>(Matrix33<T>::CreateOrthonormalBasisRotation(forward, up));
 }
 
 ///////////////////////////////////////////////////////////////////////
