@@ -48,13 +48,18 @@ static constexpr T kHalfPi = T(kPi<fworld> / fworld(2));
 template <typename T>
 static constexpr T kQuarterPi = T(kPi<fworld> / fworld(4));
 
+template <typename T>
+static constexpr T kTwoPi = T(kPi<fworld> * fworld(2));
+
 static constexpr fworld kFWorldPi = kPi<fworld>;
 static constexpr fworld kFWorldHalfPi = kHalfPi<fworld>;
 static constexpr fworld kFWorldQuarterPi = kQuarterPi<fworld>;
+static constexpr fworld kFWorldTwoPi = kTwoPi<fworld>;
 
 static constexpr flocal kFLocalPi = kPi<flocal>;
 static constexpr flocal kFLocalHalfPi = flocal(kHalfPi<fworld>);
 static constexpr flocal kFLocalQuarterPi = flocal(kQuarterPi<fworld>);
+static constexpr flocal kFLocalTwoPi = flocal(kTwoPi<fworld>);
 
 ///////////////////////////////////////////////////////////////////////
 // Conversions

@@ -7,6 +7,7 @@
 
 #include <cassert>
 
+#include "matrix33.h"
 #include "vector3.h"
 #include "types.h"
 
@@ -21,6 +22,7 @@ struct Quaternion
 	Quaternion(EIdentity);
 	Quaternion(EUninitialized);
 	Quaternion(T _x, T _y, T _z, T _w);
+	explicit Quaternion(const Matrix33<T>& m); // Assumes orthonormalized matrix
 
 	inline bool operator==(const Quaternion& rhs) const;
 	inline bool operator!=(const Quaternion& rhs) const;
@@ -49,6 +51,10 @@ struct Quaternion
 
 	inline void SetRotationZ(T radians);
 	inline static Quaternion CreateRotationZ(T radians);
+
+	// Assumes forward/up are perpendicular
+	inline void SetOrthonormalBasisRotation(const Vec3<T>& forward, const Vec3<T>& up);
+	inline static Quaternion CreateOrthonormalBasisRotation(const Vec3<T>& forward, const Vec3<T>& up);
 
 	T x, y, z, w;
 };
@@ -97,6 +103,89 @@ Quaternion<T>::Quaternion(T _x, T _y, T _z, T _w)
 	, z(_z)
 	, w(_w)
 {
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+Quaternion<T>::Quaternion(const Matrix33<T>& m)
+{
+	assert(m.IsEquivalent(m.Orthonormalized_Safe(), epsilon<T>() * 4));
+
+	const T fourWSquaredMinus1 = m.m11 + m.m22 + m.m33;
+	const T fourXSquaredMinus1 = m.m11 - m.m22 - m.m33;
+	const T fourYSquaredMinus1 = m.m22 - m.m11 - m.m33;
+	const T fourZSquaredMinus1 = m.m33 - m.m11 - m.m22;
+
+	enum EIndex : uint8_t
+	{
+		eIndex_X = 0,
+		eIndex_Y = 1,
+		eIndex_Z = 2,
+		eIndex_W = 3,
+	};
+
+	// Determine which of w, x, y, or z has the largest absolute value
+	int biggestIndex = eIndex_W;
+	T fourBiggestSquaredMinus1 = fourWSquaredMinus1;
+	if (fourXSquaredMinus1 > fourBiggestSquaredMinus1)
+	{
+		fourBiggestSquaredMinus1 = fourXSquaredMinus1;
+		biggestIndex = eIndex_X;
+	}
+
+	if (fourYSquaredMinus1 > fourBiggestSquaredMinus1)
+	{
+		fourBiggestSquaredMinus1 = fourYSquaredMinus1;
+		biggestIndex = eIndex_Y;
+	}
+
+	if (fourZSquaredMinus1 > fourBiggestSquaredMinus1)
+	{
+		fourBiggestSquaredMinus1 = fourZSquaredMinus1;
+		biggestIndex = eIndex_Z;
+	}
+
+	// Perform square root and division
+	const T biggestValue = sqrt(fourBiggestSquaredMinus1 + T(1)) * T(0.5);
+	const T mult = T(0.25) / biggestValue;
+
+	// Apply table to computer quaternion values
+	switch (biggestIndex)
+	{
+	case eIndex_X:
+		x = biggestValue;
+		y = (m.m12 + m.m21) * mult;
+		z = (m.m31 + m.m13) * mult;
+		w = (m.m23 - m.m32) * mult;
+		break;
+
+	case eIndex_Y:
+		x = (m.m12 + m.m21) * mult;
+		y = biggestValue;
+		z = (m.m23 + m.m32) * mult;
+		w = (m.m31 - m.m13) * mult;
+		break;
+
+	case eIndex_Z:
+		x = (m.m31 + m.m13) * mult;
+		y = (m.m23 + m.m32) * mult;
+		z = biggestValue;
+		w = (m.m12 - m.m21) * mult;
+		break;
+
+	case eIndex_W:
+		x = (m.m23 - m.m32) * mult;
+		y = (m.m31 - m.m13) * mult;
+		z = (m.m12 - m.m21) * mult;
+		w = biggestValue;
+		break;
+
+	default:
+		assert(false); // should never reach here!
+		break;
+	}
+
+	assert(IsUnit(epsilon<T>() * 2));
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -154,7 +243,7 @@ inline Quaternion<T> Quaternion<T>::operator*(const Quaternion& rhs) const
 template <typename T>
 inline bool Quaternion<T>::IsUnit(T epsilon) const
 {
-	return (T(1) - Magnitude()) < epsilon;
+	return abs(T(1) - Magnitude()) < epsilon;
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -188,7 +277,7 @@ inline void Quaternion<T>::Invert()
 template <typename T>
 inline Quaternion<T> Quaternion<T>::Inverted() const
 {
-	assert(IsUnit(epsilon<T>()));
+	assert(IsUnit(epsilon<T>() * T(2)));
 	return Quaternion<T>(-x, -y, -z, w);
 }
 
@@ -270,6 +359,26 @@ inline void Quaternion<T>::SetRotationZ(T radians)
 
 ///////////////////////////////////////////////////////////////////////
 template <typename T>
+inline void Quaternion<T>::SetOrthonormalBasisRotation(const Vec3<T>& forward, const Vec3<T>& up)
+{
+	assert(forward.IsUnit(epsilon<T>()));
+	assert(up.IsUnit(epsilon<T>()));
+	// assert that forward and up are perpendicular
+	assert((up.Cross(forward).Cross(up) - forward).Magnitude() < epsilon<T>());
+	assert((forward.Cross(up.Cross(forward)) - up).Magnitude() < epsilon<T>());
+
+	SetAxisAngle(const Vec3<T>& forward, 1 - up.Dot(Vec3<T>::))
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Quaternion<T> Quaternion<T>::CreateOrthonormalBasisRotation(const Vec3<T>& forward, const Vec3<T>& up)
+{
+	return Quaternion<T>(Matrix33<T>::CreateOrthonormalBasisRotation(forward, up));
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
 inline Quaternion<T> Quaternion<T>::CreateRotationZ(T radians)
 {
 	Quaternion<T> q(EUninitialized::Constructor);
@@ -296,6 +405,20 @@ inline Vec3<T> operator*(const Vec3<T>& v, const Quaternion<T>& q)
 	const Quaternion<T> qv(v.x, v.y, v.z, 0);
 	const Quaternion<T> qv2 = q2 * qv * q;
 	return Vec3<T>(qv2.x, qv2.y, qv2.z);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Quaternion<T> operator*(const Quaternion<T>& q, T s)
+{
+	return Quaternion<T>(q.x * s, q.y * s, q.z * s, q.w * s);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Quaternion<T> operator*(T s, const Quaternion<T>& q)
+{
+	return Quaternion<T>(q.x * s, q.y * s, q.z * s, q.w * s);
 }
 
 ///////////////////////////////////////////////////////////////////////
