@@ -26,6 +26,9 @@ struct Quaternion
 	inline bool operator!=(const Quaternion& rhs) const;
 	inline bool IsEquivalent(const Quaternion& rhs, T epsilon) const;
 
+  inline void operator*=(const Quaternion& rhs);
+  inline Quaternion operator*(const Quaternion& rhs) const;
+
   inline T Magnitude() const;
   inline bool IsUnit(T epsilon) const;
 
@@ -121,6 +124,25 @@ inline T Quaternion<T>::Magnitude() const
 
 ///////////////////////////////////////////////////////////////////////
 template <typename T>
+inline void Quaternion<T>::operator*=(const Quaternion& rhs)
+{
+  *this = *this * rhs;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Quaternion<T> Quaternion<T>::operator*(const Quaternion& rhs) const
+{
+  Quaternion<T> q(EUninitialized::Constructor);
+  q.x = (w * rhs.x) + (x * rhs.w) + (y * rhs.z) - (z * rhs.y);
+  q.y = (w * rhs.y) + (y * rhs.w) + (z * rhs.x) - (x * rhs.z);
+  q.z = (w * rhs.z) + (z * rhs.w) + (x * rhs.y) - (y * rhs.x);
+  q.w = (w * rhs.w) - (x * rhs.x) - (y * rhs.y) - (z * rhs.z);
+  return q;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
 inline bool Quaternion<T>::IsUnit(T epsilon) const
 {
   return (T(1) - Magnitude()) < epsilon;
@@ -157,6 +179,7 @@ inline void Quaternion<T>::Invert()
 template <typename T>
 inline Quaternion<T> Quaternion<T>::Inverted() const
 {
+  assert(IsUnit(epsilon<T>()));
   return Quaternion<T>(-x, -y, -z, w);
 }
 
@@ -183,10 +206,24 @@ inline Quaternion<T> Quaternion<T>::CreateAxisAngle(const Vec3<T> axis, T radian
 }
 
 ///////////////////////////////////////////////////////////////////////
+// Post-Multiply: rotate V by q rotation
 template <typename T>
 inline Vec3<T> operator*(const Quaternion<T>& q, const Vec3<T>& v)
 {
-  Quaternion q2(v.x, v.y, v.z, 0);
+  const Quaternion<T> qv(v.x, v.y, v.z, 0);
+  const Quaternion<T> qv2 = q * qv * q.Inverted();
+  return Vec3<T>(qv2.x, qv2.y, qv2.z);
+}
+
+///////////////////////////////////////////////////////////////////////
+// Pre-Multiply: rotate V by inverstion of q rotation!
+template <typename T>
+inline Vec3<T> operator*(const Vec3<T>& v, const Quaternion<T>& q)
+{
+  const Quaternion<T> q2 = q.Inverted();
+  const Quaternion<T> qv(v.x, v.y, v.z, 0);
+  const Quaternion<T> qv2 = q2 * qv * q;
+  return Vec3<T>(qv2.x, qv2.y, qv2.z);
 }
 
 ///////////////////////////////////////////////////////////////////////
