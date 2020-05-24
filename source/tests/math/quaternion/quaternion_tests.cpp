@@ -156,6 +156,21 @@ void RunQuaternionTest_tpl()
 		TEST("quaternion: slerp 0 == 0 1 == 1", q.IsEquivalent(q3, epsilon<T>() * 8));
 		TEST("quaternion: slerp 0 == 0 1 == 1", q2.IsEquivalent(q4, epsilon<T>() * 8));
 	}
+
+	{
+		for (uint8_t i = 0; i < 255; ++i)
+		{
+			const T t = T(i) / T(255);
+			Quaternion<T> q = Quaternion<T>::CreateAxisAngle(Vec3<T>::Forward, 0);
+			Quaternion<T> q2 = Quaternion<T>::CreateAxisAngle(Vec3<T>::Forward, kPi<T>);
+			Quaternion<T> q3 = Quaternion<T>::CreateAxisAngle(Vec3<T>::Forward, kPi<T> * t);
+			Quaternion<T> q4 = Quaternion<T>::CreateSlerp(q, q2, t);
+			Vec3<T> v(T(0.1), 2, T(3.3));
+			Vec3<T> v2 = q3 * v;
+			Vec3<T> v3 = q4 * v;
+			TEST("quaternion: slerp 0.5", v2.IsEquivalent(v3, epsilon<T>() * 8));
+		}
+	}
 }
 
 void RunQuaternionTests()

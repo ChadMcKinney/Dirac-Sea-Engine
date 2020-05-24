@@ -298,7 +298,7 @@ inline void Quaternion<T>::SetSlerp(Quaternion q1, const Quaternion& q2, T t)
 	T cosOmega = q1.Dot(q2);
 
 	// If cosOmega is negative then negate one of the quaternions to take the shortest path
-	if (cosOmega < T(0))
+	if (cosOmega < -epsilon<T>())
 	{
 		q1.Negate();
 		cosOmega = -cosOmega;
