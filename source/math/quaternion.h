@@ -31,8 +31,17 @@ struct Quaternion
 	inline void operator*=(const Quaternion& rhs);
 	inline Quaternion operator*(const Quaternion& rhs) const;
 
+	inline void operator/=(const Quaternion& rhs);
+	inline Quaternion operator/(const Quaternion& rhs) const;
+
 	inline T Magnitude() const;
 	inline bool IsUnit(T epsilon) const;
+
+	inline void Normalize();
+	inline Quaternion Normalized() const;
+
+	inline void Normalize_Safe();
+	inline Quaternion Normalized_Safe() const;
 
 	inline void Negate();
 	inline Quaternion Negated() const;
@@ -241,6 +250,20 @@ inline Quaternion<T> Quaternion<T>::operator*(const Quaternion& rhs) const
 
 ///////////////////////////////////////////////////////////////////////
 template <typename T>
+inline void Quaternion<T>::operator/=(const Quaternion& rhs)
+{
+	*this = *this / rhs;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Quaternion<T> Quaternion<T>::operator/(const Quaternion& rhs) const
+{
+	return rhs * Inverted();
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
 inline bool Quaternion<T>::IsUnit(T epsilon) const
 {
 	return abs(T(1) - Magnitude()) < epsilon;
@@ -254,6 +277,55 @@ inline void Quaternion<T>::Negate()
 	y = -y;
 	z = -z;
 	w = -w;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Quaternion<T>::Normalize()
+{
+	const T magnitude = Magnitude();
+	assert(magnitude > epsilon<T>());
+	x /= magnitude;
+	y /= magnitude;
+	z /= magnitude;
+	w /= magnitude;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Quaternion<T> Quaternion<T>::Normalized() const
+{
+	Quaternion<T> q(*this);
+	q.Normalize();
+	return q;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Quaternion<T>::Normalize_Safe()
+{
+	const T magnitude = Magnitude();
+	if (magnitude > epsilon<T>())
+	{
+		x /= magnitude;
+		y /= magnitude;
+		z /= magnitude;
+		w /= magnitude;
+	}
+	else
+	{
+		x = y = z = 0;
+		w = 1;
+	}
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Quaternion<T> Quaternion<T>::Normalized_Safe() const
+{
+	Quaternion<T> q(*this);
+	q.Normalize_Safe();
+	return q;
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -277,7 +349,7 @@ inline void Quaternion<T>::Invert()
 template <typename T>
 inline Quaternion<T> Quaternion<T>::Inverted() const
 {
-	assert(IsUnit(epsilon<T>() * T(2)));
+	assert(IsUnit(epsilon<T>() * T(4)));
 	return Quaternion<T>(-x, -y, -z, w);
 }
 
