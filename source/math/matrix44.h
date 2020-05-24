@@ -997,3 +997,7 @@ inline Matrix33<T> Matrix44<T>::Minor44() const
 		m31, m32, m33
 		);
 }
+
+///////////////////////////////////////////////////////////////////////
+typedef Matrix44<fworld> Matrix44w;
+typedef Matrix44<flocal> Matrix44l;

@@ -929,3 +929,8 @@ inline Matrix33<T> operator*(const Matrix33<T>& m, T s)
 	m2.m33 = m.m33 * s;
 	return m2;
 }
+
+///////////////////////////////////////////////////////////////////////
+typedef Matrix33<fworld> Matrix33w;
+typedef Matrix33<flocal> Matrix33l;
+
