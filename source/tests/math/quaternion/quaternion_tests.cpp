@@ -26,7 +26,13 @@ void RunQuaternionTest_tpl()
   {
     Quaternion<T> q(EIdentity::Constructor);
     Quaternion<T> q2(0, 0, 0, 1 - epsilon<T>());
-    TEST("quaternion: IDENTITY == IDENTITY", q.IsEquivalent(q2, epsilon<T>() * 2));
+    TEST("quaternion: IDENTITY == IDENTITY - epsilon", q.IsEquivalent(q2, epsilon<T>() * 2));
+  }
+
+  {
+    Quaternion<T> q = Quaternion<T>::CreateAxisAngle(Vec3<T>(1, 0, 0), 0);
+    Quaternion<T> q2(EIdentity::Constructor);
+    TEST("quaternion: IDENTITY == AA_ZERO", q == q2);
   }
 }
 
