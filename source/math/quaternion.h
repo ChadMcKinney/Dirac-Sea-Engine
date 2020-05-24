@@ -26,6 +26,15 @@ struct Quaternion
 	inline bool operator!=(const Quaternion& rhs) const;
 	inline bool IsEquivalent(const Quaternion& rhs, T epsilon) const;
 
+  inline T Magnitude() const;
+  inline bool IsUnit(T epsilon) const;
+
+  inline void Negate();
+  inline Quaternion<T> Negated() const;
+
+  inline void Invert(); // Assumes unit quaternion!
+  inline Quaternion Inverted() const; // Assumes unit quaternion!
+
   inline void SetAxisAngle(const Vec3<T>& axis, T radians);
   inline static Quaternion<T> CreateAxisAngle(const Vec3<T> axis, T radians);
 
@@ -105,8 +114,57 @@ inline bool Quaternion<T>::IsEquivalent(const Quaternion& rhs, T epsilon) const
 
 ///////////////////////////////////////////////////////////////////////
 template <typename T>
+inline T Quaternion<T>::Magnitude() const
+{
+  return sqrt((x * x) + (y * y) + (z * z) + (w * w));
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline bool Quaternion<T>::IsUnit(T epsilon) const
+{
+  return (T(1) - Magnitude()) < epsilon;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Quaternion<T>::Negate()
+{
+  x = -x;
+  y = -y;
+  z = -z;
+  w = -w;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Quaternion<T> Quaternion<T>::Negated() const
+{
+  return Quaternion<T>(-x, -y, -z, -w);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Quaternion<T>::Invert()
+{
+  assert(IsUnit(epsilon<T>()));
+  x = -x;
+  y = -y;
+  z = -z;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Quaternion<T> Quaternion<T>::Inverted() const
+{
+  return Quaternion<T>(-x, -y, -z, w);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
 inline void Quaternion<T>::SetAxisAngle(const Vec3<T>& axis, T radians)
 {
+  assert(axis.IsUnit(epsilon<T>()));
   T halfTheta = radians * T(0.5);
   T sinHalfTheta = std::sin(halfTheta);
   w = std::cos(halfTheta);
@@ -122,6 +180,13 @@ inline Quaternion<T> Quaternion<T>::CreateAxisAngle(const Vec3<T> axis, T radian
   Quaternion<T> q(EUninitialized::Constructor);
   q.SetAxisAngle(axis, radians);
   return q;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Vec3<T> operator*(const Quaternion<T>& q, const Vec3<T>& v)
+{
+  Quaternion q2(v.x, v.y, v.z, 0);
 }
 
 ///////////////////////////////////////////////////////////////////////
