@@ -134,6 +134,19 @@ void RunQuaternionTest_tpl()
 			TEST("quaternion: q(m) * v == m * v", v.IsEquivalent(v2, epsilon<T>() * 8));
 		}
 	}
+
+	{
+		Vec3<T> axis(T(0.31415), T(0.9), T(-0.666));
+		axis.Normalize();
+		for (uint8_t i = 0; i < 255; ++i)
+		{
+			T angle = -kPi<T> + kTwoPi<T> * (i / T(255));
+			Matrix33<T> m = Matrix33<T>::CreateRotationAA(angle, axis);
+			Quaternion<T> q(m);
+			Quaternion<T> q2 = Quaternion<T>::Exp(Quaternion<T>::Log(q));
+			TEST("quaternion: q(m) * v == m * v", q.IsEquivalent(q2, epsilon<T>() * 64));
+		}
+	}
 }
 
 void RunQuaternionTests()

@@ -34,6 +34,10 @@ struct Quaternion
 	inline void operator/=(const Quaternion& rhs);
 	inline Quaternion operator/(const Quaternion& rhs) const;
 
+	inline Quaternion Dot(const Quaternion& rhs) const;
+	inline static Vec3<T> Log(const Quaternion& q); // Real part is always 0
+	inline static Quaternion Exp(const Vec3<T>& v);
+
 	inline T Magnitude() const;
 	inline bool IsUnit(T epsilon) const;
 
@@ -48,6 +52,8 @@ struct Quaternion
 
 	inline void Invert(); // Assumes unit quaternion!
 	inline Quaternion Inverted() const; // Assumes unit quaternion!
+
+	inline Vec3<T> ExtractAxis() const;
 
 	inline void SetAxisAngle(const Vec3<T>& axis, T radians);
 	inline static Quaternion CreateAxisAngle(const Vec3<T> axis, T radians);
@@ -264,6 +270,37 @@ inline Quaternion<T> Quaternion<T>::operator/(const Quaternion& rhs) const
 
 ///////////////////////////////////////////////////////////////////////
 template <typename T>
+inline Quaternion<T> Quaternion<T>::Dot(const Quaternion& rhs) const
+{
+	return (x * rhs.x) + (y * rhs.y) + (z * rhs.z) + (w * rhs.w);
+}
+
+///////////////////////////////////////////////////////////////////////
+// The real part is always 0, so just returning x,y,z
+template <typename T>
+inline Vec3<T> Quaternion<T>::Log(const Quaternion& q)
+{
+	const T halfTheta = std::acos(q.w);
+	return q.ExtractAxis().Scaled(halfTheta);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Quaternion<T> Quaternion<T>::Exp(const Vec3<T>& v)
+{
+	const T sqrMagnitude = v.SqrMagnitude();
+	if (sqrMagnitude > epsilon<T>())
+	{
+		const T magnitude = std::sqrt(sqrMagnitude);
+		const T sinM = std::sin(magnitude) / magnitude;
+		const T cosM = std::cos(magnitude);
+		return Quaternion<T>(v.x * sinM, v.y * sinM, v.z * sinM, cosM);
+	}
+	return Quaternion<T>(EIdentity::Constructor);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
 inline bool Quaternion<T>::IsUnit(T epsilon) const
 {
 	return abs(T(1) - Magnitude()) < epsilon;
@@ -364,6 +401,13 @@ inline void Quaternion<T>::SetAxisAngle(const Vec3<T>& axis, T radians)
 	x = axis.x * sinHalfTheta;
 	y = axis.y * sinHalfTheta;
 	z = axis.z * sinHalfTheta;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Vec3<T> Quaternion<T>::ExtractAxis() const
+{
+	return Vec3<T>(x, y, z).SafeNormalized();
 }
 
 ///////////////////////////////////////////////////////////////////////
