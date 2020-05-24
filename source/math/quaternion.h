@@ -209,6 +209,24 @@ Quaternion<T>::Quaternion(const Matrix33<T>& m)
 	assert(IsUnit(epsilon<T>() * 4));
 }
 
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+Matrix33<T>::Matrix33(const Quaternion<T>& q)
+{
+	m11 = 1 - (2 * q.y * q.y) - (2 * q.z * q.z);
+	m12 = (2 * q.x * q.y) + (2 * q.w * q.z);
+	m13 = (2 * q.x * q.z) - (2 * q.w * q.y);
+
+	m21 = (2 * q.x * q.y) - (2 * q.w * q.z);
+	m22 = 1 - (2 * q.x * q.x) - (2 * q.z * q.z);
+	m23 = (2 * q.y * q.z) + (2 * q.w * q.x);
+
+	m31 = (2 * q.x * q.z) + (2 * q.w * q.y);
+	m32 = (2 * q.y * q.z) - (2 * q.w * q.x);
+	m33 = 1 - (2 * q.x * q.x) - (2 * q.y * q.y);
+}
+
 ///////////////////////////////////////////////////////////////////////
 template <typename T>
 inline bool Quaternion<T>::operator==(const Quaternion& rhs) const

@@ -5,6 +5,7 @@
 
 #include "quaternion_tests.h"
 
+#include "math/matrix33.h"
 #include "math/quaternion.h"
 #include "tests/test_framework.h"
 
@@ -169,6 +170,22 @@ void RunQuaternionTest_tpl()
 			Vec3<T> v2 = q3 * v;
 			Vec3<T> v3 = q4 * v;
 			TEST("quaternion: slerp 0.5", v2.IsEquivalent(v3, epsilon<T>() * 8));
+		}
+	}
+
+	{
+		for (uint8_t i = 0; i < 255; ++i)
+		{
+			const T t = T(i) / T(255);
+			Vec3<T> axis(T(0.1), -2, T(3.3));
+			axis.Normalize();
+			Matrix33<T> m = Matrix33<T>::CreateRotationAA(kPi<T> * t, axis);
+			Quaternion<T> q(m);
+			Matrix33<T> m2(q);
+			Vec3<T> v(T(0.92), T(0.53), T(1.1));
+			Vec3<T> v2 = v * m;
+			Vec3<T> v3 = v * m2;
+			TEST("quaternion: matrix -> quat -> matrix conversion", v2.IsEquivalent(v3, epsilon<T>() * 4));
 		}
 	}
 }

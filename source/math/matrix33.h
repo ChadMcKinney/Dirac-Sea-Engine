@@ -11,6 +11,9 @@
 #include "types.h"
 #include "vector3.h"
 
+template <typename T>
+struct Quaternion;
+
  ///////////////////////////////////////////////////////////////////////
  // Matrix 3x3
  ///////////////////////////////////////////////////////////////////////
@@ -25,6 +28,7 @@ struct Matrix33
 		T _m11, T _m12, T _m13,
 		T _m21, T _m22, T _m23,
 		T _m31, T _m32, T _m33);
+	Matrix33(const Quaternion<T>& q);
 
 	inline bool operator==(const Matrix33& rhs) const;
 	inline bool operator!=(const Matrix33& rhs) const;
