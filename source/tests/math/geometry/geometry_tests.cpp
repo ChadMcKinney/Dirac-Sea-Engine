@@ -10,6 +10,7 @@
 #include "geometry/plane.h"
 #include "geometry/ray.h"
 #include "geometry/sphere.h"
+#include "geometry/triangle.h"
 #include "test_framework.h"
 
 template <typename T>
@@ -80,6 +81,47 @@ void RunPlaneTests()
 	}
 }
 
+template <typename T>
+void RunTriangleTests()
+{
+	{
+		for (size_t i = 0; i < 255; ++i)
+		{
+			T frac = T(i) / T(256);
+
+			Vec3<T> v1(1, 2, -2);
+			Vec3<T> v2(3, -2, 1);
+			Vec3<T> v3(5, 1, -4);
+			T b1 = frac;
+			T b2 = b1 < 0.5 ? T(0.5) - b1 : 0;
+			T b3 = 1 - (b1 + b2);
+
+			Vec3<T> p = triangle::GetCartesianFromBarycentric(v1, v2, v3, b1, b2, b3);
+
+			T b12;
+			T b22;
+			T b32;
+			triangle::GetBarycentricFromCartesian(v1, v2, v3, p, b12, b22, b32);
+			TEST("triangle: barycentric <-> cartesian", Vec3<T>(b1, b2, b3).IsEquivalent(Vec3<T>(b12, b22, b32), epsilon<T>() * 4));
+
+			Vec3<T> p2 = triangle::GetCartesianFromBarycentric(v1, v2, v3, b12, b22, b32);
+			TEST("triangle: barycentric <-> cartesian", p.IsEquivalent(p2, epsilon<T>() * 8));
+		}
+	}
+
+	{
+		Vec3<T> v1(1, 2, -2);
+		Vec3<T> v2(3, -2, 1);
+		Vec3<T> v3(5, 1, -4);
+		Vec3<T> p = v1.Scaled(T(0.5)) + v2.Scaled(T(0.25)) + v3.Scaled(T(0.25));
+
+		T b1, b2, b3;
+		triangle::GetBarycentricFromCartesian(v1, v2, v3, p, b1, b2, b3);
+		Vec3<T> p2 = triangle::GetCartesianFromBarycentric(v1, v2, v3, b1, b2, b3);
+		TEST("triangle: cartesion <-> barycentric", p.IsEquivalent(p2, epsilon<T>() * 4));
+	}
+}
+
 void RunGeometryTests()
 {
 	RunLineTests<flocal>();
@@ -99,4 +141,7 @@ void RunGeometryTests()
 
 	RunPlaneTests<flocal>();
 	RunPlaneTests<fworld>();
+
+	RunTriangleTests<flocal>();
+	RunTriangleTests<fworld>();
 }

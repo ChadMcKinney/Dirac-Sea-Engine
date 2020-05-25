@@ -31,7 +31,7 @@ struct AABB
 	// merges point into this, selecting min/max elements amongst the aabb and v
 	inline void MergePoint(const Vec3<T>& v);
 
-	// merges aabb into this, selecting min/max elements amongsth both aabbs
+	// merges aabb into this, selecting min/max elements amongst both aabbs
 	inline void MergeAABB(const AABB<T>& aabb);
 
 	// moves min and max by offset

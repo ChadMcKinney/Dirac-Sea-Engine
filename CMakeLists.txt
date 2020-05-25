@@ -78,6 +78,7 @@ set(project_HEADERS
     source/math/geometry/plane.h
     source/math/geometry/ray.h
     source/math/geometry/sphere.h
+    source/math/geometry/triangle.h
     source/platform/platform.h
     source/tests/tests.h
     source/tests/test_framework.h
