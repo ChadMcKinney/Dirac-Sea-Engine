@@ -16,12 +16,12 @@
 template <typename T>
 struct Line
 {
-  Line();
-  Line(EZero);
-  Line(EUninitialized);
-  Line(const Vec3<T>& _a, const Vec3<T>& _b);
+	Line();
+	Line(EZero);
+	Line(EUninitialized);
+	Line(const Vec3<T>& _a, const Vec3<T>& _b);
 
-  Vec3<T> a, b; // two arbitrary points on line
+	Vec3<T> a, b; // two arbitrary points on line
 };
 
 ///////////////////////////////////////////////////////////////////////
@@ -33,24 +33,24 @@ Line<T>::Line()
 ///////////////////////////////////////////////////////////////////////
 template <typename T>
 Line<T>::Line(EZero)
-  : a(EZero::Constructor)
-  , b(EZero::Constructor)
+	: a(EZero::Constructor)
+	, b(EZero::Constructor)
 {
 }
 
 ///////////////////////////////////////////////////////////////////////
 template <typename T>
 Line<T>::Line(EUninitialized)
-  : a(EUninitialized::Constructor)
-  , b(EUninitialized::Constructor)
+	: a(EUninitialized::Constructor)
+	, b(EUninitialized::Constructor)
 {
 }
 
 ///////////////////////////////////////////////////////////////////////
 template <typename T>
 Line<T>::Line(const Vec3<T>& _a, const Vec3<T>& _b)
-  : a(_a)
-  , b(_b)
+	: a(_a)
+	, b(_b)
 {
 }
 
@@ -65,12 +65,12 @@ typedef Line<flocal> Linel;
 template <typename T>
 struct LineSegment
 {
-  LineSegment();
-  LineSegment(EZero);
-  LineSegment(EUninitialized);
-  LineSegment(const Vec3<T>& _a, const Vec3<T>& _b);
+	LineSegment();
+	LineSegment(EZero);
+	LineSegment(EUninitialized);
+	LineSegment(const Vec3<T>& _a, const Vec3<T>& _b);
 
-  Vec3<T> a, b;
+	Vec3<T> a, b;
 };
 
 ///////////////////////////////////////////////////////////////////////
@@ -82,24 +82,24 @@ LineSegment<T>::LineSegment()
 ///////////////////////////////////////////////////////////////////////
 template <typename T>
 LineSegment<T>::LineSegment(EZero)
-  : a(EZero::Constructor)
-  , b(EZero::Constructor)
+	: a(EZero::Constructor)
+	, b(EZero::Constructor)
 {
 }
 
 ///////////////////////////////////////////////////////////////////////
 template <typename T>
 LineSegment<T>::LineSegment(EUninitialized)
-  : a(EUninitialized::Constructor)
-  , b(EUninitialized::Constructor)
+	: a(EUninitialized::Constructor)
+	, b(EUninitialized::Constructor)
 {
 }
 
 ///////////////////////////////////////////////////////////////////////
 template <typename T>
 LineSegment<T>::LineSegment(const Vec3<T>& _a, const Vec3<T>& _b)
-  : a(_a)
-  , b(_b)
+	: a(_a)
+	, b(_b)
 {
 }
 
