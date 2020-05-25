@@ -23,6 +23,17 @@ static constexpr flocal kFLocalMin = std::numeric_limits<flocal>::lowest();
 static constexpr flocal kFLocalEpsilon = std::numeric_limits<flocal>::epsilon();
 
 ///////////////////////////////////////////////////////////////////////
+template <typename T>
+static constexpr T kFMax = std::numeric_limits<T>::max();
+
+template <typename T>
+static constexpr T kFMin = std::numeric_limits<T>::lowest();
+
+template <typename T>
+static constexpr T kFEpsilon = std::numeric_limits<T>::epsilon();
+
+
+///////////////////////////////////////////////////////////////////////
 // epsilon
 template <typename T>
 constexpr T epsilon()
@@ -35,6 +46,7 @@ constexpr T epsilon()
 enum class EZero : uint8_t { Constructor };
 enum class EIdentity : uint8_t { Constructor };
 enum class EUninitialized : uint8_t { Constructor };
+enum class EEmpty : uint8_t { Constructor };
 
 
 ///////////////////////////////////////////////////////////////////////

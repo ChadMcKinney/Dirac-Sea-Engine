@@ -57,6 +57,10 @@ struct Vec3
   inline Vec3<T> PerpendicularProjection(const Vec3& rhs) const;
   inline Vec3<T> PerpendicularProjection_Safe(const Vec3& rhs) const;
 
+  // modifies this vector, selecting the min/max elements between this vector and rhs
+  inline void SelectMinBetween(const Vec3<T>& rhs);
+  inline void SelectMaxBetween(const Vec3<T>& rhs);
+
   static const Vec3<T> Zero;
   static const Vec3<T> Up;
   static const Vec3<T> Down;
@@ -324,6 +328,24 @@ template <typename T>
 inline Vec3<T> Vec3<T>::PerpendicularProjection_Safe(const Vec3& rhs) const
 {
   return rhs - ParallelProjection_Safe(rhs);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Vec3<T>::SelectMinBetween(const Vec3<T>& rhs)
+{
+  x = std::min(x, rhs.x);
+  y = std::min(y, rhs.y);
+  z = std::min(z, rhs.z);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Vec3<T>::SelectMaxBetween(const Vec3<T>& rhs)
+{
+  x = std::max(x, rhs.x);
+  y = std::max(y, rhs.y);
+  z = std::max(z, rhs.z);
 }
 
 ///////////////////////////////////////////////////////////////////////

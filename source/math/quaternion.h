@@ -66,7 +66,7 @@ struct Quaternion
 	inline Vec3<T> ExtractAxis() const;
 
 	inline void SetAxisAngle(const Vec3<T>& axis, T radians);
-	inline static Quaternion CreateAxisAngle(const Vec3<T> axis, T radians);
+	inline static Quaternion CreateAxisAngle(const Vec3<T>& axis, T radians);
 
 	inline void SetRotationX(T radians);
 	inline static Quaternion CreateRotationX(T radians);
@@ -530,7 +530,7 @@ inline Vec3<T> Quaternion<T>::ExtractAxis() const
 
 ///////////////////////////////////////////////////////////////////////
 template <typename T>
-inline Quaternion<T> Quaternion<T>::CreateAxisAngle(const Vec3<T> axis, T radians)
+inline Quaternion<T> Quaternion<T>::CreateAxisAngle(const Vec3<T>& axis, T radians)
 {
 	Quaternion<T> q(EUninitialized::Constructor);
 	q.SetAxisAngle(axis, radians);

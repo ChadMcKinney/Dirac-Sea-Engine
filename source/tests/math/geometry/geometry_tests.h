@@ -5,6 +5,4 @@
 
 #pragma once
 
-#include <cstdio>
-
-#define TEST(name, ...) do { assert(__VA_ARGS__ && "Failed for test: " name); } while (false)
+void RunGeometryTests();

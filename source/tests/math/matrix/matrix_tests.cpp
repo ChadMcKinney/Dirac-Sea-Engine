@@ -827,34 +827,16 @@ void RunMatrix4x4Tests()
 }
 
 void RunMatrixTests()
-{ puts("====================================================="); puts("Running Matrix2x2<fworld> tests");
+{ 
 	RunMatrix2x2Tests<fworld>();
-
-	puts("=====================================================");
-	puts("Running Matrix2x2<flocal> tests");
 	RunMatrix2x2Tests<flocal>();
 
-	puts("=====================================================");
-	puts("Running Matrix3x3<fworld> tests");
 	RunMatrix3x3Tests<fworld>();
-
-	puts("=====================================================");
-	puts("Running Matrix3x3<flocal> tests");
 	RunMatrix3x3Tests<flocal>();
 
-	puts("=====================================================");
-	puts("Running Matrix4x3<fworld> tests");
 	RunMatrix4x3Tests<fworld>();
-
-	puts("=====================================================");
-	puts("Running Matrix4x3<flocal> tests");
 	RunMatrix4x3Tests<flocal>();
 
-	puts("=====================================================");
-	puts("Running Matrix4x4<fworld> tests");
 	RunMatrix4x4Tests<fworld>();
-
-	puts("=====================================================");
-	puts("Running Matrix4x4<flocal> tests");
 	RunMatrix4x4Tests<flocal>();
 }

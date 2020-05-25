@@ -239,7 +239,7 @@ namespace platform
 		// Runtime
 
 		glClear(GL_COLOR_BUFFER_BIT);
-		for (size_t i = 0; i < 480; ++i)
+		for (size_t i = 0; i < 32; ++i)
 		{
 			glUseProgram(gProgramID);
 			glEnableVertexAttribArray(gVertexPos2DLocation);

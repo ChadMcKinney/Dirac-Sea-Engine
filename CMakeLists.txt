@@ -40,9 +40,11 @@ add_definitions(${CMAKE_CXX_FLAGS})
 set(INCLUDE_DIR
     source
     source/math
+    source/math/geometry
     source/platform
     source/tests
     source/tests/math
+    source/tests/geometry
     source/tests/math/vector
     )
 
@@ -54,6 +56,7 @@ set(project_SOURCES
     source/platform/platform.cpp
     source/tests/tests.cpp
     source/tests/test_framework.cpp
+    source/tests/math/geometry/geometry_tests.cpp
     source/tests/math/quaternion/quaternion_tests.cpp
     source/tests/math/vector/vector_tests.cpp
     source/tests/math/matrix/matrix_tests.cpp
@@ -70,9 +73,15 @@ set(project_HEADERS
     source/math/vector3.h
     source/math/vector4.h
     source/math/coordinate_system.h
+    source/math/geometry/aabb.h
+    source/math/geometry/line.h
+    source/math/geometry/plane.h
+    source/math/geometry/ray.h
+    source/math/geometry/sphere.h
     source/platform/platform.h
     source/tests/tests.h
     source/tests/test_framework.h
+    source/tests/math/geometry/geometry_tests.h
     source/tests/math/quaternion/quaternion_tests.h
     source/tests/math/vector/vector_tests.h
     source/tests/math/matrix/matrix_tests.h

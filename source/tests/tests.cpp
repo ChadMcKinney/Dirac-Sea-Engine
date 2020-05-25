@@ -5,13 +5,18 @@
 
 #include "tests.h"
 
+#include <cstdio>
+
+#include "tests/math/geometry/geometry_tests.h"
 #include "tests/math/quaternion/quaternion_tests.h"
 #include "tests/math/matrix/matrix_tests.h"
 #include "tests/math/vector/vector_tests.h"
 
 void RunTests()
 {
+  RunGeometryTests();
   RunVectorTests();
   RunMatrixTests();
   RunQuaternionTests();
+  puts("TESTS SUCCESFUL!");
 }

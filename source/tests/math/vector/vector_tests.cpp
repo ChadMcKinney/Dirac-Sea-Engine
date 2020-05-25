@@ -399,59 +399,37 @@ void RunVec4Tests()
 
 void RunVec2Tests()
 {
-	puts("=====================================================");
-  puts("Running Vec2w tests");
   RunVec2Tests<fworld>();
 	RunSignedVec2Tests<fworld>();
 	RunFloatingVec2Tests<fworld>();
 
-	puts("=====================================================");
-  puts("Running Vec2l tests");
   RunVec2Tests<flocal>();
 	RunSignedVec2Tests<flocal>();
 	RunFloatingVec2Tests<flocal>();
 
-	puts("=====================================================");
-  puts("Running Vec2i tests");
   RunVec2Tests<int32_t>();
 	RunSignedVec2Tests<int32_t>();
 
-	puts("=====================================================");
-  puts("Running Vec2u tests");
   RunVec2Tests<uint32_t>();
 }
 
 void RunVec3Tests()
 {
-	puts("=====================================================");
-  puts("Running Vec3w tests");
   RunVec3Tests<fworld>();
 	RunSignedVec3Tests<fworld>();
 	RunFloatingVec3Tests<fworld>();
 
-	puts("=====================================================");
-  puts("Running Vec3l tests");
   RunVec3Tests<flocal>();
 	RunSignedVec3Tests<flocal>();
 	RunFloatingVec3Tests<flocal>();
 
-	puts("=====================================================");
-  puts("Running Vec3i tests");
   RunVec3Tests<int32_t>();
 	RunSignedVec3Tests<int32_t>();
 
-	puts("=====================================================");
-  puts("Running Vec3u tests");
   RunVec3Tests<uint32_t>();
-
-	puts("=====================================================");
-  puts("Running Vec4w tests");
   RunVec4Tests<fworld>();
 
-	puts("=====================================================");
-  puts("Running Vec4l tests");
   RunVec4Tests<flocal>();
-
 }
 
 void RunVectorTests()
