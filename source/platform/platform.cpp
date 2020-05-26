@@ -4,11 +4,13 @@
  */
 
 #include <cassert>
+#include <chrono>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <SDL.h>
 #include <SDL_vulkan.h>
+#include <thread>
 #include <Vulkan.h>
 
 #pragma warning(push)
@@ -41,6 +43,17 @@
 	x(vkGetDeviceQueue)\
 	x(vkDeviceWaitIdle)\
 	x(vkDestroyDevice)\
+	x(vkCreateSemaphore)\
+	x(vkCreateCommandPool)\
+	x(vkAllocateCommandBuffers)\
+	x(vkBeginCommandBuffer)\
+	x(vkCmdPipelineBarrier)\
+	x(vkCmdClearColorImage)\
+	x(vkEndCommandBuffer)\
+	x(vkQueueSubmit)\
+	x(vkFreeCommandBuffers)\
+	x(vkDestroyCommandPool)\
+	x(vkDestroySemaphore)\
 	x(vkCreateSwapchainKHR)\
 	x(vkDestroySwapchainKHR)\
 	x(vkGetSwapchainImagesKHR)\
@@ -60,6 +73,8 @@ namespace vulkan
 /////////////////////////////////////////////////////////
 // State
 
+///////////////////////////
+// SDevice
 struct SDevice
 {
 	enum class EState : uint8_t
@@ -77,9 +92,12 @@ struct SDevice
 	VkQueue presentQueue = VK_NULL_HANDLE;
 	uint32_t graphicsQueueFamilyIndex = INVALID_QUEUE_FAMILY_PROPERTIES_INDEX;
 	uint32_t presentQueueFamilyIndex = INVALID_QUEUE_FAMILY_PROPERTIES_INDEX;
+	uint32_t imageCount = 0;
 	EState state = EState::Uninitialized;
 };
 
+///////////////////////////
+// SInstance
 struct SInstance
 {
 	enum class EState : uint8_t
@@ -101,14 +119,76 @@ struct SInstance
 	EState state = EState::Uninitialized;
 };
 
+static constexpr size_t MAX_IMAGE_COUNT = 4;
+static constexpr size_t MAX_COMMAND_BUFFER_COUNT = MAX_IMAGE_COUNT;
+
+///////////////////////////
+// SRecordCommandBuffer
+struct SRecordCommandBuffer // state used during command buffer recording
+{
+	SRecordCommandBuffer()
+	{
+		memset(this, 0, sizeof(SRecordCommandBuffer));
+
+		commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		commandBufferBeginInfo.pNext = nullptr;
+		commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+		commandBufferBeginInfo.pInheritanceInfo = nullptr;
+
+		imageSubresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		imageSubresourceRange.baseMipLevel = 0;
+		imageSubresourceRange.levelCount = 1;
+		imageSubresourceRange.baseArrayLayer = 0;
+		imageSubresourceRange.layerCount = 1;
+
+		barrierPresentToClear.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		barrierPresentToClear.pNext = nullptr;
+		barrierPresentToClear.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+		barrierPresentToClear.dstAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
+		barrierPresentToClear.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		barrierPresentToClear.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		barrierPresentToClear.srcQueueFamilyIndex = UINT32_MAX;
+		barrierPresentToClear.dstQueueFamilyIndex = UINT32_MAX;
+		barrierPresentToClear.image = swapChainImages[0];
+		barrierPresentToClear.subresourceRange = imageSubresourceRange;
+
+		barrierClearToPresent.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		barrierClearToPresent.pNext = nullptr;
+		barrierClearToPresent.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
+		barrierClearToPresent.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+		barrierClearToPresent.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		barrierClearToPresent.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		barrierClearToPresent.srcQueueFamilyIndex = UINT32_MAX;
+		barrierClearToPresent.dstQueueFamilyIndex = UINT32_MAX;
+		barrierClearToPresent.image = swapChainImages[0];
+		barrierClearToPresent.subresourceRange = imageSubresourceRange;
+
+		clearColor = { 1.0f, 0.8f, 0.4f, 0.0f };
+	}
+
+	VkImage swapChainImages[MAX_IMAGE_COUNT];
+	VkCommandBufferBeginInfo commandBufferBeginInfo;
+	VkImageSubresourceRange imageSubresourceRange;
+	VkImageMemoryBarrier barrierPresentToClear;
+	VkImageMemoryBarrier barrierClearToPresent;
+	VkClearColorValue clearColor;
+};
+
 // TODO: Add allocation callbacks for debugging
 static const VkAllocationCallbacks* g_pAllocationCallbacks = nullptr;
+
 static SDevice g_device;
 static SInstance g_instance;
+
 static VkSurfaceKHR g_presentationSurface = VK_NULL_HANDLE;
 static VkSemaphore g_imageAvailableSemaphore = VK_NULL_HANDLE;
 static VkSemaphore g_renderingFinishedSemaphore = VK_NULL_HANDLE;
 static VkSwapchainKHR g_swapChain = VK_NULL_HANDLE;
+
+static VkCommandBuffer g_presentCommandBuffers[MAX_COMMAND_BUFFER_COUNT] = { VK_NULL_HANDLE };
+static uint32_t g_presentCommandBufferCount = 0;
+static VkCommandPool g_presentCommandPool = VK_NULL_HANDLE;
+static SRecordCommandBuffer g_recordBufferState;
 
 /////////////////////////////////////////////////////////
 // Functions
@@ -142,6 +222,12 @@ ERunResult SetDevice(
 
 	g_device.vkGetDeviceQueue(g_device.device, g_device.presentQueueFamilyIndex, 0, &g_device.presentQueue);
 	assert(g_device.presentQueue != nullptr);
+
+	// Update the record buffer state to reference the correct present queue family index
+	g_recordBufferState.barrierPresentToClear.srcQueueFamilyIndex = g_device.presentQueueFamilyIndex;
+	g_recordBufferState.barrierPresentToClear.dstQueueFamilyIndex = g_device.presentQueueFamilyIndex;
+	g_recordBufferState.barrierClearToPresent.srcQueueFamilyIndex = g_device.presentQueueFamilyIndex;
+	g_recordBufferState.barrierClearToPresent.dstQueueFamilyIndex = g_device.presentQueueFamilyIndex;
 
 	g_device.state = SDevice::EState::Initialized;
 	return eRR_Success;
@@ -276,6 +362,66 @@ bool CheckPhysicalDeviceProperties(
 	return false;
 }
 
+bool RecordCommandBuffers()
+{
+	if (g_device.vkGetSwapchainImagesKHR(
+		g_device.device,
+		g_swapChain,
+		&g_device.imageCount,
+		g_recordBufferState.swapChainImages) != VK_SUCCESS)
+	{
+		puts("Vulkan could not get swap chain images!");
+		return false;
+	}
+
+	for (uint32_t i = 0; i < g_device.imageCount; ++i)
+	{
+		g_recordBufferState.barrierPresentToClear.image = g_recordBufferState.swapChainImages[i];
+		g_recordBufferState.barrierClearToPresent.image = g_recordBufferState.swapChainImages[i];
+
+		g_device.vkBeginCommandBuffer(g_presentCommandBuffers[i], &g_recordBufferState.commandBufferBeginInfo);
+		g_device.vkCmdPipelineBarrier(
+			g_presentCommandBuffers[i],
+			VK_PIPELINE_STAGE_TRANSFER_BIT,
+			VK_PIPELINE_STAGE_TRANSFER_BIT,
+			0,
+			0,
+			nullptr,
+			0,
+			nullptr,
+			1,
+			&g_recordBufferState.barrierPresentToClear);
+
+		g_device.vkCmdClearColorImage(
+			g_presentCommandBuffers[i],
+			g_recordBufferState.swapChainImages[i],
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			&g_recordBufferState.clearColor,
+			1,
+			&g_recordBufferState.imageSubresourceRange);
+
+		g_device.vkCmdPipelineBarrier(
+			g_presentCommandBuffers[i],
+			VK_PIPELINE_STAGE_TRANSFER_BIT,
+			VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+			0,
+			0,
+			nullptr,
+			0,
+			nullptr,
+			1,
+			&g_recordBufferState.barrierClearToPresent);
+
+		if (g_device.vkEndCommandBuffer(g_presentCommandBuffers[i]) != VK_SUCCESS)
+		{
+			puts("Vulkan could not record command buffers!");
+			return false;
+		}
+	}
+
+	return true;
+}
+
 void DestroyState()
 {
 	assert(g_device.state == SDevice::EState::Initialized);
@@ -283,12 +429,15 @@ void DestroyState()
 	assert(g_instance.state == SInstance::EState::Initialized);
 	assert(g_instance.instance != VK_NULL_HANDLE);
 	assert(g_presentationSurface != VK_NULL_HANDLE);
+	assert(g_presentCommandBufferCount > 0);
+	assert(g_presentCommandPool != VK_NULL_HANDLE);
 
 	g_device.vkDeviceWaitIdle(g_device.device);
 	g_device.vkDestroyDevice(g_device.device, g_pAllocationCallbacks);
 
 	vkDestroyInstance(g_instance.instance, g_pAllocationCallbacks);
 	SDL_Vulkan_UnloadLibrary();
+	g_presentCommandBufferCount = 0;
 	g_device.state = SDevice::EState::Garbage;
 	g_instance.state = SInstance::EState::Garbage;
 	g_presentationSurface = VK_NULL_HANDLE;
@@ -499,13 +648,13 @@ int RunPlatform()
 		semaphoreCreateInfo.pNext = nullptr;
 		semaphoreCreateInfo.flags = 0;
 
-		if (vkCreateSemaphore(vulkan::g_device.device, &semaphoreCreateInfo, nullptr, &vulkan::g_imageAvailableSemaphore) != VK_SUCCESS)
+		if (vulkan::g_device.vkCreateSemaphore(vulkan::g_device.device, &semaphoreCreateInfo, nullptr, &vulkan::g_imageAvailableSemaphore) != VK_SUCCESS)
 		{
 			puts("Vulkan unable to create image available semaphore!");
 			return eRR_Error;
 		}
 
-		if (vkCreateSemaphore(vulkan::g_device.device, &semaphoreCreateInfo, nullptr, &vulkan::g_renderingFinishedSemaphore) != VK_SUCCESS)
+		if (vulkan::g_device.vkCreateSemaphore(vulkan::g_device.device, &semaphoreCreateInfo, nullptr, &vulkan::g_renderingFinishedSemaphore) != VK_SUCCESS)
 		{
 			puts("Vulkan unable to create image available semaphore!");
 			return eRR_Error;
@@ -586,6 +735,13 @@ int RunPlatform()
 		if (surfaceCapabilities.maxImageCount > 0 && imageCount > surfaceCapabilities.maxImageCount)
 		{
 			imageCount = surfaceCapabilities.maxImageCount;
+		}
+
+		if (imageCount > vulkan::MAX_IMAGE_COUNT)
+		{
+			// need to resize max or consider dynamic allocation if we ever hit this
+			puts("Image count is greater than MAX_IMAGE_COUNT!");
+			return eRR_Error;
 		}
 
 		VkSurfaceFormatKHR surfaceFormat;
@@ -721,20 +877,138 @@ int RunPlatform()
 		swapChainCreateInfo.clipped = VK_TRUE;
 		swapChainCreateInfo.oldSwapchain = oldSwapChain;
 
-		if (vkCreateSwapchainKHR(vulkan::g_device.device, &swapChainCreateInfo, vulkan::g_pAllocationCallbacks, &vulkan::g_swapChain) != VK_SUCCESS)
+		if (vulkan::g_device.vkCreateSwapchainKHR(vulkan::g_device.device, &swapChainCreateInfo, vulkan::g_pAllocationCallbacks, &vulkan::g_swapChain) != VK_SUCCESS)
 		{
 			puts("Vulkan failed to create swap chain!");
 			return eRR_Error;
 		}
 
+		vulkan::g_device.imageCount = imageCount;
+
+		{ // Create command buffers
+			VkCommandPoolCreateInfo commandPoolCreateInfo;
+			commandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+			commandPoolCreateInfo.pNext = nullptr;
+			commandPoolCreateInfo.flags = 0;
+			commandPoolCreateInfo.queueFamilyIndex = vulkan::g_device.presentQueueFamilyIndex;
+
+			if (vkCreateCommandPool(
+				vulkan::g_device.device,
+				&commandPoolCreateInfo,
+				vulkan::g_pAllocationCallbacks,
+				&vulkan::g_presentCommandPool) != VK_SUCCESS)
+			{
+				puts("Vulkan could not create a command pool!");
+				return eRR_Error;
+			}
+
+			assert(vulkan::g_presentCommandBufferCount == 0); // TODO - dynamic free/realloc of command buffers on swapchain recreation
+			memset(vulkan::g_presentCommandBuffers, 0, sizeof(VkCommandBuffer) * vulkan::MAX_COMMAND_BUFFER_COUNT);
+			vulkan::g_presentCommandBufferCount = imageCount;
+
+			VkCommandBufferAllocateInfo commandBufferAllocateInfo;
+			commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+			commandBufferAllocateInfo.pNext = nullptr;
+			commandBufferAllocateInfo.commandPool = vulkan::g_presentCommandPool;
+			commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+			commandBufferAllocateInfo.commandBufferCount = vulkan::g_presentCommandBufferCount;
+
+			if (vkAllocateCommandBuffers(vulkan::g_device.device, &commandBufferAllocateInfo, vulkan::g_presentCommandBuffers) != VK_SUCCESS)
+			{
+				puts("Vulkan failed to allocate command buffers!");
+				return eRR_Error;
+			}
+
+			if (!vulkan::RecordCommandBuffers())
+			{
+				puts("Vulkan failed to record command buffers!");
+				return eRR_Error;
+			}
+		}
+
 		if (oldSwapChain != VK_NULL_HANDLE)
 		{
-			vkDestroySwapchainKHR(vulkan::g_device.device, oldSwapChain, vulkan::g_pAllocationCallbacks);
+			vulkan::g_device.vkDestroySwapchainKHR(vulkan::g_device.device, oldSwapChain, vulkan::g_pAllocationCallbacks);
 		}
 	} // ~Vulkan swap chain creation
 
 	/////////////////////////////////////////////////////////
 	// Runtime
+
+	// Acquire next image state
+	uint32_t imageIndex = UINT32_MAX;
+	VkResult acquireNextImageResult = VK_RESULT_MAX_ENUM;
+	const uint64_t timeout = UINT64_MAX;
+	const VkFence fence = VK_NULL_HANDLE;
+
+	// Queue submit state
+	VkPipelineStageFlags waitDstStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
+	VkSubmitInfo submitInfo;
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.pNext = nullptr;
+	submitInfo.waitSemaphoreCount = 1;
+	submitInfo.pWaitSemaphores = &vulkan::g_imageAvailableSemaphore;
+	submitInfo.pWaitDstStageMask = &waitDstStageMask;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = vulkan::g_presentCommandBuffers;
+	submitInfo.signalSemaphoreCount = 1;
+	submitInfo.pSignalSemaphores = &vulkan::g_renderingFinishedSemaphore;
+
+	// Presentation state
+	VkResult presentResult = VK_RESULT_MAX_ENUM;
+	VkPresentInfoKHR presentInfo;
+	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	presentInfo.pNext = nullptr;
+	presentInfo.waitSemaphoreCount = 1;
+	presentInfo.pWaitSemaphores = &vulkan::g_renderingFinishedSemaphore;
+	presentInfo.swapchainCount = 1;
+	presentInfo.pSwapchains = &vulkan::g_swapChain;
+	presentInfo.pImageIndices = nullptr;
+	presentInfo.pResults = nullptr;
+
+	for (size_t i = 0; i < 4096; ++i)
+	{
+		acquireNextImageResult = vulkan::g_device.vkAcquireNextImageKHR(
+			vulkan::g_device.device,
+			vulkan::g_swapChain,
+			timeout,
+			vulkan::g_imageAvailableSemaphore,
+			fence,
+			&imageIndex);
+
+		switch (acquireNextImageResult)
+		{
+		case VK_SUCCESS:
+		case VK_SUBOPTIMAL_KHR:
+			break;
+		case VK_ERROR_OUT_OF_DATE_KHR:
+			break; // TODO: HANDLE WINDOW RESIZE
+		default:
+			puts("A problem occured during swap chain image acquisition!");
+			return eRR_Error;
+		}
+
+		submitInfo.pCommandBuffers = &vulkan::g_presentCommandBuffers[imageIndex];
+		if (vulkan::g_device.vkQueueSubmit(vulkan::g_device.presentQueue, 1, &submitInfo, fence) != VK_SUCCESS)
+		{
+			puts("Vulkan failed to submit to presentation queue!");
+			return eRR_Error;
+		}
+
+		presentInfo.pImageIndices = &imageIndex;
+		presentResult = vulkan::g_device.vkQueuePresentKHR(vulkan::g_device.presentQueue, &presentInfo);
+		switch (presentResult)
+		{
+		case VK_SUCCESS:
+		case VK_SUBOPTIMAL_KHR:
+			break;
+		case VK_ERROR_OUT_OF_DATE_KHR:
+			break; // TODO: HANDLE WINDOW RESIZE
+		default:
+			puts("A problem occured during image presentation!");
+			return eRR_Error;
+		}
+	}
 
 	/////////////////////////////////////////////////////////
 	// Deconstruction
