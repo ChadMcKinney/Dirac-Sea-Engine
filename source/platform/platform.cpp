@@ -108,6 +108,7 @@ static SInstance g_instance;
 static VkSurfaceKHR g_presentationSurface = VK_NULL_HANDLE;
 static VkSemaphore g_imageAvailableSemaphore = VK_NULL_HANDLE;
 static VkSemaphore g_renderingFinishedSemaphore = VK_NULL_HANDLE;
+static VkSwapchainKHR g_swapChain = VK_NULL_HANDLE;
 
 /////////////////////////////////////////////////////////
 // Functions
@@ -392,8 +393,8 @@ int RunPlatform()
 		}
 		else if (numDevices == 0)
 		{
-puts("Vulkan found no physical devices!");
-return eRR_Error;
+			puts("Vulkan found no physical devices!");
+			return eRR_Error;
 		}
 
 		VkPhysicalDevice* const physicalDevices = (VkPhysicalDevice*)alloca(sizeof(VkPhysicalDevice) * numDevices);
@@ -449,7 +450,7 @@ return eRR_Error;
 
 		if (createInfoCount > 1)
 		{
-			VkDeviceQueueCreateInfo& queueCreateInfo = createInfoArray[0];
+			VkDeviceQueueCreateInfo& queueCreateInfo = createInfoArray[1];
 			queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
 			queueCreateInfo.pNext = nullptr;
 			queueCreateInfo.flags = 0;
@@ -520,6 +521,215 @@ return eRR_Error;
 		{
 			puts("Vulkan unable to query presentation surface capabilities!");
 			return eRR_Error;
+		}
+
+		uint32_t formatsCount;
+		if (vulkan::g_instance.vkGetPhysicalDeviceSurfaceFormatsKHR(
+			vulkan::g_device.physicalDevice,
+			vulkan::g_presentationSurface,
+			&formatsCount,
+			nullptr) != VK_SUCCESS)
+		{
+			puts("Vulkan unable to get physical device surface formats count!");
+			return eRR_Error;
+		}
+
+		if (formatsCount == 0)
+		{
+			puts("Vulkan found 0 physical device surface formats!");
+			return eRR_Error;
+		}
+
+		VkSurfaceFormatKHR* const pSurfaceFormats = (VkSurfaceFormatKHR*)alloca(sizeof(VkSurfaceFormatKHR) * formatsCount);
+		if (vulkan::g_instance.vkGetPhysicalDeviceSurfaceFormatsKHR(
+			vulkan::g_device.physicalDevice,
+			vulkan::g_presentationSurface,
+			&formatsCount,
+			pSurfaceFormats) != VK_SUCCESS)
+		{
+			puts("Vulkan unable to get physical device surface formats!");
+			return eRR_Error;
+		}
+
+		uint32_t presentModesCount;
+		if (vulkan::g_instance.vkGetPhysicalDeviceSurfacePresentModesKHR(
+			vulkan::g_device.physicalDevice,
+			vulkan::g_presentationSurface,
+			&presentModesCount,
+			nullptr) != VK_SUCCESS)
+		{
+			puts("Vulkan unable to find physical device presentation modes count!");
+			return eRR_Error;
+		}
+
+		if (presentModesCount == 0)
+		{
+			puts("Vulkan found 0 physical device presentation modes!");
+			return eRR_Error;
+		}
+
+		VkPresentModeKHR* const presentModes = (VkPresentModeKHR*)alloca(sizeof(VkPresentModeKHR) * presentModesCount);
+		if (vulkan::g_instance.vkGetPhysicalDeviceSurfacePresentModesKHR(
+			vulkan::g_device.physicalDevice,
+			vulkan::g_presentationSurface,
+			&presentModesCount,
+			presentModes) != VK_SUCCESS)
+		{
+			puts("Vulkan unable to find physical device presentation modes!");
+			return eRR_Error;
+		}
+
+		// Set of images defined in a swap chain may not always be available for application to render to:
+		// One may be displayed and one may wait in a queue to be presented
+		// If application wants to use more images at the same time it must ask for more images
+		uint32_t imageCount = surfaceCapabilities.minImageCount + 1;
+		if (surfaceCapabilities.maxImageCount > 0 && imageCount > surfaceCapabilities.maxImageCount)
+		{
+			imageCount = surfaceCapabilities.maxImageCount;
+		}
+
+		VkSurfaceFormatKHR surfaceFormat;
+		surfaceFormat.format = VK_FORMAT_UNDEFINED;
+		surfaceFormat.colorSpace = VK_COLOR_SPACE_MAX_ENUM_KHR;
+
+		// If only one entry and it is undefined, then no format is preferred, use the one we want
+		if (formatsCount == 1 && pSurfaceFormats[0].format == VK_FORMAT_UNDEFINED)
+		{
+			surfaceFormat = { VK_FORMAT_R8G8B8A8_UNORM, VK_COLORSPACE_SRGB_NONLINEAR_KHR };
+		}
+		else
+		{
+			// If multiple present, prefer the one we want
+			for (uint32_t i = 0; i < formatsCount; ++i)
+			{
+				if (pSurfaceFormats[i].format == VK_FORMAT_R8G8B8A8_UNORM)
+				{
+					surfaceFormat = pSurfaceFormats[i];
+					break;
+				}
+			}
+
+			// We didn't find the format we want, just take the first
+			if (surfaceFormat.format == VK_FORMAT_UNDEFINED)
+			{
+				surfaceFormat = pSurfaceFormats[0];
+			}
+		}
+
+		// select size of swap chain images
+		VkExtent2D swapChainExtent = surfaceCapabilities.currentExtent;
+		if (surfaceCapabilities.currentExtent.width == -1)
+		{
+			swapChainExtent = { 640, 480 };
+			if (swapChainExtent.width < surfaceCapabilities.minImageExtent.width)
+			{
+				swapChainExtent.width = surfaceCapabilities.minImageExtent.width;
+			}
+
+			if (swapChainExtent.height < surfaceCapabilities.minImageExtent.height)
+			{
+				swapChainExtent.height = surfaceCapabilities.minImageExtent.height;
+			}
+
+			if (swapChainExtent.width > surfaceCapabilities.maxImageExtent.width)
+			{
+				swapChainExtent.width = surfaceCapabilities.maxImageExtent.width;
+			}
+
+			if (swapChainExtent.height > surfaceCapabilities.maxImageExtent.height)
+			{
+				swapChainExtent.height = surfaceCapabilities.maxImageExtent.height;
+			}
+		}
+
+		// define swap chain usage flags - color attachment flag must always be supported
+		// we can define other usage flags but we always need to check if they are supported
+		VkImageUsageFlags swapChainUsageFlags = 0;
+		if (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_DST_BIT)
+		{
+			swapChainUsageFlags = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+		}
+		else
+		{
+			puts("Vulkan VK_IMAGE_USAGE_TRANSFER_DST not supported by physical device surface capabilities!");
+			return eRR_Error;
+		}
+
+		// Here we can consider various surface transformations (for example for tablets with multiple orientations), 
+		// but I don't care about that right now, so won't...
+		// So use identity if supported, otherwise current transform
+		VkSurfaceTransformFlagBitsKHR surfaceTransformFlags = surfaceCapabilities.currentTransform;
+		if (surfaceCapabilities.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR)
+		{
+			surfaceTransformFlags = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+		}
+
+		// Setup presentation mode
+		// FIFO present mode is always available, but less ideal for input-lag
+		// MAILBOX is lowest latency V-Sync enabled mode (similar to triple-buffering), so prefer it
+		VkPresentModeKHR presentMode = VkPresentModeKHR(-1);
+		{
+			for (uint32_t i = 0; i < presentModesCount; ++i)
+			{
+				if (presentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR)
+				{
+					presentMode = presentModes[i];
+					break;
+				}
+			}
+
+			if (presentMode == VkPresentModeKHR(-1))
+			{
+				for (uint32_t i = 0; i < presentModesCount; ++i)
+				{
+					if (presentModes[i] == VK_PRESENT_MODE_FIFO_KHR)
+					{
+						presentMode = presentModes[i];
+						break;
+					}
+				}
+			}
+
+			// FIFO should always be available!
+			if (presentMode == VkPresentModeKHR(-1))
+			{
+				puts("Vulkan unable to find FIFO present mode! This is expected to be alway supported!");
+				return eRR_Error;
+			}
+		}
+
+		VkSwapchainKHR oldSwapChain = vulkan::g_swapChain;
+
+		// Create the actual swap chain now that we have all the parameters
+		VkSwapchainCreateInfoKHR swapChainCreateInfo;
+		swapChainCreateInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+		swapChainCreateInfo.pNext = nullptr;
+		swapChainCreateInfo.flags = 0;
+		swapChainCreateInfo.surface = vulkan::g_presentationSurface;
+		swapChainCreateInfo.minImageCount = imageCount;
+		swapChainCreateInfo.imageFormat = surfaceFormat.format;
+		swapChainCreateInfo.imageColorSpace = surfaceFormat.colorSpace;
+		swapChainCreateInfo.imageExtent = swapChainExtent;
+		swapChainCreateInfo.imageArrayLayers = 1;
+		swapChainCreateInfo.imageUsage = swapChainUsageFlags;
+		swapChainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		swapChainCreateInfo.queueFamilyIndexCount = 0;
+		swapChainCreateInfo.pQueueFamilyIndices = nullptr;
+		swapChainCreateInfo.preTransform = surfaceTransformFlags;
+		swapChainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+		swapChainCreateInfo.presentMode = presentMode;
+		swapChainCreateInfo.clipped = VK_TRUE;
+		swapChainCreateInfo.oldSwapchain = oldSwapChain;
+
+		if (vkCreateSwapchainKHR(vulkan::g_device.device, &swapChainCreateInfo, vulkan::g_pAllocationCallbacks, &vulkan::g_swapChain) != VK_SUCCESS)
+		{
+			puts("Vulkan failed to create swap chain!");
+			return eRR_Error;
+		}
+
+		if (oldSwapChain != VK_NULL_HANDLE)
+		{
+			vkDestroySwapchainKHR(vulkan::g_device.device, oldSwapChain, vulkan::g_pAllocationCallbacks);
 		}
 	} // ~Vulkan swap chain creation
 
