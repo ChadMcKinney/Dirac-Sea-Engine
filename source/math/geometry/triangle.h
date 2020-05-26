@@ -40,4 +40,4 @@ Vec3<T> GetCartesianFromBarycentric(
   return v1.Scaled(b1) + v2.Scaled(b2) + v3.Scaled(b3);
 }
 
-} // triange namespace
+} // triangle namespace

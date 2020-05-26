@@ -14,15 +14,8 @@ set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIR})
 
-find_package(OpenGL REQUIRED)
-include_directories(${OPENGL_INCLUDE_DIRS})
-
-find_package(GLEW REQUIRED)
-include_directories(${GLEW_INCLUDE_DIRS})
-
-if (MSVC)
-    set(GLEW_DLL "path" CACHE FILEPATH "path to dll for glew")
-endif()
+find_package(Vulkan REQUIRED)
+include_directories(${Vulkan_INCLUDE_DIR})
 
 # C++ compiler flags
 if (CMAKE_COMPILER_IS_GNUCC)
@@ -89,18 +82,12 @@ set(project_HEADERS
     )
 
 ADD_EXECUTABLE(DiracSea ${project_HEADERS} ${project_SOURCES})
-target_link_libraries(DiracSea ${SDL2_LIBRARIES} ${OPENGL_LIBRARIES} ${GLEW_LIBRARIES})
+target_link_libraries(DiracSea ${SDL2_LIBRARIES} ${Vulkan_LIBRARIES})
 
 if (MSVC)
     add_custom_command(TARGET DiracSea POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${SDL2_DIR}/${VC_LIB_PATH_SUFFIX}/SDL2.dll"
-        $<TARGET_FILE_DIR:DiracSea>
-        )
-
-    add_custom_command(TARGET DiracSea POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${GLEW_DLL}"
         $<TARGET_FILE_DIR:DiracSea>
         )
 endif()

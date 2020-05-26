@@ -4,12 +4,17 @@
  */
 
 #include <cassert>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
-#include <gl/glew.h>
-#include <gl/glu.h>
 #include <SDL.h>
-#include <SDL_opengl.h>
+#include <SDL_vulkan.h>
+#include <Vulkan.h>
+
+#pragma warning(push)
+#pragma warning(disable: 6255) // disable alloca overflow warnings
+#pragma warning(disable: 6011) // disable null pointer dereference, we are assert pointer validity prior to access
+#pragma warning(disable: 26812) // Vulkan uses unscoped enums, shutup msvc
 
 enum ERunResult : int
 {
@@ -17,254 +22,302 @@ enum ERunResult : int
 	eRR_Error = 1
 };
 
-void PrintProgramLog(GLuint program)
+static constexpr uint32_t INVALID_QUEUE_FAMILY_PROPERTIES_INDEX = UINT32_MAX;
+
+namespace vulkan
 {
-	if (glIsProgram(program))
+/////////////////////////////////////////////////////////
+// State
+
+struct SDevice
+{
+	enum class EState : uint8_t
 	{
-		int infoLogLength = 0;
-		int maxLength = 0;
+		Uninitialized,
+		Initialized,
+		Garbage,
+	};
 
-		glGetProgramiv(program, GL_INFO_LOG_LENGTH, &maxLength);
+	SDevice() {}
 
-		char* infoLog = (char*)malloc(maxLength);
-		glGetProgramInfoLog(program, maxLength, &infoLogLength, infoLog);
-		if (infoLogLength > 0)
-		{
-			printf("[%s] %s\n", __FUNCTION__, infoLog);
-		}
-
-		free(infoLog);
-	}
-	else
+	SDevice(
+		VkDevice _device,
+		PFN_vkGetDeviceQueue _vkGetDeviceQueue,
+		PFN_vkDestroyDevice _vkDestroyDevice,
+		PFN_vkDeviceWaitIdle _vkDeviceWaitIdle,
+		uint32_t _queueFamilyIndex)
+		: device(_device)
+		, vkGetDeviceQueue(_vkGetDeviceQueue)
+		, vkDestroyDevice(_vkDestroyDevice)
+		, vkDeviceWaitIdle(_vkDeviceWaitIdle)
+		, queueFamilyIndex(_queueFamilyIndex)
 	{
-		printf("[%s] Name %d is not a program\n", __FUNCTION__, program);
+		assert(vkGetDeviceQueue != nullptr);
+		assert(vkDestroyDevice != nullptr);
+		assert(vkDeviceWaitIdle != nullptr);
 	}
+
+	VkDevice device = VK_NULL_HANDLE;
+	PFN_vkGetDeviceQueue vkGetDeviceQueue = nullptr;
+	PFN_vkDestroyDevice vkDestroyDevice = nullptr;
+	PFN_vkDeviceWaitIdle vkDeviceWaitIdle = nullptr;
+	VkQueue queue = VK_NULL_HANDLE;
+	uint32_t queueFamilyIndex = INVALID_QUEUE_FAMILY_PROPERTIES_INDEX;
+	EState state = EState::Uninitialized;
+};
+
+// TODO: Add allocation callbacks for debugging
+static const VkAllocationCallbacks* g_pAllocationCallbacks = nullptr;
+static SDevice g_device;
+static VkInstance g_instance = VK_NULL_HANDLE;
+
+/////////////////////////////////////////////////////////
+// Functions
+
+void SetDevice(const SDevice& device)
+{
+	assert(g_device.state == SDevice::EState::Uninitialized);
+	assert(device.state == SDevice::EState::Uninitialized);
+	g_device = device;
+	// TODO: consider if we need more queues than just the one
+	g_device.vkGetDeviceQueue(g_device.device, g_device.queueFamilyIndex, 0, &g_device.queue);
+	assert(g_device.queue != nullptr);
+	g_device.state = SDevice::EState::Initialized;
 }
 
-void PrintShaderLog(GLuint shader)
+bool CheckPhysicalDeviceProperties(VkPhysicalDevice physicalDevice, uint32_t* pQueueFamiliesIndex)
 {
-	if (glIsShader(shader))
+	assert(pQueueFamiliesIndex != nullptr);
+	*pQueueFamiliesIndex = INVALID_QUEUE_FAMILY_PROPERTIES_INDEX;
+	VkPhysicalDeviceProperties deviceProperties;
+	VkPhysicalDeviceFeatures deviceFeatures;
+
+	vkGetPhysicalDeviceProperties(physicalDevice, &deviceProperties);
+	vkGetPhysicalDeviceFeatures(physicalDevice, &deviceFeatures);
+
+	const uint32_t majorVersion = VK_VERSION_MAJOR(deviceProperties.apiVersion);
+	const uint32_t minorVersion = VK_VERSION_MINOR(deviceProperties.apiVersion);
+	const uint32_t patchVersion = VK_VERSION_PATCH(deviceProperties.apiVersion);
+
+	// TODO: Add beter properties and feature testing, as well as enabling tested features on logical device
+	if (majorVersion < 1 && deviceProperties.limits.maxImageDimension2D < 4096)
 	{
-		int infoLogLength = 0;
-		int maxLength = 0;
+		return false;
+	}
 
-		glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &maxLength);
+	uint32_t queueFamiliesCount = 0;
+	vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamiliesCount, nullptr);
+	if (queueFamiliesCount == 0)
+	{
+		puts("Vulkan failed to get queue family properties count!");
+		return false;
+	}
 
-		char* infoLog = (char*)malloc(maxLength);
-		glGetShaderInfoLog(shader, maxLength, &infoLogLength, infoLog);
-		if (infoLogLength > 0)
+	VkQueueFamilyProperties* pQueueFamilyProperties = (VkQueueFamilyProperties*)alloca(sizeof(VkQueueFamilyProperties) * queueFamiliesCount);
+	vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamiliesCount, pQueueFamilyProperties);
+	for (uint32_t i = 0; i < queueFamiliesCount; ++i)
+	{
+		// TODO: Add better queue family properties testing?
+		if (pQueueFamilyProperties[i].queueCount > 0 && pQueueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
 		{
-			printf("[%s] %s\n", __FUNCTION__, infoLog);
+			*pQueueFamiliesIndex = i;
+			return true;
 		}
+	}
 
-		free(infoLog);
-	}
-	else
-	{
-		printf("[%s] Name %d is not a shader\n", __FUNCTION__, shader);
-	}
+	return false;
 }
+
+void DestroyState()
+{
+	assert(g_device.state == SDevice::EState::Initialized);
+	assert(g_device.device != VK_NULL_HANDLE);
+
+	g_device.vkDeviceWaitIdle(g_device.device);
+	g_device.vkDestroyDevice(g_device.device, g_pAllocationCallbacks);
+
+	assert(g_instance != VK_NULL_HANDLE);
+	vkDestroyInstance(g_instance, g_pAllocationCallbacks);
+	SDL_Vulkan_UnloadLibrary();
+	g_device.state = SDevice::EState::Garbage;
+}
+
+} // vulkan namespace
 
 namespace platform
 {
 
-	int RunPlatform()
+int RunPlatform()
+{
+	/////////////////////////////////////////////////////////
+	// Initialization
+	if (SDL_Init(SDL_INIT_VIDEO) < 0)
 	{
-		/////////////////////////////////////////////////////////
-		// Initialization
-		if (SDL_Init(SDL_INIT_VIDEO) < 0)
-		{
-			printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
-			return eRR_Error;
-		}
-
-		// TODO: Update to 4.6
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-
-		static const int kScreenWidth = 1024;
-		static const int kScreenHeight = 768;
-
-		SDL_Window* pWindow = SDL_CreateWindow(
-			"Dirac Sea Engine",
-			SDL_WINDOWPOS_UNDEFINED,
-			SDL_WINDOWPOS_UNDEFINED,
-			kScreenWidth,
-			kScreenHeight,
-			SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
-
-		if (pWindow == nullptr)
-		{
-			printf("SDL could not create window! SDL_Error: %s\n", SDL_GetError());
-			return eRR_Error;
-		}
-
-		SDL_GLContext pGLContext = SDL_GL_CreateContext(pWindow);
-		if (pGLContext == nullptr)
-		{
-			printf("SDL could not create opengl context! SDL_Error: %s\n", SDL_GetError());
-			return eRR_Error;
-		}
-
-		glewExperimental = GL_TRUE;
-		GLenum glewInitResult = glewInit();
-		if (glewInitResult != GLEW_OK)
-		{
-			printf("Error initializing GLEW! %s\n", glewGetErrorString(glewInitResult));
-			return eRR_Error;
-		}
-
-		// Enable VSync
-		if (SDL_GL_SetSwapInterval(1) < 0)
-		{
-			printf("SDL could not set VSync! SDL_Error: %s\n", SDL_GetError());
-			return eRR_Error;
-		}
-
-		SDL_Surface* pScreenSurface = SDL_GetWindowSurface(pWindow);
-		if (pScreenSurface == nullptr)
-		{
-			printf("SDL could not create window surface! SDL_Error: %s\n", SDL_GetError());
-			return eRR_Error;
-		}
-
-		// OpenGL state
-		GLuint gProgramID = 0;
-		GLint gVertexPos2DLocation = -1;
-		GLuint gVBO = 0;
-		GLuint gIBO = 0;
-
-		// OpenGL initialization
-		{
-			gProgramID = glCreateProgram();
-
-			// Compile and attach vertex Shader
-			{
-				GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-
-				const GLchar* vertexShaderSource[] =
-				{
-					"#version 140\nin vec2 LVertexPos2D; void main() { gl_Position = vec4( LVertexPos2D.x, LVertexPos2D.y, 0, 1 ); }"
-				};
-
-				glShaderSource(vertexShader, 1, vertexShaderSource, nullptr);
-				glCompileShader(vertexShader);
-				GLint vShaderCompiled = GL_FALSE;
-				glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &vShaderCompiled);
-				if (vShaderCompiled != GL_TRUE)
-				{
-					printf("Unable to compile vertex shader %d!", vertexShader);
-					PrintShaderLog(vertexShader);
-					return eRR_Error;
-				}
-
-				glAttachShader(gProgramID, vertexShader);
-			}
-
-			// Compile and attach fragment shader
-			{
-				GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-
-				const GLchar* fragmentShaderSource[] =
-				{
-					"#version 140\nout vec4 LFragment; void main() { LFragment = vec4( 0.1, 0.6, 0.7, 1.0 ); }"
-				};
-
-				glShaderSource(fragmentShader, 1, fragmentShaderSource, nullptr);
-				glCompileShader(fragmentShader);
-
-				GLint fShaderCompiled = GL_FALSE;
-				glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &fShaderCompiled);
-				if (fShaderCompiled != GL_TRUE)
-				{
-					printf("Unable to compile fragment shader %d!", fragmentShader);
-					PrintShaderLog(fragmentShader);
-					return eRR_Error;
-				}
-
-				glAttachShader(gProgramID, fragmentShader);
-			}
-
-			glLinkProgram(gProgramID);
-
-			{
-				GLint programSuccess = GL_TRUE;
-				glGetProgramiv(gProgramID, GL_LINK_STATUS, &programSuccess);
-				if (programSuccess != GL_TRUE)
-				{
-					printf("Error linking gl program %d!\n", gProgramID);
-					PrintProgramLog(gProgramID);
-					return eRR_Error;
-				}
-			}
-
-			gVertexPos2DLocation = glGetAttribLocation(gProgramID, "LVertexPos2D");
-			if (gVertexPos2DLocation == -1)
-			{
-				printf("LVertexPos2D is not a valid glsl program variable!\n");
-				return eRR_Error;
-			}
-
-			glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-
-			GLfloat vertexData[] =
-			{
-				-0.5f, -0.5f,
-				 0.5f, -0.5f,
-				 0.5f,  0.5f,
-				-0.5f,  0.5f
-			};
-
-			GLuint indexData[] = { 0, 1, 2, 3 };
-
-			// Create VBO
-			{
-				glGenBuffers(1, &gVBO);
-				glBindBuffer(GL_ARRAY_BUFFER, gVBO);
-				glBufferData(GL_ARRAY_BUFFER, 2 * 4 * sizeof(GLfloat), vertexData, GL_STATIC_DRAW);
-			}
-
-			// Create IBO
-			{
-				glGenBuffers(1, &gIBO);
-				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gIBO);
-				glBufferData(GL_ELEMENT_ARRAY_BUFFER, 4 * sizeof(GLuint), indexData, GL_STATIC_DRAW);
-			}
-		} // ~Gl Initialization
-
-
-
-		/////////////////////////////////////////////////////////
-		// Runtime
-
-		glClear(GL_COLOR_BUFFER_BIT);
-		for (size_t i = 0; i < 32; ++i)
-		{
-			glUseProgram(gProgramID);
-			glEnableVertexAttribArray(gVertexPos2DLocation);
-
-			// set vertex data
-			glBindBuffer(GL_ARRAY_BUFFER, gVBO);
-			glVertexAttribPointer(gVertexPos2DLocation, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), nullptr);
-
-			// set index data
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gIBO);
-
-			glDrawElements(GL_TRIANGLE_FAN, 4, GL_UNSIGNED_INT, nullptr);
-
-			glDisableVertexAttribArray(gVertexPos2DLocation);
-			glUseProgram(NULL);
-
-			SDL_GL_SwapWindow(pWindow);
-		}
-
-		/////////////////////////////////////////////////////////
-		// Deconstruction
-		glDeleteProgram(gProgramID);
-		SDL_DestroyWindow(pWindow);
-		SDL_Quit();
-		return eRR_Success;
+		printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
+		return eRR_Error;
 	}
 
+	static const int kScreenWidth = 1024;
+	static const int kScreenHeight = 768;
+
+	SDL_Window* pWindow = SDL_CreateWindow(
+		"Dirac Sea Engine",
+		SDL_WINDOWPOS_CENTERED,
+		SDL_WINDOWPOS_CENTERED,
+		kScreenWidth,
+		kScreenHeight,
+		SDL_WINDOW_VULKAN | SDL_WINDOW_SHOWN);
+
+	if (pWindow == nullptr)
+	{
+		printf("SDL could not create window! SDL_Error: %s\n", SDL_GetError());
+		return eRR_Error;
+	}
+
+
+	{ // Vulkan initialization
+		uint32_t extensionCount = 0;
+		SDL_Vulkan_GetInstanceExtensions(pWindow, &extensionCount, nullptr);
+		const char** const extensionNames = (const char**)alloca(sizeof(const char*) * extensionCount);
+		SDL_Vulkan_GetInstanceExtensions(pWindow, &extensionCount, extensionNames);
+
+		VkApplicationInfo appInfo;
+		appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+		appInfo.pNext = nullptr;
+		appInfo.pApplicationName = "Dirac Sea Engine demo";
+		appInfo.applicationVersion = VK_MAKE_VERSION(0, 0, 1);
+		appInfo.pEngineName = "Dirac Sea Engine";
+		appInfo.engineVersion = VK_MAKE_VERSION(0, 0, 1);
+		appInfo.apiVersion = VK_API_VERSION_1_2;
+
+		// TODO: Add define enabled layers for debugging
+		const uint32_t layerCount = 0;
+		const char** const layerNames = nullptr;
+
+		VkInstanceCreateInfo info{};
+		info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+		info.pNext = nullptr;
+		info.flags = 0;
+		info.pApplicationInfo = &appInfo;
+		info.enabledLayerCount = layerCount;
+		info.ppEnabledLayerNames = layerNames;
+		info.enabledExtensionCount = extensionCount;
+		info.ppEnabledExtensionNames = extensionNames;
+
+		VkResult res = vkCreateInstance(&info, vulkan::g_pAllocationCallbacks, &vulkan::g_instance);
+		if (res != VK_SUCCESS)
+		{
+			printf("Vulkcan could not create instance!\n");
+			return eRR_Error;
+		}
+	} // ~Vulkan Initialization
+
+	VkSurfaceKHR surface;
+	if (SDL_Vulkan_CreateSurface(pWindow, vulkan::g_instance, &surface) == SDL_FALSE)
+	{
+		printf("SDL could not create window surface! SDL_Error: %s\n", SDL_GetError());
+		return eRR_Error;
+	}
+
+
+	{ // Create logical devices
+		VkDevice vkDevice;
+		uint32_t queueFamilyIndex = INVALID_QUEUE_FAMILY_PROPERTIES_INDEX;
+		uint32_t numDevices = 0;
+		if (vkEnumeratePhysicalDevices(vulkan::g_instance, &numDevices, nullptr) != VK_SUCCESS)
+		{
+			puts("Vulkan failed to find number of physical devices!");
+			return eRR_Error;
+		}
+		else if (numDevices == 0)
+		{
+			puts("Vulkan found no physical devices!");
+			return eRR_Error;
+		}
+
+		VkPhysicalDevice* const physicalDevices = (VkPhysicalDevice*)alloca(sizeof(VkPhysicalDevice) * numDevices);
+		if (vkEnumeratePhysicalDevices(vulkan::g_instance, &numDevices, physicalDevices) != VK_SUCCESS)
+		{
+			puts("Vulkan failed to enumerate physical devices!");
+			return eRR_Error;
+		}
+
+		// TODO: Select best fit physical device based on features/type
+		VkPhysicalDevice selectedPhysicalDevice = VK_NULL_HANDLE;
+		for (uint32_t i = 0; i < numDevices; ++i)
+		{
+			if (vulkan::CheckPhysicalDeviceProperties(physicalDevices[i], &queueFamilyIndex))
+			{
+				selectedPhysicalDevice = physicalDevices[i];
+			}
+		}
+
+		if (selectedPhysicalDevice == VK_NULL_HANDLE)
+		{
+			puts("Failed to find a compatible vulkan physical device!");
+			return eRR_Error;
+		}
+
+		if (queueFamilyIndex == INVALID_QUEUE_FAMILY_PROPERTIES_INDEX)
+		{
+			puts("Unable to find appropriate queue family properties");
+			return eRR_Error;
+		}
+
+		// TODO: Manage multiple queue families/priorities if necessary
+		static constexpr uint32_t queueCount = 1;
+		const float queuePriorities[queueCount] = { 1.0f };
+
+		VkDeviceQueueCreateInfo queueCreateInfo;
+		queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+		queueCreateInfo.pNext = nullptr;
+		queueCreateInfo.flags = 0;
+		queueCreateInfo.queueFamilyIndex = queueFamilyIndex;
+		queueCreateInfo.queueCount = queueCount;
+		queueCreateInfo.pQueuePriorities = queuePriorities;
+
+		VkDeviceCreateInfo deviceCreateInfo;
+		deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+		deviceCreateInfo.pNext = nullptr;
+		deviceCreateInfo.flags = 0;
+		deviceCreateInfo.queueCreateInfoCount = 1;
+		deviceCreateInfo.pQueueCreateInfos = &queueCreateInfo;
+		deviceCreateInfo.enabledLayerCount = 0;
+		deviceCreateInfo.ppEnabledLayerNames = nullptr;
+		deviceCreateInfo.enabledExtensionCount = 0;
+		deviceCreateInfo.ppEnabledExtensionNames = nullptr;
+		deviceCreateInfo.pEnabledFeatures = nullptr;
+
+		const VkResult deviceCreationResult = vkCreateDevice(
+			selectedPhysicalDevice,
+			&deviceCreateInfo,
+			vulkan::g_pAllocationCallbacks,
+			&vkDevice);
+
+		if (deviceCreationResult != VK_SUCCESS)
+		{
+			puts("Vulkan failed to create logical device!");
+			return eRR_Error;
+		}
+
+		const PFN_vkGetDeviceQueue vkGetDeviceQueue = (PFN_vkGetDeviceQueue)vkGetDeviceProcAddr(vkDevice, "vkGetDeviceQueue");
+		const PFN_vkDestroyDevice vkDestroyDevice = (PFN_vkDestroyDevice)vkGetDeviceProcAddr(vkDevice, "vkDestroyDevice");
+		const PFN_vkDeviceWaitIdle vkDeviceWaitIdle = (PFN_vkDeviceWaitIdle)vkGetDeviceProcAddr(vkDevice, "vkDeviceWaitIdle");
+
+		vulkan::SetDevice(vulkan::SDevice(vkDevice, vkGetDeviceQueue, vkDestroyDevice, vkDeviceWaitIdle, queueFamilyIndex));
+	} // ~logical device creation
+
+	/////////////////////////////////////////////////////////
+	// Runtime
+
+	/////////////////////////////////////////////////////////
+	// Deconstruction
+	vulkan::DestroyState();
+	SDL_DestroyWindow(pWindow);
+	SDL_Quit();
+	return eRR_Success;
+}
+
 } // platform namespace
+
+#pragma warning(pop)
