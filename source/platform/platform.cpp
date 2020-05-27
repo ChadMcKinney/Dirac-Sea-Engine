@@ -135,6 +135,22 @@ struct SInstance
 	EState state = EState::Uninitialized;
 };
 
+///////////////////////////
+// SInstance
+struct SSwapChain
+{
+	enum EState
+	{
+		Uninitialized,
+		Initialized,
+		Garbage
+	};
+
+	VkSurfaceFormatKHR surfaceFormat = { VK_FORMAT_UNDEFINED, VK_COLOR_SPACE_MAX_ENUM_KHR };
+	VkSwapchainKHR swapChain = VK_NULL_HANDLE;
+	EState state = EState::Uninitialized;
+};
+
 static constexpr size_t MAX_IMAGE_COUNT = 4;
 static constexpr size_t MAX_COMMAND_BUFFER_COUNT = MAX_IMAGE_COUNT;
 
@@ -199,7 +215,7 @@ static SInstance g_instance;
 static VkSurfaceKHR g_presentationSurface = VK_NULL_HANDLE;
 static VkSemaphore g_imageAvailableSemaphore = VK_NULL_HANDLE;
 static VkSemaphore g_renderingFinishedSemaphore = VK_NULL_HANDLE;
-static VkSwapchainKHR g_swapChain = VK_NULL_HANDLE;
+static SSwapChain g_swapChain;
 
 static VkCommandBuffer g_presentCommandBuffers[MAX_COMMAND_BUFFER_COUNT] = { VK_NULL_HANDLE };
 static uint32_t g_presentCommandBufferCount = 0;
@@ -263,6 +279,16 @@ ERunResult SetInstance(VkInstance _instance)
 
 	g_instance.state = SInstance::EState::Initialized;
 	return eRR_Success;
+}
+
+void SetSwapChain(VkSwapchainKHR _swapChain, VkSurfaceFormatKHR _surfaceFormat)
+{
+	assert(g_swapChain.state == SSwapChain::EState::Uninitialized);
+	assert(_swapChain != VK_NULL_HANDLE);
+	assert(_surfaceFormat.format != VK_FORMAT_UNDEFINED);
+	g_swapChain.swapChain = _swapChain;
+	g_swapChain.surfaceFormat = _surfaceFormat;
+	g_swapChain.state = SSwapChain::EState::Initialized;
 }
 
 void SetPresentationSurface(VkSurfaceKHR _surface)
@@ -382,7 +408,7 @@ bool RecordCommandBuffers()
 {
 	if (g_device.vkGetSwapchainImagesKHR(
 		g_device.device,
-		g_swapChain,
+		g_swapChain.swapChain,
 		&g_device.imageCount,
 		g_recordBufferState.swapChainImages) != VK_SUCCESS)
 	{
@@ -460,9 +486,11 @@ void DestroyState()
 	g_device.vkDestroySemaphore(g_device.device, g_imageAvailableSemaphore, g_pAllocationCallbacks);
 	g_imageAvailableSemaphore = VK_NULL_HANDLE;
 
-	assert(g_swapChain != VK_NULL_HANDLE);
-	g_device.vkDestroySwapchainKHR(g_device.device, g_swapChain, g_pAllocationCallbacks);
-	g_swapChain = VK_NULL_HANDLE;
+	assert(g_swapChain.state == SSwapChain::EState::Initialized);
+	assert(g_swapChain.swapChain != VK_NULL_HANDLE);
+	g_device.vkDestroySwapchainKHR(g_device.device, g_swapChain.swapChain, g_pAllocationCallbacks);
+	g_swapChain.swapChain = VK_NULL_HANDLE;
+	g_swapChain.state = SSwapChain::EState::Garbage;
 
 	g_device.vkDestroyDevice(g_device.device, g_pAllocationCallbacks);
 	g_device.device = VK_NULL_HANDLE;
@@ -892,7 +920,8 @@ int RunPlatform()
 			}
 		}
 
-		VkSwapchainKHR oldSwapChain = vulkan::g_swapChain;
+		VkSwapchainKHR oldSwapChain = vulkan::g_swapChain.swapChain;
+		VkSwapchainKHR newSwapChain = VK_NULL_HANDLE;
 
 		// Create the actual swap chain now that we have all the parameters
 		VkSwapchainCreateInfoKHR swapChainCreateInfo;
@@ -915,13 +944,31 @@ int RunPlatform()
 		swapChainCreateInfo.clipped = VK_TRUE;
 		swapChainCreateInfo.oldSwapchain = oldSwapChain;
 
-		if (vulkan::g_device.vkCreateSwapchainKHR(vulkan::g_device.device, &swapChainCreateInfo, vulkan::g_pAllocationCallbacks, &vulkan::g_swapChain) != VK_SUCCESS)
+		if (vulkan::g_device.vkCreateSwapchainKHR(vulkan::g_device.device, &swapChainCreateInfo, vulkan::g_pAllocationCallbacks, &newSwapChain) != VK_SUCCESS)
 		{
 			puts("Vulkan failed to create swap chain!");
 			return eRR_Error;
 		}
 
+		vulkan::SetSwapChain(newSwapChain, surfaceFormat);
 		vulkan::g_device.imageCount = imageCount;
+
+		{ // Create render pass
+			VkAttachmentDescription attachmentDescriptions[] =
+			{
+				{
+					0, // flags
+					vulkan::g_swapChain.surfaceFormat.format, // format
+					VK_SAMPLE_COUNT_1_BIT, // samples
+					VK_ATTACHMENT_LOAD_OP_CLEAR, // loadOp
+					VK_ATTACHMENT_STORE_OP_STORE, // storeOp
+					VK_ATTACHMENT_LOAD_OP_DONT_CARE, // stencilLoadOp
+					VK_ATTACHMENT_STORE_OP_DONT_CARE, // stencilStoreOp
+					VK_IMAGE_LAYOUT_UNDEFINED, // initialLayout
+					VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, // finalLyout
+				}
+			};
+		} // ~create render pass
 
 		{ // Create command buffers
 			VkCommandPoolCreateInfo commandPoolCreateInfo;
@@ -1000,7 +1047,7 @@ int RunPlatform()
 	presentInfo.waitSemaphoreCount = 1;
 	presentInfo.pWaitSemaphores = &vulkan::g_renderingFinishedSemaphore;
 	presentInfo.swapchainCount = 1;
-	presentInfo.pSwapchains = &vulkan::g_swapChain;
+	presentInfo.pSwapchains = &vulkan::g_swapChain.swapChain;
 	presentInfo.pImageIndices = nullptr;
 	presentInfo.pResults = nullptr;
 
@@ -1008,7 +1055,7 @@ int RunPlatform()
 	{
 		acquireNextImageResult = vulkan::g_device.vkAcquireNextImageKHR(
 			vulkan::g_device.device,
-			vulkan::g_swapChain,
+			vulkan::g_swapChain.swapChain,
 			timeout,
 			vulkan::g_imageAvailableSemaphore,
 			fence,
