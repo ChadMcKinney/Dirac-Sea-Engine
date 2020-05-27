@@ -438,12 +438,19 @@ void DestroyState()
 
 	assert(g_renderingFinishedSemaphore != VK_NULL_HANDLE);
 	g_device.vkDestroySemaphore(g_device.device, g_renderingFinishedSemaphore, g_pAllocationCallbacks);
+	g_renderingFinishedSemaphore = VK_NULL_HANDLE;
+
 	assert(g_imageAvailableSemaphore != VK_NULL_HANDLE);
 	g_device.vkDestroySemaphore(g_device.device, g_imageAvailableSemaphore, g_pAllocationCallbacks);
+	g_imageAvailableSemaphore = VK_NULL_HANDLE;
 
+	assert(g_swapChain != VK_NULL_HANDLE);
 	g_device.vkDestroySwapchainKHR(g_device.device, g_swapChain, g_pAllocationCallbacks);
+	g_swapChain = VK_NULL_HANDLE;
 
 	g_device.vkDestroyDevice(g_device.device, g_pAllocationCallbacks);
+	g_device.device = VK_NULL_HANDLE;
+	g_device.state = SDevice::EState::Garbage;
 
 	assert(g_presentationSurface != VK_NULL_HANDLE);
 	g_instance.vkDestroySurfaceKHR(g_instance.instance, g_presentationSurface, g_pAllocationCallbacks);
@@ -452,10 +459,10 @@ void DestroyState()
 	assert(g_instance.state == SInstance::EState::Initialized);
 	assert(g_instance.instance != VK_NULL_HANDLE);
 	vkDestroyInstance(g_instance.instance, g_pAllocationCallbacks);
-	SDL_Vulkan_UnloadLibrary();
-
-	g_device.state = SDevice::EState::Garbage;
+	g_instance.instance = VK_NULL_HANDLE;
 	g_instance.state = SInstance::EState::Garbage;
+
+	SDL_Vulkan_UnloadLibrary();
 }
 
 } // vulkan namespace
