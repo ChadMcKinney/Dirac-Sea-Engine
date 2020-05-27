@@ -106,13 +106,12 @@ struct SDevice
 
 	DEVICE_LEVEL_FUNCTIONS(VK_FUNCTION_PTR_DECLARATION)
 
-	VkDevice device = VK_NULL_HANDLE;
+	VkDevice handle = VK_NULL_HANDLE;
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 	VkQueue graphicsQueue = VK_NULL_HANDLE;
 	VkQueue presentQueue = VK_NULL_HANDLE;
 	uint32_t graphicsQueueFamilyIndex = INVALID_QUEUE_FAMILY_PROPERTIES_INDEX;
 	uint32_t presentQueueFamilyIndex = INVALID_QUEUE_FAMILY_PROPERTIES_INDEX;
-	uint32_t imageCount = 0;
 	EState state = EState::Uninitialized;
 };
 
@@ -129,12 +128,22 @@ struct SInstance
 
 	INSTANCE_LEVEL_FUNCTIONS(VK_FUNCTION_PTR_DECLARATION)
 
-	VkInstance instance = VK_NULL_HANDLE;
+	VkInstance handle = VK_NULL_HANDLE;
 	EState state = EState::Uninitialized;
 };
 
 ///////////////////////////
-// SInstance
+// SImage
+struct SImage
+{
+	VkImage handle = VK_NULL_HANDLE;
+	VkImageView view = VK_NULL_HANDLE;
+	VkSampler sampler = VK_NULL_HANDLE;
+	VkDeviceMemory memory = VK_NULL_HANDLE;
+};
+
+///////////////////////////
+// SSwapChain
 struct SSwapChain
 {
 	enum EState
@@ -144,9 +153,11 @@ struct SSwapChain
 		Garbage
 	};
 
+	VkSwapchainKHR handle = VK_NULL_HANDLE;
 	VkSurfaceFormatKHR surfaceFormat = { VK_FORMAT_UNDEFINED, VK_COLOR_SPACE_MAX_ENUM_KHR };
-	VkSwapchainKHR swapChain = VK_NULL_HANDLE;
-	VkImage images[MAX_IMAGE_COUNT];
+	SImage images[MAX_IMAGE_COUNT] = { SImage() };
+	uint32_t imageCount = 0;
+	VkExtent2D extent = { 0, 0 };
 	EState state = EState::Uninitialized;
 };
 
@@ -218,6 +229,7 @@ static VkCommandPool g_presentCommandPool = VK_NULL_HANDLE;
 static SRecordCommandBuffer g_recordBufferState;
 
 static VkRenderPass g_renderPass = VK_NULL_HANDLE;
+static VkFramebuffer g_frameBuffers[MAX_IMAGE_COUNT] = { VK_NULL_HANDLE };
 
 /////////////////////////////////////////////////////////
 // Functions
@@ -234,22 +246,22 @@ ERunResult SetDevice(
 	assert(_graphicsQueueFamilyIndex != INVALID_QUEUE_FAMILY_PROPERTIES_INDEX);
 	assert(_presentQueueFamilyIndex != INVALID_QUEUE_FAMILY_PROPERTIES_INDEX);
 
-	g_device.device = _device;
+	g_device.handle = _device;
 	g_device.physicalDevice = _physicalDevice;
 	g_device.graphicsQueueFamilyIndex = _graphicsQueueFamilyIndex;
 	g_device.presentQueueFamilyIndex = _presentQueueFamilyIndex;
 
 #define SET_DEVICE_LEVEL_FUNCTION(fun)                                                                            \
-		g_device.fun = (PFN_##fun)vkGetDeviceProcAddr(g_device.device, #fun);                                         \
+		g_device.fun = (PFN_##fun)vkGetDeviceProcAddr(g_device.handle, #fun);                                         \
 		if (g_device.fun == nullptr) { printf("Vulkan failed to load device function %s\n", #fun); return eRR_Error; }
 
 	DEVICE_LEVEL_FUNCTIONS(SET_DEVICE_LEVEL_FUNCTION)
 #undef SET_DEVICE_LEVEL_FUNCTION
 
-	g_device.vkGetDeviceQueue(g_device.device, g_device.graphicsQueueFamilyIndex, 0, &g_device.graphicsQueue);
+	g_device.vkGetDeviceQueue(g_device.handle, g_device.graphicsQueueFamilyIndex, 0, &g_device.graphicsQueue);
 	assert(g_device.graphicsQueue != nullptr);
 
-	g_device.vkGetDeviceQueue(g_device.device, g_device.presentQueueFamilyIndex, 0, &g_device.presentQueue);
+	g_device.vkGetDeviceQueue(g_device.handle, g_device.presentQueueFamilyIndex, 0, &g_device.presentQueue);
 	assert(g_device.presentQueue != nullptr);
 
 	// Update the record buffer state to reference the correct present queue family index
@@ -265,10 +277,10 @@ ERunResult SetDevice(
 ERunResult SetInstance(VkInstance _instance)
 {
 	assert(g_instance.state == SInstance::EState::Uninitialized);
-	g_instance.instance = _instance;
+	g_instance.handle = _instance;
 
 #define SET_INSTANCE_LEVEL_FUNCTION(fun)                                                                               \
-		g_instance.fun = (PFN_##fun)vkGetInstanceProcAddr(g_instance.instance, #fun);                                        \
+		g_instance.fun = (PFN_##fun)vkGetInstanceProcAddr(g_instance.handle, #fun);                                        \
 		if (g_instance.fun == nullptr) { printf("Vulkan failed to load instance function %s\n", #fun); return eRR_Error; } 
 
 	INSTANCE_LEVEL_FUNCTIONS(SET_INSTANCE_LEVEL_FUNCTION)
@@ -278,13 +290,14 @@ ERunResult SetInstance(VkInstance _instance)
 	return eRR_Success;
 }
 
-void SetSwapChain(VkSwapchainKHR _swapChain, VkSurfaceFormatKHR _surfaceFormat)
+void SetSwapChain(VkSwapchainKHR _swapChain, VkSurfaceFormatKHR _surfaceFormat, uint32_t _imageCount)
 {
 	assert(g_swapChain.state == SSwapChain::EState::Uninitialized);
 	assert(_swapChain != VK_NULL_HANDLE);
 	assert(_surfaceFormat.format != VK_FORMAT_UNDEFINED);
-	g_swapChain.swapChain = _swapChain;
+	g_swapChain.handle = _swapChain;
 	g_swapChain.surfaceFormat = _surfaceFormat;
+	g_swapChain.imageCount = _imageCount;
 	g_swapChain.state = SSwapChain::EState::Initialized;
 }
 
@@ -403,20 +416,22 @@ bool CheckPhysicalDeviceProperties(
 
 bool RecordCommandBuffers()
 {
+	/* DELETE THIS?
 	if (g_device.vkGetSwapchainImagesKHR(
-		g_device.device,
-		g_swapChain.swapChain,
-		&g_device.imageCount,
+		g_device.handle,
+		g_swapChain.handle,
+		&g_swapChain.imageCount,
 		g_swapChain.images) != VK_SUCCESS)
 	{
 		puts("Vulkan could not get swap chain images!");
 		return false;
 	}
+	*/
 
-	for (uint32_t i = 0; i < g_device.imageCount; ++i)
+	for (uint32_t i = 0; i < g_swapChain.imageCount; ++i)
 	{
-		g_recordBufferState.barrierPresentToClear.image = g_swapChain.images[i];
-		g_recordBufferState.barrierClearToPresent.image = g_swapChain.images[i];
+		g_recordBufferState.barrierPresentToClear.image = g_swapChain.images[i].handle;
+		g_recordBufferState.barrierClearToPresent.image = g_swapChain.images[i].handle;
 
 		g_device.vkBeginCommandBuffer(g_presentCommandBuffers[i], &g_recordBufferState.commandBufferBeginInfo);
 		g_device.vkCmdPipelineBarrier(
@@ -433,7 +448,7 @@ bool RecordCommandBuffers()
 
 		g_device.vkCmdClearColorImage(
 			g_presentCommandBuffers[i],
-			g_swapChain.images[i],
+			g_swapChain.images[i].handle,
 			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 			&g_recordBufferState.clearColor,
 			1,
@@ -464,43 +479,43 @@ bool RecordCommandBuffers()
 void DestroyState()
 {
 	assert(g_device.state == SDevice::EState::Initialized);
-	assert(g_device.device != VK_NULL_HANDLE);
-	g_device.vkDeviceWaitIdle(g_device.device);
+	assert(g_device.handle != VK_NULL_HANDLE);
+	g_device.vkDeviceWaitIdle(g_device.handle);
 
 	assert(g_presentCommandBufferCount > 0);
-	g_device.vkFreeCommandBuffers(g_device.device, g_presentCommandPool, g_presentCommandBufferCount, g_presentCommandBuffers);
+	g_device.vkFreeCommandBuffers(g_device.handle, g_presentCommandPool, g_presentCommandBufferCount, g_presentCommandBuffers);
 	g_presentCommandBufferCount = 0;
 
 	assert(g_presentCommandPool != VK_NULL_HANDLE);
-	g_device.vkDestroyCommandPool(g_device.device, g_presentCommandPool, g_pAllocationCallbacks);
+	g_device.vkDestroyCommandPool(g_device.handle, g_presentCommandPool, g_pAllocationCallbacks);
 	g_presentCommandPool = VK_NULL_HANDLE;
 
 	assert(g_renderingFinishedSemaphore != VK_NULL_HANDLE);
-	g_device.vkDestroySemaphore(g_device.device, g_renderingFinishedSemaphore, g_pAllocationCallbacks);
+	g_device.vkDestroySemaphore(g_device.handle, g_renderingFinishedSemaphore, g_pAllocationCallbacks);
 	g_renderingFinishedSemaphore = VK_NULL_HANDLE;
 
 	assert(g_imageAvailableSemaphore != VK_NULL_HANDLE);
-	g_device.vkDestroySemaphore(g_device.device, g_imageAvailableSemaphore, g_pAllocationCallbacks);
+	g_device.vkDestroySemaphore(g_device.handle, g_imageAvailableSemaphore, g_pAllocationCallbacks);
 	g_imageAvailableSemaphore = VK_NULL_HANDLE;
 
 	assert(g_swapChain.state == SSwapChain::EState::Initialized);
-	assert(g_swapChain.swapChain != VK_NULL_HANDLE);
-	g_device.vkDestroySwapchainKHR(g_device.device, g_swapChain.swapChain, g_pAllocationCallbacks);
-	g_swapChain.swapChain = VK_NULL_HANDLE;
+	assert(g_swapChain.handle != VK_NULL_HANDLE);
+	g_device.vkDestroySwapchainKHR(g_device.handle, g_swapChain.handle, g_pAllocationCallbacks);
+	g_swapChain.handle = VK_NULL_HANDLE;
 	g_swapChain.state = SSwapChain::EState::Garbage;
 
-	g_device.vkDestroyDevice(g_device.device, g_pAllocationCallbacks);
-	g_device.device = VK_NULL_HANDLE;
+	g_device.vkDestroyDevice(g_device.handle, g_pAllocationCallbacks);
+	g_device.handle = VK_NULL_HANDLE;
 	g_device.state = SDevice::EState::Garbage;
 
 	assert(g_presentationSurface != VK_NULL_HANDLE);
-	g_instance.vkDestroySurfaceKHR(g_instance.instance, g_presentationSurface, g_pAllocationCallbacks);
+	g_instance.vkDestroySurfaceKHR(g_instance.handle, g_presentationSurface, g_pAllocationCallbacks);
 	g_presentationSurface = VK_NULL_HANDLE;
 
 	assert(g_instance.state == SInstance::EState::Initialized);
-	assert(g_instance.instance != VK_NULL_HANDLE);
-	vkDestroyInstance(g_instance.instance, g_pAllocationCallbacks);
-	g_instance.instance = VK_NULL_HANDLE;
+	assert(g_instance.handle != VK_NULL_HANDLE);
+	vkDestroyInstance(g_instance.handle, g_pAllocationCallbacks);
+	g_instance.handle = VK_NULL_HANDLE;
 	g_instance.state = SInstance::EState::Garbage;
 
 	SDL_Vulkan_UnloadLibrary();
@@ -568,7 +583,7 @@ int RunPlatform()
 		info.enabledExtensionCount = extensionCount;
 		info.ppEnabledExtensionNames = extensionNames;
 
-		VkInstance instance;
+		VkInstance instance = VK_NULL_HANDLE;
 		VkResult res = vkCreateInstance(&info, vulkan::g_pAllocationCallbacks, &instance);
 		if (res != VK_SUCCESS)
 		{
@@ -584,7 +599,7 @@ int RunPlatform()
 
 	{ // Vulkan surface creation
 		VkSurfaceKHR presentationSurface;
-		if (SDL_Vulkan_CreateSurface(pWindow, vulkan::g_instance.instance, &presentationSurface) == SDL_FALSE)
+		if (SDL_Vulkan_CreateSurface(pWindow, vulkan::g_instance.handle, &presentationSurface) == SDL_FALSE)
 		{
 			printf("SDL could not create window surface! SDL_Error: %s\n", SDL_GetError());
 			return eRR_Error;
@@ -598,7 +613,7 @@ int RunPlatform()
 		uint32_t graphicsQueueFamilyIndex = vulkan::INVALID_QUEUE_FAMILY_PROPERTIES_INDEX;
 		uint32_t presentQueueFamilyIndex = vulkan::INVALID_QUEUE_FAMILY_PROPERTIES_INDEX;
 		uint32_t numDevices = 0;
-		if (vkEnumeratePhysicalDevices(vulkan::g_instance.instance, &numDevices, nullptr) != VK_SUCCESS)
+		if (vkEnumeratePhysicalDevices(vulkan::g_instance.handle, &numDevices, nullptr) != VK_SUCCESS)
 		{
 			puts("Vulkan failed to find number of physical devices!");
 			return eRR_Error;
@@ -610,7 +625,7 @@ int RunPlatform()
 		}
 
 		VkPhysicalDevice* const physicalDevices = (VkPhysicalDevice*)alloca(sizeof(VkPhysicalDevice) * numDevices);
-		if (vkEnumeratePhysicalDevices(vulkan::g_instance.instance, &numDevices, physicalDevices) != VK_SUCCESS)
+		if (vkEnumeratePhysicalDevices(vulkan::g_instance.handle, &numDevices, physicalDevices) != VK_SUCCESS)
 		{
 			puts("Vulkan failed to enumerate physical devices!");
 			return eRR_Error;
@@ -711,13 +726,13 @@ int RunPlatform()
 		semaphoreCreateInfo.pNext = nullptr;
 		semaphoreCreateInfo.flags = 0;
 
-		if (vulkan::g_device.vkCreateSemaphore(vulkan::g_device.device, &semaphoreCreateInfo, nullptr, &vulkan::g_imageAvailableSemaphore) != VK_SUCCESS)
+		if (vulkan::g_device.vkCreateSemaphore(vulkan::g_device.handle, &semaphoreCreateInfo, nullptr, &vulkan::g_imageAvailableSemaphore) != VK_SUCCESS)
 		{
 			puts("Vulkan unable to create image available semaphore!");
 			return eRR_Error;
 		}
 
-		if (vulkan::g_device.vkCreateSemaphore(vulkan::g_device.device, &semaphoreCreateInfo, nullptr, &vulkan::g_renderingFinishedSemaphore) != VK_SUCCESS)
+		if (vulkan::g_device.vkCreateSemaphore(vulkan::g_device.handle, &semaphoreCreateInfo, nullptr, &vulkan::g_renderingFinishedSemaphore) != VK_SUCCESS)
 		{
 			puts("Vulkan unable to create image available semaphore!");
 			return eRR_Error;
@@ -917,7 +932,7 @@ int RunPlatform()
 			}
 		}
 
-		VkSwapchainKHR oldSwapChain = vulkan::g_swapChain.swapChain;
+		VkSwapchainKHR oldSwapChain = vulkan::g_swapChain.handle;
 		VkSwapchainKHR newSwapChain = VK_NULL_HANDLE;
 
 		// Create the actual swap chain now that we have all the parameters
@@ -941,14 +956,13 @@ int RunPlatform()
 		swapChainCreateInfo.clipped = VK_TRUE;
 		swapChainCreateInfo.oldSwapchain = oldSwapChain;
 
-		if (vulkan::g_device.vkCreateSwapchainKHR(vulkan::g_device.device, &swapChainCreateInfo, vulkan::g_pAllocationCallbacks, &newSwapChain) != VK_SUCCESS)
+		if (vulkan::g_device.vkCreateSwapchainKHR(vulkan::g_device.handle, &swapChainCreateInfo, vulkan::g_pAllocationCallbacks, &newSwapChain) != VK_SUCCESS)
 		{
 			puts("Vulkan failed to create swap chain!");
 			return eRR_Error;
 		}
 
-		vulkan::SetSwapChain(newSwapChain, surfaceFormat);
-		vulkan::g_device.imageCount = imageCount;
+		vulkan::SetSwapChain(newSwapChain, surfaceFormat, imageCount);
 
 		{ // Create render pass
 			VkAttachmentDescription attachmentDescriptions[] =
@@ -1002,7 +1016,7 @@ int RunPlatform()
 			renderPassCreateInfo.pDependencies = nullptr;
 
 			if (vulkan::g_device.vkCreateRenderPass(
-						vulkan::g_device.device,
+						vulkan::g_device.handle,
 						&renderPassCreateInfo,
 						vulkan::g_pAllocationCallbacks,
 						&vulkan::g_renderPass) != VK_SUCCESS)
@@ -1013,7 +1027,21 @@ int RunPlatform()
 		} // ~create render pass
 
 		{ // create frame buffers
-			
+			VkFramebufferCreateInfo frameBufferCreateInfo;
+			frameBufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+			frameBufferCreateInfo.pNext = nullptr;
+			frameBufferCreateInfo.flags = 0;
+			frameBufferCreateInfo.renderPass = vulkan::g_renderPass;
+			frameBufferCreateInfo.attachmentCount = 1;
+			frameBufferCreateInfo.pAttachments = nullptr; // defined in loop
+			frameBufferCreateInfo.width = 300;
+			frameBufferCreateInfo.height = 300;
+			frameBufferCreateInfo.layers = 1;
+
+			for (uint32_t i = 0; i < vulkan::g_swapChain.imageCount; ++i)
+			{
+				frameBufferCreateInfo.pAttachments = &vulkan::g_swapChain.images[i].view;
+			}
 		} // ~create frame buffers
 
 		{ // Create command buffers
@@ -1024,7 +1052,7 @@ int RunPlatform()
 			commandPoolCreateInfo.queueFamilyIndex = vulkan::g_device.presentQueueFamilyIndex;
 
 			if (vkCreateCommandPool(
-				vulkan::g_device.device,
+				vulkan::g_device.handle,
 				&commandPoolCreateInfo,
 				vulkan::g_pAllocationCallbacks,
 				&vulkan::g_presentCommandPool) != VK_SUCCESS)
@@ -1044,7 +1072,7 @@ int RunPlatform()
 			commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 			commandBufferAllocateInfo.commandBufferCount = vulkan::g_presentCommandBufferCount;
 
-			if (vkAllocateCommandBuffers(vulkan::g_device.device, &commandBufferAllocateInfo, vulkan::g_presentCommandBuffers) != VK_SUCCESS)
+			if (vkAllocateCommandBuffers(vulkan::g_device.handle, &commandBufferAllocateInfo, vulkan::g_presentCommandBuffers) != VK_SUCCESS)
 			{
 				puts("Vulkan failed to allocate command buffers!");
 				return eRR_Error;
@@ -1059,7 +1087,7 @@ int RunPlatform()
 
 		if (oldSwapChain != VK_NULL_HANDLE)
 		{
-			vulkan::g_device.vkDestroySwapchainKHR(vulkan::g_device.device, oldSwapChain, vulkan::g_pAllocationCallbacks);
+			vulkan::g_device.vkDestroySwapchainKHR(vulkan::g_device.handle, oldSwapChain, vulkan::g_pAllocationCallbacks);
 		}
 	} // ~Vulkan swap chain creation
 
@@ -1093,15 +1121,15 @@ int RunPlatform()
 	presentInfo.waitSemaphoreCount = 1;
 	presentInfo.pWaitSemaphores = &vulkan::g_renderingFinishedSemaphore;
 	presentInfo.swapchainCount = 1;
-	presentInfo.pSwapchains = &vulkan::g_swapChain.swapChain;
+	presentInfo.pSwapchains = &vulkan::g_swapChain.handle;
 	presentInfo.pImageIndices = nullptr;
 	presentInfo.pResults = nullptr;
 
 	for (size_t i = 0; i < 4096; ++i)
 	{
 		acquireNextImageResult = vulkan::g_device.vkAcquireNextImageKHR(
-			vulkan::g_device.device,
-			vulkan::g_swapChain.swapChain,
+			vulkan::g_device.handle,
+			vulkan::g_swapChain.handle,
 			timeout,
 			vulkan::g_imageAvailableSemaphore,
 			fence,
