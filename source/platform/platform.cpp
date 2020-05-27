@@ -58,7 +58,23 @@
 	x(vkDestroySwapchainKHR)\
 	x(vkGetSwapchainImagesKHR)\
 	x(vkAcquireNextImageKHR)\
-	x(vkQueuePresentKHR)
+	x(vkQueuePresentKHR)\
+	x(vkCreateImageView)\
+	x(vkCreateRenderPass)\
+	x(vkCreateFramebuffer)\
+	x(vkCreateShaderModule)\
+	x(vkCreatePipelineLayout)\
+	x(vkCreateGraphicsPipelines)\
+	x(vkCmdBeginRenderPass)\
+	x(vkCmdBindPipeline)\
+	x(vkCmdDraw)\
+	x(vkCmdEndRenderPass)\
+	x(vkDestroyShaderModule)\
+	x(vkDestroyPipelineLayout)\
+	x(vkDestroyPipeline)\
+	x(vkDestroyRenderPass)\
+	x(vkDestroyFramebuffer)\
+	x(vkDestroyImageView)
 	
 enum ERunResult : int
 {
