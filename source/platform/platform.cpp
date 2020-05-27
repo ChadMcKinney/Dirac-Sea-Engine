@@ -426,31 +426,31 @@ void DestroyState()
 {
 	assert(g_device.state == SDevice::EState::Initialized);
 	assert(g_device.device != VK_NULL_HANDLE);
-	assert(g_instance.state == SInstance::EState::Initialized);
-	assert(g_instance.instance != VK_NULL_HANDLE);
-	assert(g_presentationSurface != VK_NULL_HANDLE);
-	assert(g_presentCommandBufferCount > 0);
-	assert(g_presentCommandPool != VK_NULL_HANDLE);
-
-
 	g_device.vkDeviceWaitIdle(g_device.device);
 
+	assert(g_presentCommandBufferCount > 0);
 	g_device.vkFreeCommandBuffers(g_device.device, g_presentCommandPool, g_presentCommandBufferCount, g_presentCommandBuffers);
 	g_presentCommandBufferCount = 0;
 
+	assert(g_presentCommandPool != VK_NULL_HANDLE);
 	g_device.vkDestroyCommandPool(g_device.device, g_presentCommandPool, g_pAllocationCallbacks);
 	g_presentCommandPool = VK_NULL_HANDLE;
 
-	g_device.vkDestroySwapchainKHR(g_device.device, g_swapChain, g_pAllocationCallbacks);
-
+	assert(g_renderingFinishedSemaphore != VK_NULL_HANDLE);
 	g_device.vkDestroySemaphore(g_device.device, g_renderingFinishedSemaphore, g_pAllocationCallbacks);
+	assert(g_imageAvailableSemaphore != VK_NULL_HANDLE);
 	g_device.vkDestroySemaphore(g_device.device, g_imageAvailableSemaphore, g_pAllocationCallbacks);
+
+	g_device.vkDestroySwapchainKHR(g_device.device, g_swapChain, g_pAllocationCallbacks);
 
 	g_device.vkDestroyDevice(g_device.device, g_pAllocationCallbacks);
 
+	assert(g_presentationSurface != VK_NULL_HANDLE);
 	g_instance.vkDestroySurfaceKHR(g_instance.instance, g_presentationSurface, g_pAllocationCallbacks);
 	g_presentationSurface = VK_NULL_HANDLE;
 
+	assert(g_instance.state == SInstance::EState::Initialized);
+	assert(g_instance.instance != VK_NULL_HANDLE);
 	vkDestroyInstance(g_instance.instance, g_pAllocationCallbacks);
 	SDL_Vulkan_UnloadLibrary();
 
