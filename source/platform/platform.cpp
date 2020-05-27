@@ -82,10 +82,14 @@ enum ERunResult : int
 	eRR_Error = 1
 };
 
-static constexpr uint32_t INVALID_QUEUE_FAMILY_PROPERTIES_INDEX = UINT32_MAX;
-
 namespace vulkan
 {
+/////////////////////////////////////////////////////////
+// Constants
+static constexpr uint32_t INVALID_QUEUE_FAMILY_PROPERTIES_INDEX = UINT32_MAX;
+static constexpr size_t MAX_IMAGE_COUNT = 4;
+static constexpr size_t MAX_COMMAND_BUFFER_COUNT = MAX_IMAGE_COUNT;
+
 /////////////////////////////////////////////////////////
 // State
 
@@ -123,12 +127,6 @@ struct SInstance
 		Garbage
 	};
 
-	SInstance() {}
-	SInstance(VkInstance _instance)
-		: instance(_instance)
-	{
-	}
-
 	INSTANCE_LEVEL_FUNCTIONS(VK_FUNCTION_PTR_DECLARATION)
 
 	VkInstance instance = VK_NULL_HANDLE;
@@ -148,11 +146,9 @@ struct SSwapChain
 
 	VkSurfaceFormatKHR surfaceFormat = { VK_FORMAT_UNDEFINED, VK_COLOR_SPACE_MAX_ENUM_KHR };
 	VkSwapchainKHR swapChain = VK_NULL_HANDLE;
+	VkImage images[MAX_IMAGE_COUNT];
 	EState state = EState::Uninitialized;
 };
-
-static constexpr size_t MAX_IMAGE_COUNT = 4;
-static constexpr size_t MAX_COMMAND_BUFFER_COUNT = MAX_IMAGE_COUNT;
 
 ///////////////////////////
 // SRecordCommandBuffer
@@ -181,7 +177,7 @@ struct SRecordCommandBuffer // state used during command buffer recording
 		barrierPresentToClear.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 		barrierPresentToClear.srcQueueFamilyIndex = UINT32_MAX;
 		barrierPresentToClear.dstQueueFamilyIndex = UINT32_MAX;
-		barrierPresentToClear.image = swapChainImages[0];
+		barrierPresentToClear.image = VK_NULL_HANDLE;
 		barrierPresentToClear.subresourceRange = imageSubresourceRange;
 
 		barrierClearToPresent.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -192,13 +188,12 @@ struct SRecordCommandBuffer // state used during command buffer recording
 		barrierClearToPresent.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 		barrierClearToPresent.srcQueueFamilyIndex = UINT32_MAX;
 		barrierClearToPresent.dstQueueFamilyIndex = UINT32_MAX;
-		barrierClearToPresent.image = swapChainImages[0];
+		barrierClearToPresent.image = VK_NULL_HANDLE;
 		barrierClearToPresent.subresourceRange = imageSubresourceRange;
 
 		clearColor = { 1.0f, 0.8f, 0.4f, 0.0f };
 	}
 
-	VkImage swapChainImages[MAX_IMAGE_COUNT];
 	VkCommandBufferBeginInfo commandBufferBeginInfo;
 	VkImageSubresourceRange imageSubresourceRange;
 	VkImageMemoryBarrier barrierPresentToClear;
@@ -221,6 +216,8 @@ static VkCommandBuffer g_presentCommandBuffers[MAX_COMMAND_BUFFER_COUNT] = { VK_
 static uint32_t g_presentCommandBufferCount = 0;
 static VkCommandPool g_presentCommandPool = VK_NULL_HANDLE;
 static SRecordCommandBuffer g_recordBufferState;
+
+static VkRenderPass g_renderPass = VK_NULL_HANDLE;
 
 /////////////////////////////////////////////////////////
 // Functions
@@ -410,7 +407,7 @@ bool RecordCommandBuffers()
 		g_device.device,
 		g_swapChain.swapChain,
 		&g_device.imageCount,
-		g_recordBufferState.swapChainImages) != VK_SUCCESS)
+		g_swapChain.images) != VK_SUCCESS)
 	{
 		puts("Vulkan could not get swap chain images!");
 		return false;
@@ -418,8 +415,8 @@ bool RecordCommandBuffers()
 
 	for (uint32_t i = 0; i < g_device.imageCount; ++i)
 	{
-		g_recordBufferState.barrierPresentToClear.image = g_recordBufferState.swapChainImages[i];
-		g_recordBufferState.barrierClearToPresent.image = g_recordBufferState.swapChainImages[i];
+		g_recordBufferState.barrierPresentToClear.image = g_swapChain.images[i];
+		g_recordBufferState.barrierClearToPresent.image = g_swapChain.images[i];
 
 		g_device.vkBeginCommandBuffer(g_presentCommandBuffers[i], &g_recordBufferState.commandBufferBeginInfo);
 		g_device.vkCmdPipelineBarrier(
@@ -436,7 +433,7 @@ bool RecordCommandBuffers()
 
 		g_device.vkCmdClearColorImage(
 			g_presentCommandBuffers[i],
-			g_recordBufferState.swapChainImages[i],
+			g_swapChain.images[i],
 			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 			&g_recordBufferState.clearColor,
 			1,
@@ -598,8 +595,8 @@ int RunPlatform()
 
 	{ // Vulkan logical device creation
 		VkDevice vkDevice;
-		uint32_t graphicsQueueFamilyIndex = INVALID_QUEUE_FAMILY_PROPERTIES_INDEX;
-		uint32_t presentQueueFamilyIndex = INVALID_QUEUE_FAMILY_PROPERTIES_INDEX;
+		uint32_t graphicsQueueFamilyIndex = vulkan::INVALID_QUEUE_FAMILY_PROPERTIES_INDEX;
+		uint32_t presentQueueFamilyIndex = vulkan::INVALID_QUEUE_FAMILY_PROPERTIES_INDEX;
 		uint32_t numDevices = 0;
 		if (vkEnumeratePhysicalDevices(vulkan::g_instance.instance, &numDevices, nullptr) != VK_SUCCESS)
 		{
@@ -635,13 +632,13 @@ int RunPlatform()
 			return eRR_Error;
 		}
 
-		if (graphicsQueueFamilyIndex == INVALID_QUEUE_FAMILY_PROPERTIES_INDEX)
+		if (graphicsQueueFamilyIndex == vulkan::INVALID_QUEUE_FAMILY_PROPERTIES_INDEX)
 		{
 			puts("Vulkan unable to find appropriate graphics queue family properties");
 			return eRR_Error;
 		}
 
-		if (presentQueueFamilyIndex == INVALID_QUEUE_FAMILY_PROPERTIES_INDEX)
+		if (presentQueueFamilyIndex == vulkan::INVALID_QUEUE_FAMILY_PROPERTIES_INDEX)
 		{
 			puts("Vulan unable to find appropriate present queue family properties");
 			return eRR_Error;
@@ -968,7 +965,56 @@ int RunPlatform()
 					VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, // finalLyout
 				}
 			};
+
+			VkAttachmentReference colorAttachmentReferences[] =
+			{
+				{
+					0, // attachment
+					VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL // layout
+				}
+			};
+
+			VkSubpassDescription subpassDescriptions[] =
+			{
+				{
+					0, // flags
+					VK_PIPELINE_BIND_POINT_GRAPHICS, // pipelineBindPoint
+					0, // inputAttachmentCount
+					nullptr, // pInputAttachments
+					1, // colorAttachmentCount
+					colorAttachmentReferences, // pColorAttachments
+					nullptr, // pResolveAttachments
+					nullptr, // pDepthStencilAttachments
+					0, // presetveAttachmentCount
+					nullptr, // pPreserveAttachments
+				}
+			};
+
+			VkRenderPassCreateInfo renderPassCreateInfo;
+			renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+			renderPassCreateInfo.pNext = nullptr;
+			renderPassCreateInfo.flags = 0;
+			renderPassCreateInfo.attachmentCount = 1;
+			renderPassCreateInfo.pAttachments = attachmentDescriptions;
+			renderPassCreateInfo.subpassCount = 1;
+			renderPassCreateInfo.pSubpasses = subpassDescriptions;
+			renderPassCreateInfo.dependencyCount = 0;
+			renderPassCreateInfo.pDependencies = nullptr;
+
+			if (vulkan::g_device.vkCreateRenderPass(
+						vulkan::g_device.device,
+						&renderPassCreateInfo,
+						vulkan::g_pAllocationCallbacks,
+						&vulkan::g_renderPass) != VK_SUCCESS)
+			{
+				puts("Vulkan failed to create render pass!");
+				return eRR_Error;
+			}
 		} // ~create render pass
+
+		{ // create frame buffers
+			
+		} // ~create frame buffers
 
 		{ // Create command buffers
 			VkCommandPoolCreateInfo commandPoolCreateInfo;
