@@ -71,6 +71,9 @@
 	x(vkDestroyFramebuffer)\
 	x(vkDestroyImageView)
 
+#define DEFAULT_SHADERS(x)\
+	x(test)
+
 namespace vulkan
 {
 /////////////////////////////////////////////////////////

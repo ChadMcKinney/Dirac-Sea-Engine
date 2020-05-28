@@ -3,7 +3,7 @@
 // Proprietary and confidential
 
 
-// Test Vertex Shader
+// Test Fragment Shader
 
 #version 450
 
