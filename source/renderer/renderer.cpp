@@ -106,6 +106,7 @@
 		platform::SFile fragmentShaders[E##name::count] = { platform::SFile() };\
 		static bool bShadersLoaded = false;\
 		void UnloadFiles() {\
+			assert(bShadersLoaded == true);\
 			bShadersLoaded = false;\
 			for (size_t i = 0; i < E##name::count; ++i){\
 				vertexShaders[i] = platform::SFile();\
@@ -113,6 +114,7 @@
 			}\
 		}\
 		bool LoadFiles() {\
+			assert(bShadersLoaded == false);\
 			bool bVertexFilesLoaded = platform::LoadFiles(vertexShaderFilePaths, E##name::count, vertexShaders);\
 			if (bVertexFilesLoaded)\
 			{\

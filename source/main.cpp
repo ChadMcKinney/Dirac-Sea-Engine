@@ -11,6 +11,7 @@
 
 ERunResult Initialize()
 {
+  puts("[DiracSea] Initializing...");
   if (platform::Initialize() != eRR_Success)
   {
     puts("Platform initialization failed!");
@@ -28,6 +29,7 @@ ERunResult Initialize()
 
 ERunResult Run()
 {
+		puts("[DiracSea] Running...");
     RunTests();
 
     bool bExit = false;
@@ -54,6 +56,7 @@ ERunResult Run()
 
 ERunResult Shutdown()
 {
+		puts("[DiracSea] Shutting down...");
     ERunResult rendererShutdownResult = renderer::Shutdown();
     if (rendererShutdownResult != eRR_Success)
     {
@@ -78,5 +81,11 @@ int main()
   }
 
   ERunResult shutdownResult = Shutdown();
-  return initializationResult | runResult | shutdownResult;
+  int diracSeaEngineResult = initializationResult | runResult | shutdownResult;
+  if (diracSeaEngineResult != eRR_Success)
+  {
+    printf("[DiracSea] exiting with error: %d\n", diracSeaEngineResult);
+  }
+
+  return diracSeaEngineResult;
 }
