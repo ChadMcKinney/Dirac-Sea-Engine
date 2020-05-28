@@ -23,6 +23,7 @@ namespace platform
 	};
 
 	// pOutArray is assumed to be the same size as numFiles
+	// caller owns data allocation (hence, unique_ptr in SFile)
 	bool LoadFiles(const char* fileNames[], size_t numFiles, SFile* pOutArray);
 } // platform namespace
 

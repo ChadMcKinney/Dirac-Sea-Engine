@@ -115,21 +115,24 @@ bool LoadFiles(const char* fileNames[], size_t numFiles, SFile* pOutArray)
 	for (size_t i = 0; i < numFiles; ++i)
 	{
 		assert(fileNames[i] && fileNames[i][0] != 0);
-		SDL_RWops* pFile = SDL_RWFromFile(fileNames[i], "r");
+		FILE* pFile = fopen(fileNames[i], "r");
 		if (pFile)
 		{
 			pOutArray[i] = SFile();
 			SFile& rFile = pOutArray[i];
-			Sint64 fileSize = SDL_RWsize(pFile);
+			fseek(pFile, 0, SEEK_END);
+			size_t fileSize = ftell(pFile);
+			fseek(pFile, 0, SEEK_SET);
 			if (fileSize > 0)
 			{
 				rFile.numBytes = fileSize;
 				rFile.pData.reset(new char[fileSize]);
-				if (SDL_RWread(pFile, rFile.pData.get(), fileSize, 1) == 0)
+				if (fread(rFile.pData.get(), 1, fileSize, pFile) != fileSize)
 				{
 					bSuccess = false;
 				}
 			}
+			fclose(pFile);
 		}
 		else
 		{

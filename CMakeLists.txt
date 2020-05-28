@@ -23,7 +23,7 @@ if (CMAKE_COMPILER_IS_GNUCC)
 endif()
 
 if (MSVC)
-    set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} /W4 /wd4201 /wd4204 /wd6255 /wd6011 /wd26812 /WX")
+    set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} /W4 /wd4201 /wd4204 /wd6255 /wd6011 /wd26812 /wd4996 /WX")
 endif()
 
 add_definitions(${CMAKE_CXX_FLAGS})
@@ -93,6 +93,19 @@ if (MSVC)
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${SDL2_DIR}/${VC_LIB_PATH_SUFFIX}/SDL2.dll"
         $<TARGET_FILE_DIR:DiracSea>
+        )
+    add_custom_command(TARGET DiracSea POST_BUILD
+        COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/compile_shaders.bat
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMENT "Compiling shaders..."
+        )
+endif()
+
+if (UNIX)
+    add_custom_command(TARGET DiracSea POST_BUILD
+        COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/compile_shaders.sh
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMENT "Compiling shaders..."
         )
 endif()
 
