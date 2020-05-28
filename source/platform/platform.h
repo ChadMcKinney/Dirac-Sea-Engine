@@ -8,8 +8,8 @@
 namespace platform
 {
 	ERunResult Initialize();
-	ERunResult RunPlatform();
-	ERunResult RunIO();
+	ERunResult RunIO(bool* pExit);
 	ERunResult Shutdown();
+	struct SDL_Window* GetWindow();
 } // platform namespace
 

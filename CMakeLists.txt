@@ -23,7 +23,7 @@ if (CMAKE_COMPILER_IS_GNUCC)
 endif()
 
 if (MSVC)
-    set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} /W4 /wd4201 /wd4204 /WX")
+    set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} /W4 /wd4201 /wd4204 /wd6255 /wd6011 /wd26812 /WX")
 endif()
 
 add_definitions(${CMAKE_CXX_FLAGS})

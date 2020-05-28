@@ -11,30 +11,59 @@
 
 ERunResult Initialize()
 {
-  ERunResult platformInitializationResult = platform::Initialize();
-  if (platformInitializationResult != 0)
-    return platformInitializationResult;
+  if (platform::Initialize() != eRR_Success)
+  {
+    puts("Platform initialization failed!");
+    return eRR_Error;
+  }
 
-	ERunResult rendererInitializationResult = renderer::Initialize();
-  if (rendererInitializationResult != 0)
-    return rendererInitializationResult;
+  if (renderer::Initialize() != eRR_Success)
+  {
+    puts("Renderer initialization failed!");
+    return eRR_Error;
+  }
 
-  return rendererInitializationResult;
+  return eRR_Success;
 }
 
 ERunResult Run()
 {
     RunTests();
-    ERunResult platformRunIOResult = platform::RunIO();
-    ERunResult renderResult = renderer::Render();
-    ERunResult platformRunResult = platform::RunPlatform();
-    return ERunResult(platformRunIOResult | renderResult | platformRunResult);
+
+    bool bExit = false;
+    ERunResult platformRunIOResult = eRR_Success;
+    ERunResult renderResult = eRR_Success;
+    while (bExit == false && (platformRunIOResult | renderResult) == eRR_Success)
+    {
+			platformRunIOResult = platform::RunIO(&bExit);
+			renderResult = renderer::Render();
+    }
+
+    if (platformRunIOResult != eRR_Success)
+    {
+      puts("Platform RunIO failed!");
+    }
+
+    if (renderResult != eRR_Success)
+    {
+      puts("Renderer render failed!");
+    }
+
+    return ERunResult(platformRunIOResult | renderResult);
 }
 
 ERunResult Shutdown()
 {
     ERunResult rendererShutdownResult = renderer::Shutdown();
+    if (rendererShutdownResult != eRR_Success)
+    {
+      puts("Renderer shutdown error!");
+    }
     ERunResult platformShutdownResult = platform::Shutdown();
+    if (platformShutdownResult != eRR_Success)
+    {
+      puts("Platform shutdown error!");
+    }
     return ERunResult(platformShutdownResult | rendererShutdownResult);
 }
 
@@ -43,7 +72,7 @@ int main()
   ERunResult initializationResult = Initialize();
 
   ERunResult runResult = eRR_Success;
-  if (initializationResult == 0)
+  if (initializationResult == eRR_Success)
   {
 		runResult = Run();
   }
