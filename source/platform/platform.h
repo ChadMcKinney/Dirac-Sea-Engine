@@ -5,11 +5,24 @@
 
 #pragma once
 
+#include <memory>
+
+struct SDL_Window;
+
 namespace platform
 {
 	ERunResult Initialize();
 	ERunResult RunIO(bool* pExit);
 	ERunResult Shutdown();
-	struct SDL_Window* GetWindow();
+	SDL_Window* GetWindow();
+
+	struct SFile
+	{
+		size_t numBytes = 0;
+		std::unique_ptr<char[]> pData = nullptr;
+	};
+
+	// pOutArray is assumed to be the same size as numFiles
+	bool LoadFiles(const char* fileNames[], size_t numFiles, SFile* pOutArray);
 } // platform namespace
 

@@ -4,6 +4,7 @@
  */
 
 #include "diracsea.h"
+#include "platform.h"
 
 #include <SDL.h>
 
@@ -105,6 +106,39 @@ ERunResult Shutdown()
 SDL_Window* GetWindow()
 {
 	return g_pWindow;
+}
+
+bool LoadFiles(const char* fileNames[], size_t numFiles, SFile* pOutArray)
+{
+	assert(numFiles > 0);
+	bool bSuccess = true;
+	for (size_t i = 0; i < numFiles; ++i)
+	{
+		assert(fileNames[i] && fileNames[i][0] != 0);
+		SDL_RWops* pFile = SDL_RWFromFile(fileNames[i], "r");
+		if (pFile)
+		{
+			pOutArray[i] = SFile();
+			SFile& rFile = pOutArray[i];
+			Sint64 fileSize = SDL_RWsize(pFile);
+			if (fileSize > 0)
+			{
+				rFile.numBytes = fileSize;
+				rFile.pData.reset(new char[fileSize]);
+				if (SDL_RWread(pFile, rFile.pData.get(), fileSize, 1) == 0)
+				{
+					bSuccess = false;
+				}
+			}
+		}
+		else
+		{
+			pOutArray[i] = SFile();
+			printf("[%s] Failed to load file: %s", __FUNCTION__, fileNames[i]);
+			bSuccess = false;
+		}
+	}
+	return bSuccess;
 }
 
 } // platform namespace
