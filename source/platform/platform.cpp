@@ -60,7 +60,28 @@ ERunResult Initialize()
 ERunResult RunIO(bool* pExit)
 {
 	assert(pExit != nullptr);
-	*pExit = true;
+
+	SDL_Event event;
+	while (SDL_PollEvent(&event))
+	{
+		switch (event.type)
+		{
+		case SDL_KEYDOWN:
+		case SDL_KEYUP:
+			if (event.key.keysym.sym == SDLK_ESCAPE ||
+					(event.key.keysym.sym == SDLK_q && event.key.keysym.mod & KMOD_LCTRL))
+			{
+				*pExit = true;
+			}
+			break;
+		case SDL_QUIT:
+			*pExit = true;
+			break;
+		default:
+			break;
+		}
+	}
+
 	return eRR_Success;
 }
 
@@ -73,7 +94,7 @@ ERunResult Shutdown()
 	}
 	else
 	{
-		puts("[%] window is null!");
+		puts("[platform::Shutdown] window is null!");
 		shutdownResult = eRR_Error;
 	}
 

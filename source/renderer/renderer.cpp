@@ -1206,48 +1206,45 @@ ERunResult Render()
 	presentInfo.pImageIndices = nullptr;
 	presentInfo.pResults = nullptr;
 
-	for (size_t i = 0; i < 4096; ++i)
+	acquireNextImageResult = vulkan::g_device.vkAcquireNextImageKHR(
+		vulkan::g_device.handle,
+		vulkan::g_swapChain.handle,
+		timeout,
+		vulkan::g_imageAvailableSemaphore,
+		fence,
+		&imageIndex);
+
+	switch (acquireNextImageResult)
 	{
-		acquireNextImageResult = vulkan::g_device.vkAcquireNextImageKHR(
-			vulkan::g_device.handle,
-			vulkan::g_swapChain.handle,
-			timeout,
-			vulkan::g_imageAvailableSemaphore,
-			fence,
-			&imageIndex);
+	case VK_SUCCESS:
+	case VK_SUBOPTIMAL_KHR:
+		break;
+	case VK_ERROR_OUT_OF_DATE_KHR:
+		break; // TODO: HANDLE WINDOW RESIZE
+	default:
+		puts("A problem occured during swap chain image acquisition!");
+		return eRR_Error;
+	}
 
-		switch (acquireNextImageResult)
-		{
-		case VK_SUCCESS:
-		case VK_SUBOPTIMAL_KHR:
-			break;
-		case VK_ERROR_OUT_OF_DATE_KHR:
-			break; // TODO: HANDLE WINDOW RESIZE
-		default:
-			puts("A problem occured during swap chain image acquisition!");
-			return eRR_Error;
-		}
+	submitInfo.pCommandBuffers = &vulkan::g_presentCommandBuffers[imageIndex];
+	if (vulkan::g_device.vkQueueSubmit(vulkan::g_device.presentQueue, 1, &submitInfo, fence) != VK_SUCCESS)
+	{
+		puts("Vulkan failed to submit to presentation queue!");
+		return eRR_Error;
+	}
 
-		submitInfo.pCommandBuffers = &vulkan::g_presentCommandBuffers[imageIndex];
-		if (vulkan::g_device.vkQueueSubmit(vulkan::g_device.presentQueue, 1, &submitInfo, fence) != VK_SUCCESS)
-		{
-			puts("Vulkan failed to submit to presentation queue!");
-			return eRR_Error;
-		}
-
-		presentInfo.pImageIndices = &imageIndex;
-		presentResult = vulkan::g_device.vkQueuePresentKHR(vulkan::g_device.presentQueue, &presentInfo);
-		switch (presentResult)
-		{
-		case VK_SUCCESS:
-		case VK_SUBOPTIMAL_KHR:
-			break;
-		case VK_ERROR_OUT_OF_DATE_KHR:
-			break; // TODO: HANDLE WINDOW RESIZE
-		default:
-			puts("A problem occured during image presentation!");
-			return eRR_Error;
-		}
+	presentInfo.pImageIndices = &imageIndex;
+	presentResult = vulkan::g_device.vkQueuePresentKHR(vulkan::g_device.presentQueue, &presentInfo);
+	switch (presentResult)
+	{
+	case VK_SUCCESS:
+	case VK_SUBOPTIMAL_KHR:
+		break;
+	case VK_ERROR_OUT_OF_DATE_KHR:
+		break; // TODO: HANDLE WINDOW RESIZE
+	default:
+		puts("A problem occured during image presentation!");
+		return eRR_Error;
 	}
 
   return eRR_Success;
