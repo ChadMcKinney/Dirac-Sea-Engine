@@ -99,6 +99,11 @@ if (MSVC)
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMENT "Compiling shaders..."
         )
+    add_custom_command(TARGET DiracSea POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/data
+        $<TARGET_FILE_DIR:DiracSea>/data
+        )
 endif()
 
 if (UNIX)

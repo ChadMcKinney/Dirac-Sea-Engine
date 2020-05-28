@@ -7,7 +7,6 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
-#include <numeric>
 	
 enum ERunResult : int32_t
 {
@@ -40,6 +39,7 @@ namespace E##name\
 		else\
 			return "ENUM_UNDEFINED";\
 	}\
+	static constexpr size_t count = (size_t) Enum::ENUM_COUNT;\
 }
 
 #define AUTO_ENUM(name, list, type)\
@@ -64,4 +64,5 @@ namespace E##name\
 		else\
 			return "ENUM_UNDEFINED";\
 	}\
+	static constexpr size_t count = (size_t) Enum::ENUM_COUNT;\
 }

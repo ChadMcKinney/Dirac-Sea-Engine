@@ -6,6 +6,8 @@
 #include "diracsea.h"
 #include "platform.h"
 
+#include <filesystem>
+#include <iostream>
 #include <SDL.h>
 
 // NOTES TO SELF:
@@ -108,9 +110,11 @@ SDL_Window* GetWindow()
 	return g_pWindow;
 }
 
+// TODO: consider pak filesystem instead of just standard file IO
 bool LoadFiles(const char* fileNames[], size_t numFiles, SFile* pOutArray)
 {
 	assert(numFiles > 0);
+	assert(pOutArray != nullptr);
 	bool bSuccess = true;
 	for (size_t i = 0; i < numFiles; ++i)
 	{
@@ -122,13 +126,15 @@ bool LoadFiles(const char* fileNames[], size_t numFiles, SFile* pOutArray)
 			SFile& rFile = pOutArray[i];
 			fseek(pFile, 0, SEEK_END);
 			size_t fileSize = ftell(pFile);
-			fseek(pFile, 0, SEEK_SET);
+			rewind(pFile);
 			if (fileSize > 0)
 			{
-				rFile.numBytes = fileSize;
 				rFile.pData.reset(new char[fileSize]);
-				if (fread(rFile.pData.get(), 1, fileSize, pFile) != fileSize)
+				rFile.numBytes = fread(rFile.pData.get(), 1, fileSize, pFile);
+				int fileError = ferror(pFile);
+				if (fileError != 0)
 				{
+					printf("[%s] file error: %d\n", __FUNCTION__, fileError);
 					bSuccess = false;
 				}
 			}
@@ -137,7 +143,7 @@ bool LoadFiles(const char* fileNames[], size_t numFiles, SFile* pOutArray)
 		else
 		{
 			pOutArray[i] = SFile();
-			printf("[%s] Failed to load file: %s", __FUNCTION__, fileNames[i]);
+			printf("[%s] Failed to load file: %s\n", __FUNCTION__, fileNames[i]);
 			bSuccess = false;
 		}
 	}

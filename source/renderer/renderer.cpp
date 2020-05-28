@@ -71,10 +71,71 @@
 	x(vkDestroyFramebuffer)\
 	x(vkDestroyImageView)
 
+
+///////////////////////////
+// Shader Bank
+
+// Takes a macro list and creates an enum and an array of vertex and fragment shader file names
+// provides a namespace for loading/unloading the files and querying by enum for O(1) access
+
+// usage:
+// #define MY_SHADERS_LIST(x)\
+// 	x(shader1)
+// 	x(shader2)
+//
+// SHADER_BANK(MyShaders, MY_SHADERS_LIST)
+// MyShaders::LoadFiles();
+// MyShaders::GetVertexShader(EMyShaders::Enum::shader1);
+// MyShaders::GetFragmentShader(EMyShaders::Enum::shader1);
+// MyShaders::UnloadFiles();
+
+// TODO: sort out working directory and data directory via cmake
+#define SHADER_BANK_MEMBER_VERT_FILENAME(member) "../data/shaders/"#member".vert.spv",
+#define SHADER_BANK_MEMBER_FRAG_FILENAME(member) "../data/shaders/"#member".frag.spv",
+
+#define SHADER_BANK(name, list)\
+	SCOPED_AUTO_ENUM(name, list, uint16_t)\
+	namespace name {\
+		const char* vertexShaderFilePaths[E##name::count] = {\
+			list(SHADER_BANK_MEMBER_VERT_FILENAME)\
+		};\
+		const char* fragmentShaderFilePaths[E##name::count] = {\
+			list(SHADER_BANK_MEMBER_FRAG_FILENAME)\
+		};\
+		platform::SFile vertexShaders[E##name::count];\
+		platform::SFile fragmentShaders[E##name::count];\
+		void UnloadFiles() {\
+			for (size_t i = 0; i < E##name::count; ++i){\
+				vertexShaders[i] = platform::SFile();\
+				fragmentShaders[i] = platform::SFile();\
+			}\
+		}\
+		bool LoadFiles() {\
+			bool bVertexFilesLoaded = platform::LoadFiles(vertexShaderFilePaths, E##name::count, vertexShaders);\
+			if (bVertexFilesLoaded)\
+			{\
+				bool bFragFilesLoaded = platform::LoadFiles(fragmentShaderFilePaths, E##name::count, fragmentShaders);\
+				if (bFragFilesLoaded) return true;\
+			}\
+			UnloadFiles();\
+			return false;\
+		}\
+		inline const platform::SFile& GetVertexShader(E##name::Enum shaderEnum){\
+			assert((size_t) shaderEnum < E##name::count);\
+			return vertexShaders[(size_t) shaderEnum];\
+		}\
+		inline const platform::SFile& GetFragmentShader(E##name::Enum shaderEnum){\
+			assert((size_t) shaderEnum < E##name::count);\
+			return fragmentShaders[(size_t) shaderEnum];\
+		}\
+	}
+
+///////////////////////////
+// Default Shaders
 #define DEFAULT_SHADERS(x)\
 	x(test)
 
-SCOPED_AUTO_ENUM(DefaultShaders, DEFAULT_SHADERS, uint8_t)
+SHADER_BANK(DefaultShaders, DEFAULT_SHADERS)
 
 namespace vulkan
 {
@@ -601,6 +662,7 @@ ERunResult DestroyState()
 	g_instance.state = SInstance::EState::Garbage;
 
 	SDL_Vulkan_UnloadLibrary();
+	DefaultShaders::UnloadFiles();
 	return destroyResult;
 }
 
@@ -613,6 +675,14 @@ namespace renderer
 ERunResult Initialize()
 {
 	SDL_Window* pWindow = platform::GetWindow();
+	assert(pWindow != nullptr);
+
+	if (!DefaultShaders::LoadFiles())
+	{
+		puts("Failed to load default shader files!");
+		return eRR_Error;
+	}
+
 	{ // Vulkan instance creation
 		uint32_t extensionCount = 0;
 		SDL_Vulkan_GetInstanceExtensions(pWindow, &extensionCount, nullptr);
