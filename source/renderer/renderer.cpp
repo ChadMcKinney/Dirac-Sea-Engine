@@ -74,6 +74,8 @@
 #define DEFAULT_SHADERS(x)\
 	x(test)
 
+SCOPED_AUTO_ENUM(DefaultShaders, DEFAULT_SHADERS, uint8_t)
+
 namespace vulkan
 {
 /////////////////////////////////////////////////////////
