@@ -102,9 +102,11 @@
 		const char* fragmentShaderFilePaths[E##name::count] = {\
 			list(SHADER_BANK_MEMBER_FRAG_FILENAME)\
 		};\
-		platform::SFile vertexShaders[E##name::count];\
-		platform::SFile fragmentShaders[E##name::count];\
+		platform::SFile vertexShaders[E##name::count] = { platform::SFile() };\
+		platform::SFile fragmentShaders[E##name::count] = { platform::SFile() };\
+		static bool bShadersLoaded = false;\
 		void UnloadFiles() {\
+			bShadersLoaded = false;\
 			for (size_t i = 0; i < E##name::count; ++i){\
 				vertexShaders[i] = platform::SFile();\
 				fragmentShaders[i] = platform::SFile();\
@@ -115,17 +117,19 @@
 			if (bVertexFilesLoaded)\
 			{\
 				bool bFragFilesLoaded = platform::LoadFiles(fragmentShaderFilePaths, E##name::count, fragmentShaders);\
-				if (bFragFilesLoaded) return true;\
+				if (bFragFilesLoaded) bShadersLoaded = true; return true;\
 			}\
 			UnloadFiles();\
 			return false;\
 		}\
 		inline const platform::SFile& GetVertexShader(E##name::Enum shaderEnum){\
 			assert((size_t) shaderEnum < E##name::count);\
+			assert(bShadersLoaded);\
 			return vertexShaders[(size_t) shaderEnum];\
 		}\
 		inline const platform::SFile& GetFragmentShader(E##name::Enum shaderEnum){\
 			assert((size_t) shaderEnum < E##name::count);\
+			assert(bShadersLoaded);\
 			return fragmentShaders[(size_t) shaderEnum];\
 		}\
 	}
