@@ -35,6 +35,7 @@ set(INCLUDE_DIR
     source/math
     source/math/geometry
     source/platform
+    source/renderer
     source/tests
     source/tests/math
     source/tests/geometry
@@ -47,6 +48,7 @@ set(project_SOURCES
     source/main.cpp
     source/math/coordinate_system.cpp
     source/platform/platform.cpp
+    source/renderer/renderer.cpp
     source/tests/tests.cpp
     source/tests/test_framework.cpp
     source/tests/math/geometry/geometry_tests.cpp
@@ -56,6 +58,7 @@ set(project_SOURCES
     )
 
 set(project_HEADERS
+    source/diracsea.h
     source/math/types.h
     source/math/matrix22.h
     source/math/matrix33.h
@@ -73,6 +76,7 @@ set(project_HEADERS
     source/math/geometry/sphere.h
     source/math/geometry/triangle.h
     source/platform/platform.h
+    source/renderer/renderer.h
     source/tests/tests.h
     source/tests/test_framework.h
     source/tests/math/geometry/geometry_tests.h

@@ -3,20 +3,28 @@
  * Proprietary and confidential
  */
 
+#include "diracsea.h"
+
 #include <cassert>
-#include <chrono>
-#include <cstdint>
-#include <cstdio>
-#include <cstring>
 #include <SDL.h>
 #include <SDL_vulkan.h>
-#include <thread>
 #include <Vulkan.h>
 
-#pragma warning(push)
-#pragma warning(disable: 6255) // disable alloca overflow warnings
-#pragma warning(disable: 6011) // disable null pointer dereference, we are assert pointer validity prior to access
-#pragma warning(disable: 26812) // Vulkan uses unscoped enums, shutup msvc
+// NOTES TO SELF:
+
+// BREAK OUT VULKAN CODE INTO DIFFERNT FILE
+// HAVE Main work like this:
+
+// Platform::Initialize
+// Renderer::Initialize
+//	-> Use a #define list for shaders (should be precompiled to spir-v from via cmake build step, gathers all shaders in folder and compiles them!)
+//	-> During initialize: Automatically load them into array (using TFileBatchHandle Platform::LoadFileBatch(const char* fileNames[], size_t numFiles, const char** outData), enum value is index
+//  -> can then reference them during graphics pipeline building
+// Renderer::Render while (true)
+// Renderer::Shutdown
+//	-> Calls Platform::UnloadFiles(TFileBatchHandle fileBatchHandle)
+//  free dynamic memory allocation for compiled shaders
+// Platform::Shutdown
 
 #define VK_FUNCTION_PTR_DECLARATION(fun) PFN_##fun fun = nullptr;
 
@@ -75,12 +83,6 @@
 	x(vkDestroyRenderPass)\
 	x(vkDestroyFramebuffer)\
 	x(vkDestroyImageView)
-	
-enum ERunResult : int
-{
-	eRR_Success = 0,
-	eRR_Error = 1
-};
 
 namespace vulkan
 {
@@ -290,15 +292,28 @@ ERunResult SetInstance(VkInstance _instance)
 	return eRR_Success;
 }
 
-void SetSwapChain(VkSwapchainKHR _swapChain, VkSurfaceFormatKHR _surfaceFormat, uint32_t _imageCount)
+bool CreateSwapChainImageViews();
+bool SetSwapChain(VkSwapchainKHR _swapChain, VkSurfaceFormatKHR _surfaceFormat, uint32_t _imageCount, VkImage* _swapChainImages, const VkExtent2D& _extent)
 {
 	assert(g_swapChain.state == SSwapChain::EState::Uninitialized);
 	assert(_swapChain != VK_NULL_HANDLE);
 	assert(_surfaceFormat.format != VK_FORMAT_UNDEFINED);
+
 	g_swapChain.handle = _swapChain;
 	g_swapChain.surfaceFormat = _surfaceFormat;
 	g_swapChain.imageCount = _imageCount;
+	g_swapChain.extent = _extent;
+
+	for (uint32_t i = 0; i < _imageCount; ++i)
+	{
+		g_swapChain.images[i].handle = _swapChainImages[i];
+	}
+
+	if (!CreateSwapChainImageViews())
+		return false;
+
 	g_swapChain.state = SSwapChain::EState::Initialized;
+	return true;
 }
 
 void SetPresentationSurface(VkSurfaceKHR _surface)
@@ -414,19 +429,50 @@ bool CheckPhysicalDeviceProperties(
 	return false;
 }
 
+bool CreateSwapChainImageViews()
+{
+	assert(g_device.state == SDevice::EState::Initialized);
+
+	VkImageViewCreateInfo imageViewCreateInfo;
+	imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	imageViewCreateInfo.pNext = nullptr;
+	imageViewCreateInfo.flags = 0;
+	imageViewCreateInfo.image = nullptr; // defined in loop below
+	imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	imageViewCreateInfo.format = g_swapChain.surfaceFormat.format;
+
+	imageViewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+	imageViewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+	imageViewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+	imageViewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+	imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
+	imageViewCreateInfo.subresourceRange.levelCount = 1;
+	imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+	imageViewCreateInfo.subresourceRange.layerCount = 1;
+
+	for (uint32_t i = 0; i < g_swapChain.imageCount; ++i)
+	{
+		imageViewCreateInfo.image = g_swapChain.images[i].handle;
+		if (g_device.vkCreateImageView(
+			g_device.handle,
+			&imageViewCreateInfo,
+			g_pAllocationCallbacks,
+			&g_swapChain.images[i].view) != VK_SUCCESS)
+		{
+			puts("Vulkan failed to create image view!");
+			return false;
+		}
+	}
+
+	return true;
+}
+
 bool RecordCommandBuffers()
 {
-	/* DELETE THIS?
-	if (g_device.vkGetSwapchainImagesKHR(
-		g_device.handle,
-		g_swapChain.handle,
-		&g_swapChain.imageCount,
-		g_swapChain.images) != VK_SUCCESS)
-	{
-		puts("Vulkan could not get swap chain images!");
-		return false;
-	}
-	*/
+	assert(g_device.state == SDevice::EState::Initialized);
+	assert(g_swapChain.state == SSwapChain::EState::Initialized);
 
 	for (uint32_t i = 0; i < g_swapChain.imageCount; ++i)
 	{
@@ -526,7 +572,7 @@ void DestroyState()
 namespace platform
 {
 
-int RunPlatform()
+ERunResult RunPlatform()
 {
 	/////////////////////////////////////////////////////////
 	// Initialization
@@ -962,7 +1008,27 @@ int RunPlatform()
 			return eRR_Error;
 		}
 
-		vulkan::SetSwapChain(newSwapChain, surfaceFormat, imageCount);
+		if (oldSwapChain != VK_NULL_HANDLE)
+		{
+			vulkan::g_device.vkDestroySwapchainKHR(vulkan::g_device.handle, oldSwapChain, vulkan::g_pAllocationCallbacks);
+		}
+
+		VkImage* swapChainImages = (VkImage*)alloca(sizeof(VkImage) * imageCount);
+		if (vulkan::g_device.vkGetSwapchainImagesKHR(
+			vulkan::g_device.handle,
+			newSwapChain,
+			&imageCount,
+			swapChainImages) != VK_SUCCESS)
+		{
+			puts("Vulkan could not get swap chain images!");
+			return eRR_Error;
+		}
+
+		if (!vulkan::SetSwapChain(newSwapChain, surfaceFormat, imageCount, swapChainImages, swapChainExtent))
+		{
+			puts("Failed to set initialize swap chain!");
+			return eRR_Error;
+		}
 
 		{ // Create render pass
 			VkAttachmentDescription attachmentDescriptions[] =
@@ -1033,7 +1099,7 @@ int RunPlatform()
 			frameBufferCreateInfo.flags = 0;
 			frameBufferCreateInfo.renderPass = vulkan::g_renderPass;
 			frameBufferCreateInfo.attachmentCount = 1;
-			frameBufferCreateInfo.pAttachments = nullptr; // defined in loop
+			frameBufferCreateInfo.pAttachments = nullptr; // defined in loop below
 			frameBufferCreateInfo.width = 300;
 			frameBufferCreateInfo.height = 300;
 			frameBufferCreateInfo.layers = 1;
@@ -1041,6 +1107,15 @@ int RunPlatform()
 			for (uint32_t i = 0; i < vulkan::g_swapChain.imageCount; ++i)
 			{
 				frameBufferCreateInfo.pAttachments = &vulkan::g_swapChain.images[i].view;
+				if (vulkan::g_device.vkCreateFramebuffer(
+					vulkan::g_device.handle,
+					&frameBufferCreateInfo,
+					vulkan::g_pAllocationCallbacks,
+					vulkan::g_frameBuffers) != VK_SUCCESS)
+				{
+					puts("Vulkan failed to create frame buffer!");
+					return eRR_Error;
+				}
 			}
 		} // ~create frame buffers
 
@@ -1083,11 +1158,6 @@ int RunPlatform()
 				puts("Vulkan failed to record command buffers!");
 				return eRR_Error;
 			}
-		}
-
-		if (oldSwapChain != VK_NULL_HANDLE)
-		{
-			vulkan::g_device.vkDestroySwapchainKHR(vulkan::g_device.handle, oldSwapChain, vulkan::g_pAllocationCallbacks);
 		}
 	} // ~Vulkan swap chain creation
 
@@ -1177,6 +1247,19 @@ int RunPlatform()
 	return eRR_Success;
 }
 
-} // platform namespace
+ERunResult Initialize()
+{
+	return eRR_Success;
+}
 
-#pragma warning(pop)
+ERunResult RunIO()
+{
+	return eRR_Success;
+}
+
+ERunResult Shutdown()
+{
+	return eRR_Success;
+}
+
+} // platform namespace

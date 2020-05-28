@@ -5,11 +5,9 @@
 
 #pragma once
 
-namespace platform
+namespace renderer
 {
 	ERunResult Initialize();
-	ERunResult RunPlatform();
-	ERunResult RunIO();
+	ERunResult Render();
 	ERunResult Shutdown();
-} // platform namespace
-
+} // renderer namespace
