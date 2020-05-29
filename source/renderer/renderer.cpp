@@ -71,77 +71,6 @@
 	x(vkDestroyFramebuffer)\
 	x(vkDestroyImageView)
 
-
-///////////////////////////
-// Shader Bank
-
-// Takes a macro list and creates an enum and an array of vertex and fragment shader file names
-// provides a namespace for loading/unloading the files and querying by enum for O(1) access
-
-// usage:
-// #define MY_SHADERS_LIST(x)\
-// 	x(shader1)
-// 	x(shader2)
-//
-// SHADER_BANK(MyShaders, MY_SHADERS_LIST)
-// MyShaders::LoadFiles();
-// MyShaders::GetVertexShader(EMyShaders::Enum::shader1);
-// MyShaders::GetFragmentShader(EMyShaders::Enum::shader1);
-// MyShaders::UnloadFiles();
-
-#define SHADER_BANK_MEMBER_VERT_FILENAME(member) "data/shaders/"#member".vert.spv",
-#define SHADER_BANK_MEMBER_FRAG_FILENAME(member) "data/shaders/"#member".frag.spv",
-
-#define SHADER_BANK(name, list)\
-	SCOPED_AUTO_ENUM(name, list, uint16_t)\
-	namespace name {\
-		const char* vertexShaderFilePaths[E##name::count] = {\
-			list(SHADER_BANK_MEMBER_VERT_FILENAME)\
-		};\
-		const char* fragmentShaderFilePaths[E##name::count] = {\
-			list(SHADER_BANK_MEMBER_FRAG_FILENAME)\
-		};\
-		platform::SFile vertexShaders[E##name::count] = { platform::SFile() };\
-		platform::SFile fragmentShaders[E##name::count] = { platform::SFile() };\
-		static bool bShadersLoaded = false;\
-		void UnloadFiles() {\
-			assert(bShadersLoaded == true);\
-			bShadersLoaded = false;\
-			for (size_t i = 0; i < E##name::count; ++i){\
-				vertexShaders[i] = platform::SFile();\
-				fragmentShaders[i] = platform::SFile();\
-			}\
-		}\
-		bool LoadFiles() {\
-			assert(bShadersLoaded == false);\
-			bool bVertexFilesLoaded = platform::LoadFiles(vertexShaderFilePaths, E##name::count, vertexShaders);\
-			if (bVertexFilesLoaded)\
-			{\
-				bool bFragFilesLoaded = platform::LoadFiles(fragmentShaderFilePaths, E##name::count, fragmentShaders);\
-				if (bFragFilesLoaded) bShadersLoaded = true; return true;\
-			}\
-			UnloadFiles();\
-			return false;\
-		}\
-		inline const platform::SFile& GetVertexShader(E##name::Enum shaderEnum){\
-			assert((size_t) shaderEnum < E##name::count);\
-			assert(bShadersLoaded);\
-			return vertexShaders[(size_t) shaderEnum];\
-		}\
-		inline const platform::SFile& GetFragmentShader(E##name::Enum shaderEnum){\
-			assert((size_t) shaderEnum < E##name::count);\
-			assert(bShadersLoaded);\
-			return fragmentShaders[(size_t) shaderEnum];\
-		}\
-	}
-
-///////////////////////////
-// Default Shaders
-#define DEFAULT_SHADERS(x)\
-	x(test)
-
-SHADER_BANK(DefaultShaders, DEFAULT_SHADERS)
-
 namespace vulkan
 {
 /////////////////////////////////////////////////////////
@@ -290,6 +219,180 @@ static SRecordCommandBuffer g_recordBufferState;
 
 static VkRenderPass g_renderPass = VK_NULL_HANDLE;
 static VkFramebuffer g_frameBuffers[MAX_IMAGE_COUNT] = { VK_NULL_HANDLE };
+
+///////////////////////////
+// Shader Bank
+
+// Takes a macro list and creates an enum and an array of vertex and fragment shader file names
+// provides a static class instance for loading/unloading the shader files, 
+// creating/destroying shader modules and querying by enum for O(1) access
+
+// usage:
+// #define MY_SHADERS_LIST(x)\
+// 	x(shader1)
+// 	x(shader2)
+//
+// SHADER_BANK(MyShaders, MY_SHADERS_LIST)
+//
+// MyShaders.LoadFiles();
+// MyShaders.GetVertexShader(EMyShaders::Enum::shader1);
+// MyShaders.GetFragmentShader(EMyShaders::Enum::shader1);
+// MyShaders.CreateShaderModules();
+// MyShaders.DestroyShaderModules();
+// MyShaders.UnloadFiles();
+
+VkShaderModule CreateShaderModule(const char* fileName, const platform::SFile& shaderFile);
+
+template <typename Enum, size_t EnumCount>
+class SShaderBankState
+{
+public:
+	SShaderBankState(const char** _vertexShaderFilePaths, const char** _fragmentShaderFilePaths)
+		: vertexShaderFilePaths(_vertexShaderFilePaths)
+		, fragmentShaderFilePaths(_fragmentShaderFilePaths)
+	{
+		assert(vertexShaderFilePaths);
+		assert(fragmentShaderFilePaths);
+	}
+
+	bool UnloadFiles()
+	{
+		bool bSuccess = bShadersLoaded;
+		for (size_t i = 0; i < EnumCount; ++i)
+		{
+			vertexShaders[i] = platform::SFile();
+			fragmentShaders[i] = platform::SFile();
+		}
+		bShadersLoaded = false;
+		return bSuccess;
+	}
+
+	bool LoadFiles()
+	{
+		assert(bShadersLoaded == false);
+		bShadersLoaded = true;
+		bool bVertexFilesLoaded = platform::LoadFiles(vertexShaderFilePaths, EnumCount, vertexShaders);
+		if (bVertexFilesLoaded)
+		{
+			bool bFragFilesLoaded = platform::LoadFiles(fragmentShaderFilePaths, EnumCount, fragmentShaders);
+			if (bFragFilesLoaded) return true;
+		}
+		UnloadFiles();
+		bShadersLoaded = false;
+		return false;
+	}
+
+	bool DestroyShaderModules()
+	{
+		assert(bShadersLoaded == true);
+		bool bSuccess = bShaderModulesCreated;
+		for (size_t i = 0; i < EnumCount; ++i)
+		{
+			g_device.vkDestroyShaderModule(g_device.handle, vertexShaderModules[i], g_pAllocationCallbacks);
+			vertexShaderModules[i] = VK_NULL_HANDLE;
+			g_device.vkDestroyShaderModule(g_device.handle, fragmentShaderModules[i], g_pAllocationCallbacks);
+			fragmentShaderModules[i] = VK_NULL_HANDLE;
+		}
+		bShaderModulesCreated = false;
+		return bSuccess;
+	}
+
+	bool CreateShaderModules()
+	{
+		assert(bShadersLoaded == true);
+		assert(bShaderModulesCreated == false);
+		bool bSuccess = true;
+		for (size_t i = 0; i < EnumCount && bSuccess; ++i)
+		{
+			vertexShaderModules[i] = CreateShaderModule(vertexShaderFilePaths[i], vertexShaders[i]);
+			fragmentShaderModules[i] = CreateShaderModule(fragmentShaderFilePaths[i], fragmentShaders[i]);
+			bSuccess &= vertexShaderModules[i] != VK_NULL_HANDLE && fragmentShaderModules[i] != VK_NULL_HANDLE;
+		}
+
+		bShaderModulesCreated = true;
+		if (bSuccess == false)
+		{
+			DestroyShaderModules();
+			return false;
+		}
+
+		return true;
+	}
+
+	inline const char* GetVertexShaderFilePath(Enum shaderEnum)
+	{
+		assert((size_t)shaderEnum < EnumCount);
+		assert(bShadersLoaded);
+		return vertexShaderFilePaths[(size_t)shaderEnum];
+	}
+
+	inline const char* GetFragmentShaderFilePath(Enum shaderEnum)
+	{
+		assert((size_t)shaderEnum < EnumCount);
+		assert(bShadersLoaded);
+		return fragmentShaderFilePaths[(size_t)shaderEnum];
+	}
+
+	inline const platform::SFile& GetVertexShader(Enum shaderEnum)
+	{
+		assert((size_t)shaderEnum < EnumCount);
+		assert(bShadersLoaded);
+		return vertexShaders[(size_t)shaderEnum];
+	}
+
+	inline const platform::SFile& GetFragmentShader(Enum shaderEnum)
+	{
+		assert((size_t)shaderEnum < EnumCount);
+		assert(bShadersLoaded);
+		return fragmentShaders[(size_t)shaderEnum];
+	}
+
+	inline VkShaderModule GetVertexShaderModule(Enum shaderEnum)
+	{
+		assert((size_t)shaderEnum < EnumCount);
+		assert(bShaderModulesCreated);
+		return vertexShaderModules[(size_t)shaderEnum];
+	}
+
+	inline VkShaderModule GetFragmentShaderModule(Enum shaderEnum)
+	{
+		assert((size_t)shaderEnum < EnumCount);
+		assert(bShaderModulesCreated);
+		return fragmentShaderModules[(size_t)shaderEnum];
+	}
+
+private:
+	const char** vertexShaderFilePaths;
+	const char** fragmentShaderFilePaths;
+	platform::SFile vertexShaders[EnumCount] = { platform::SFile() };
+	platform::SFile fragmentShaders[EnumCount] = { platform::SFile() };
+	VkShaderModule vertexShaderModules[EnumCount] = { VK_NULL_HANDLE };
+	VkShaderModule fragmentShaderModules[EnumCount] = { VK_NULL_HANDLE };
+	bool bShadersLoaded = false;
+	bool bShaderModulesCreated = false;
+};
+
+#define SHADER_BANK_MEMBER_VERT_FILENAME(member) "data/shaders/"#member".vert.spv",
+#define SHADER_BANK_MEMBER_FRAG_FILENAME(member) "data/shaders/"#member".frag.spv",
+
+#define SHADER_BANK(name, list)\
+	SCOPED_AUTO_ENUM(name, list, uint16_t)\
+	namespace __##name {\
+		const char* vertexShaderFilePaths[E##name::count] = {\
+			list(SHADER_BANK_MEMBER_VERT_FILENAME)\
+		};\
+		const char* fragmentShaderFilePaths[E##name::count] = {\
+			list(SHADER_BANK_MEMBER_FRAG_FILENAME)\
+		};\
+	}\
+	static SShaderBankState<E##name::Enum, E##name::count> name(__##name::vertexShaderFilePaths, __##name::fragmentShaderFilePaths);\
+
+///////////////////////////
+// Default Shaders
+#define DEFAULT_SHADERS(x)\
+	x(test)
+
+SHADER_BANK(DefaultShaders, DEFAULT_SHADERS)
 
 /////////////////////////////////////////////////////////
 // Functions
@@ -580,6 +683,32 @@ bool RecordCommandBuffers()
 	return true;
 }
 
+VkShaderModule CreateShaderModule(const char* fileName, const platform::SFile& shaderFile)
+{
+	assert(shaderFile.numBytes > 0);
+	assert(shaderFile.pData != nullptr);
+	assert(fileName != nullptr);
+	VkShaderModuleCreateInfo  shaderModuleCreateInfo;
+	shaderModuleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	shaderModuleCreateInfo.pNext = nullptr;
+	shaderModuleCreateInfo.flags = 0;
+	shaderModuleCreateInfo.codeSize = shaderFile.numBytes;
+	shaderModuleCreateInfo.pCode = reinterpret_cast<const uint32_t*>(shaderFile.pData.get());
+
+	VkShaderModule shaderModule;
+	if (g_device.vkCreateShaderModule(
+		g_device.handle,
+		&shaderModuleCreateInfo,
+		g_pAllocationCallbacks,
+		&shaderModule) != VK_SUCCESS)
+	{
+		printf("Failed to create shader module for shader file: %s\n", fileName);
+		return VK_NULL_HANDLE;
+	}
+
+	return shaderModule;
+}
+
 ERunResult DestroyState()
 {
 	ERunResult destroyResult = g_device.state == SDevice::EState::Initialized ? eRR_Success : eRR_Error;
@@ -627,6 +756,12 @@ ERunResult DestroyState()
 			destroyResult = eRR_Error;
 		}
 
+		if (DefaultShaders.DestroyShaderModules() == false)
+		{
+			puts("[Renderer] Unloading destroying default shader modules found unexpected behavior!");
+			destroyResult = eRR_Error;
+		}
+
 		if (g_swapChain.state == SSwapChain::EState::Initialized && g_swapChain.handle != VK_NULL_HANDLE)
 		{
 			g_device.vkDestroySwapchainKHR(g_device.handle, g_swapChain.handle, g_pAllocationCallbacks);
@@ -667,7 +802,13 @@ ERunResult DestroyState()
 	g_instance.state = SInstance::EState::Garbage;
 
 	SDL_Vulkan_UnloadLibrary();
-	DefaultShaders::UnloadFiles();
+
+	if (DefaultShaders.UnloadFiles() == false)
+	{
+		puts("[Renderer] Unloading default shader files found unexpected behavior!");
+		destroyResult = eRR_Error;
+	}
+
 	return destroyResult;
 }
 
@@ -682,7 +823,7 @@ ERunResult Initialize()
 	SDL_Window* pWindow = platform::GetWindow();
 	assert(pWindow != nullptr);
 
-	if (!DefaultShaders::LoadFiles())
+	if (!vulkan::DefaultShaders.LoadFiles())
 	{
 		puts("Failed to load default shader files!");
 		return eRR_Error;
@@ -1206,6 +1347,10 @@ ERunResult Initialize()
 				}
 			}
 		} // ~create frame buffers
+
+		{ // create rendering pipeline
+			vulkan::DefaultShaders.CreateShaderModules();
+		} // ~create rendering pipeline
 
 		{ // Create command buffers
 			VkCommandPoolCreateInfo commandPoolCreateInfo;
