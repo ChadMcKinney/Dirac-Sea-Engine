@@ -89,9 +89,8 @@
 // MyShaders::GetFragmentShader(EMyShaders::Enum::shader1);
 // MyShaders::UnloadFiles();
 
-// TODO: sort out working directory and data directory via cmake
-#define SHADER_BANK_MEMBER_VERT_FILENAME(member) "../data/shaders/"#member".vert.spv",
-#define SHADER_BANK_MEMBER_FRAG_FILENAME(member) "../data/shaders/"#member".frag.spv",
+#define SHADER_BANK_MEMBER_VERT_FILENAME(member) "data/shaders/"#member".vert.spv",
+#define SHADER_BANK_MEMBER_FRAG_FILENAME(member) "data/shaders/"#member".frag.spv",
 
 #define SHADER_BANK(name, list)\
 	SCOPED_AUTO_ENUM(name, list, uint16_t)\

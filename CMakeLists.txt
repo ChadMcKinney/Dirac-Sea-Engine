@@ -116,6 +116,10 @@ endif()
 
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT DiracSea)
 
+set_target_properties(
+    DiracSea PROPERTIES
+    VS_DEBUGGER_WORKING_DIRECTORY $<TARGET_FILE_DIR:DiracSea>)
+
 # Create the source groups for source tree with root at CMAKE_CURRENT_SOURCE_DIR.
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${project_HEADERS})
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${project_SOURCES})
