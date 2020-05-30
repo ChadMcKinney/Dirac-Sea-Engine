@@ -68,7 +68,38 @@
 	x(vkDestroyPipeline)\
 	x(vkDestroyRenderPass)\
 	x(vkDestroyFramebuffer)\
-	x(vkDestroyImageView)
+	x(vkDestroyImageView)\
+	x(vkCreateFence)\
+	x(vkCreateBuffer)\
+	x(vkGetBufferMemoryRequirements)\
+	x(vkAllocateMemory)\
+	x(vkBindBufferMemory)\
+	x(vkMapMemory)\
+	x(vkFlushMappedMemoryRanges)\
+	x(vkUnmapMemory)\
+	x(vkCmdSetViewport)\
+	x(vkCmdSetScissor)\
+	x(vkCmdBindVertexBuffers)\
+	x(vkWaitForFences)\
+	x(vkResetFences)\
+	x(vkFreeMemory)\
+	x(vkDestroyBuffer)\
+	x(vkDestroyFence)\
+	x(vkCmdCopyBuffer)\
+	x(vkCreateImage)\
+	x(vkGetImageMemoryRequirements)\
+	x(vkBindImageMemory)\
+	x(vkCreateSampler)\
+	x(vkCmdCopyBufferToImage)\
+	x(vkCreateDescriptorSetLayout)\
+	x(vkCreateDescriptorPool)\
+	x(vkAllocateDescriptorSets)\
+	x(vkUpdateDescriptorSets)\
+	x(vkCmdBindDescriptorSets)\
+	x(vkDestroyDescriptorPool)\
+	x(vkDestroyDescriptorSetLayout)\
+	x(vkDestroySampler)\
+	x(vkDestroyImage)
 
 namespace vulkan
 {
@@ -210,6 +241,29 @@ struct SRecordCommandBuffer // state used during command buffer recording
 	VkClearValue clearColor;
 };
 
+///////////////////////////
+// SVertexData
+struct SVertexData
+{
+	float x = 0;
+	float y = 0;
+	float z = 0;
+	float w = 0;
+	float r = 0;
+	float g = 0;
+	float b = 0;
+	float a = 0;
+};
+
+///////////////////////////
+// SVertexBuffer
+struct SVertexBuffer
+{
+	VkBuffer handle = VK_NULL_HANDLE;
+	VkDeviceMemory memory = VK_NULL_HANDLE;
+	uint32_t size = 0;
+};
+
 // TODO: Add allocation callbacks for debugging
 static const VkAllocationCallbacks* g_pAllocationCallbacks = nullptr;
 
@@ -229,6 +283,7 @@ static SRecordCommandBuffer g_recordBufferState;
 static VkRenderPass g_renderPass = VK_NULL_HANDLE;
 static VkPipeline g_graphicsPipeline = VK_NULL_HANDLE;
 static VkFramebuffer g_frameBuffers[MAX_IMAGE_COUNT] = { VK_NULL_HANDLE };
+static SVertexBuffer g_vertexBuffer;
 
 ///////////////////////////
 // Shader Bank
@@ -1350,6 +1405,29 @@ ERunResult Initialize()
 				}
 			};
 
+			static const uint32_t numDependencies = 2;
+			VkSubpassDependency dependencies[numDependencies] =
+			{
+				{
+					VK_SUBPASS_EXTERNAL, // srcSubpass
+					0, // dstSubPass
+					VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, // srcStageMask
+					VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, // dstStageMask
+					VK_ACCESS_MEMORY_READ_BIT, // srcAccessMask
+					VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, // dstAccessMask
+					VK_DEPENDENCY_BY_REGION_BIT // dependencyFlags
+				},
+				{
+					0, // srcSubpass
+					VK_SUBPASS_EXTERNAL, // dstSubPass
+					VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, // srcStageMask
+					VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, // dstStageMask
+					VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, // srcAccessMask
+					VK_ACCESS_MEMORY_READ_BIT, // dstAccessMask
+					VK_DEPENDENCY_BY_REGION_BIT // dependencyFlags
+				}
+			};
+
 			VkRenderPassCreateInfo renderPassCreateInfo;
 			renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 			renderPassCreateInfo.pNext = nullptr;
@@ -1358,8 +1436,8 @@ ERunResult Initialize()
 			renderPassCreateInfo.pAttachments = attachmentDescriptions;
 			renderPassCreateInfo.subpassCount = 1;
 			renderPassCreateInfo.pSubpasses = subpassDescriptions;
-			renderPassCreateInfo.dependencyCount = 0;
-			renderPassCreateInfo.pDependencies = nullptr;
+			renderPassCreateInfo.dependencyCount = numDependencies;
+			renderPassCreateInfo.pDependencies = dependencies;
 
 			if (vulkan::g_device.vkCreateRenderPass(
 						vulkan::g_device.handle,
@@ -1433,43 +1511,58 @@ ERunResult Initialize()
 				},
 			};
 
+			static const uint32_t numVertexBindingDescriptions = 1;
+			VkVertexInputBindingDescription vertexBindingDescriptions[numVertexBindingDescriptions] =
+			{
+				{
+					0, // binding
+					sizeof(vulkan::SVertexData), // stride
+					VK_VERTEX_INPUT_RATE_VERTEX // inputRate
+				}
+			};
+
+			assert(numVertexBindingDescriptions > 0);
+			static const uint32_t numVertexAttributDescriptions = 2;
+			VkVertexInputAttributeDescription vertexAttributeDescriptions[numVertexAttributDescriptions] =
+			{
+				{
+					0, // location
+					vertexBindingDescriptions[0].binding, //binding
+					VK_FORMAT_R32G32B32A32_SFLOAT, // format
+					offsetof(vulkan::SVertexData, x) // offset
+				},
+				{
+					1, // location
+					vertexBindingDescriptions[0].binding, // binding
+					VK_FORMAT_R32G32B32A32_SFLOAT, //format
+					offsetof(vulkan::SVertexData, r) // offset
+				}
+			};
+
 			VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo;
 			vertexInputStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 			vertexInputStateCreateInfo.pNext = nullptr;
 			vertexInputStateCreateInfo.flags = 0;
-			vertexInputStateCreateInfo.vertexBindingDescriptionCount = 0;
-			vertexInputStateCreateInfo.pVertexBindingDescriptions = nullptr;
-			vertexInputStateCreateInfo.vertexAttributeDescriptionCount = 0;
-			vertexInputStateCreateInfo.pVertexAttributeDescriptions = nullptr;
+			vertexInputStateCreateInfo.vertexBindingDescriptionCount = numVertexBindingDescriptions;
+			vertexInputStateCreateInfo.pVertexBindingDescriptions = vertexBindingDescriptions;
+			vertexInputStateCreateInfo.vertexAttributeDescriptionCount = numVertexAttributDescriptions;
+			vertexInputStateCreateInfo.pVertexAttributeDescriptions = vertexAttributeDescriptions;
 
 			VkPipelineInputAssemblyStateCreateInfo inputAssemblyeStateCreateInfo;
 			inputAssemblyeStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 			inputAssemblyeStateCreateInfo.pNext = nullptr;
 			inputAssemblyeStateCreateInfo.flags = 0;
-			inputAssemblyeStateCreateInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+			inputAssemblyeStateCreateInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
 			inputAssemblyeStateCreateInfo.primitiveRestartEnable = VK_FALSE;
-
-			// TODO: when the pipeline is more developed we need to be checking against the swapchain size, can't exceed
-			VkViewport viewport;
-			viewport.x = 0;
-			viewport.y = 0;
-			viewport.width = 300.0f;
-			viewport.height = 300.0f;
-			viewport.minDepth = 0.0f;
-			viewport.maxDepth = 1.0f;
-
-			VkRect2D scissor;
-			scissor.offset = { 0, 0 };
-			scissor.extent = { 300, 300 };
 
 			VkPipelineViewportStateCreateInfo viewportStateCreateInfo;
 			viewportStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 			viewportStateCreateInfo.pNext = nullptr;
 			viewportStateCreateInfo.flags = 0;
 			viewportStateCreateInfo.viewportCount = 1;
-			viewportStateCreateInfo.pViewports = &viewport;
+			viewportStateCreateInfo.pViewports = nullptr; // dynamically set
 			viewportStateCreateInfo.scissorCount = 1;
-			viewportStateCreateInfo.pScissors = &scissor;
+			viewportStateCreateInfo.pScissors = nullptr; // dynamically set
 
 			VkPipelineRasterizationStateCreateInfo rasterizationStateCreateInfo;
 			rasterizationStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -1544,6 +1637,15 @@ ERunResult Initialize()
 
 			assert(pipelineLayout != VK_NULL_HANDLE);
 
+			static const uint32_t numDynamicStates = 2;
+			VkDynamicState dynamicStates[numDynamicStates] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+			VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo;
+			dynamicStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+			dynamicStateCreateInfo.pNext = nullptr;
+			dynamicStateCreateInfo.flags = 0;
+			dynamicStateCreateInfo.dynamicStateCount = numDynamicStates;
+			dynamicStateCreateInfo.pDynamicStates = dynamicStates;
+
 			VkGraphicsPipelineCreateInfo pipelineCreateInfo;
 			pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 			pipelineCreateInfo.pNext = nullptr;
@@ -1558,7 +1660,7 @@ ERunResult Initialize()
 			pipelineCreateInfo.pMultisampleState = &multisampleStateCreateInfo;
 			pipelineCreateInfo.pDepthStencilState = nullptr;
 			pipelineCreateInfo.pColorBlendState = &colorBlendStateCreateInfo;
-			pipelineCreateInfo.pDynamicState = nullptr;
+			pipelineCreateInfo.pDynamicState = &dynamicStateCreateInfo;
 			pipelineCreateInfo.layout = pipelineLayout;
 			pipelineCreateInfo.renderPass = vulkan::g_renderPass;
 			pipelineCreateInfo.subpass = 0;
@@ -1581,6 +1683,126 @@ ERunResult Initialize()
 			// TODO: more contextual handling of layout given other usages
 			vulkan::g_device.vkDestroyPipelineLayout(vulkan::g_device.handle, pipelineLayout, vulkan::g_pAllocationCallbacks);
 		} // ~create rendering pipeline
+
+		{ // create vertex buffer
+			vulkan::SVertexData vertexData[] =
+			{
+				{
+					-0.7f, -0.7f, 0.0f, 1.0f,
+					1.0f, 0.0f, 0.0f, 0.0f
+				},
+				{
+					-0.7f, 0.7f, 0.0f, 1.0f,
+					0.0f, 1.0f, 0.0f, 0.0f
+				},
+				{
+					0.7f, -0.7f, 0.0f, 1.0f,
+					0.0f, 0.0f, 1.0f, 0.0f
+				},
+				{
+					0.7f, 0.7f, 0.0f, 1.0f,
+					0.3f, 0.3f, 0.3f, 0.0f
+				}
+			};
+
+			const uint32_t vertexBufferSize = sizeof(vertexData);
+			VkBuffer vertexBuffer = VK_NULL_HANDLE;
+
+			VkBufferCreateInfo bufferCreateInfo;
+			bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+			bufferCreateInfo.pNext = nullptr;
+			bufferCreateInfo.flags = 0;
+			bufferCreateInfo.size = vertexBufferSize;
+			bufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+			bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+			bufferCreateInfo.queueFamilyIndexCount = 0;
+			bufferCreateInfo.pQueueFamilyIndices = nullptr;
+
+			if (vulkan::g_device.vkCreateBuffer(
+				vulkan::g_device.handle,
+				&bufferCreateInfo,
+				vulkan::g_pAllocationCallbacks,
+				&vertexBuffer) != VK_SUCCESS)
+			{
+				puts("Vulkan failed to created vertex buffer!");
+				return eRR_Error;
+			}
+
+			vulkan::g_vertexBuffer.handle = vertexBuffer;
+			vulkan::g_vertexBuffer.size = vertexBufferSize;
+
+			{ // allocate buffer memory
+				bool bMemoryAllocated = false;
+				VkMemoryRequirements bufferMemoryRequirements;
+				vulkan::g_device.vkGetBufferMemoryRequirements(vulkan::g_device.handle, vertexBuffer, &bufferMemoryRequirements);
+
+				VkPhysicalDeviceMemoryProperties memoryProperties;
+				vkGetPhysicalDeviceMemoryProperties(vulkan::g_device.physicalDevice, &memoryProperties);
+
+				VkMemoryAllocateInfo memoryAllocateInfo;
+				memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+				memoryAllocateInfo.pNext = nullptr;
+				memoryAllocateInfo.allocationSize = bufferMemoryRequirements.size;
+				for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; ++i)
+				{
+					if ((bufferMemoryRequirements.memoryTypeBits & BIT(i)) &&
+						(memoryProperties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
+					{
+						memoryAllocateInfo.memoryTypeIndex = i;
+						if (vulkan::g_device.vkAllocateMemory(
+							vulkan::g_device.handle,
+							&memoryAllocateInfo,
+							vulkan::g_pAllocationCallbacks,
+							&vulkan::g_vertexBuffer.memory) == VK_SUCCESS)
+						{
+							bMemoryAllocated = true;
+							break;
+						}
+					}
+				}
+
+				if (!bMemoryAllocated)
+				{
+					puts("Vulkan failed to allocate memory for vertex buffer!");
+					return eRR_Error;
+				}
+			} // ~allocate buffer memory
+
+			if (vulkan::g_device.vkBindBufferMemory(
+				vulkan::g_device.handle,
+				vulkan::g_vertexBuffer.handle,
+				vulkan::g_vertexBuffer.memory,
+				0) != VK_SUCCESS)
+			{
+				puts("Vulkan failed to bind vertex buffer memory!");
+				return eRR_Error;
+			}
+
+			void* pVertexBufferMemory = nullptr;
+			if (vulkan::g_device.vkMapMemory(
+				vulkan::g_device.handle,
+				vulkan::g_vertexBuffer.memory,
+				0, // offset
+				vulkan::g_vertexBuffer.size,
+				0, // flags
+				&pVertexBufferMemory) != VK_SUCCESS)
+			{
+				puts("Vulkan failed to map vertex buffer memory!");
+				return eRR_Error;
+			}
+
+			memcpy(pVertexBufferMemory, vertexData, vulkan::g_vertexBuffer.size);
+
+			VkMappedMemoryRange flushRange;
+			flushRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+			flushRange.pNext = nullptr;
+			flushRange.memory = vulkan::g_vertexBuffer.memory;
+			flushRange.offset = 0;
+			flushRange.size = VK_WHOLE_SIZE;
+
+			vulkan::g_device.vkFlushMappedMemoryRanges(vulkan::g_device.handle, 1, &flushRange);
+			vulkan::g_device.vkUnmapMemory(vulkan::g_device.handle, vulkan::g_vertexBuffer.memory);
+		} // ~create vertex buffer
 
 		{ // Create command buffers
 			VkCommandPoolCreateInfo commandPoolCreateInfo;
@@ -1623,7 +1845,6 @@ ERunResult Initialize()
 			}
 		}
 	} // ~Vulkan swap chain creation
-
 
   return eRR_Success;
 }

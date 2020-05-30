@@ -2,6 +2,9 @@
 = TODO
 ===================================
 
+* Job System (probably need custom synchronization primitives to go with it)
+* Map out rendering architecure more completely
+* SDF
 * Polar Coordinates
 * SSE support
 * Projection Matrix: add w normalization for depth buffer precision
