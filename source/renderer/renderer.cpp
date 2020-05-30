@@ -168,6 +168,15 @@ struct SRecordCommandBuffer // state used during command buffer recording
 		imageSubresourceRange.baseArrayLayer = 0;
 		imageSubresourceRange.layerCount = 1;
 
+		renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		renderPassBeginInfo.pNext = nullptr;
+		renderPassBeginInfo.renderPass = VK_NULL_HANDLE;
+		renderPassBeginInfo.framebuffer = VK_NULL_HANDLE; // defined during access
+		renderPassBeginInfo.renderArea.extent = { 300, 300 };
+		renderPassBeginInfo.renderArea.offset = { 0, 0 };
+		renderPassBeginInfo.clearValueCount = 1;
+		renderPassBeginInfo.pClearValues = &clearColor;
+
 		barrierPresentToClear.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 		barrierPresentToClear.pNext = nullptr;
 		barrierPresentToClear.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
@@ -176,7 +185,7 @@ struct SRecordCommandBuffer // state used during command buffer recording
 		barrierPresentToClear.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 		barrierPresentToClear.srcQueueFamilyIndex = UINT32_MAX;
 		barrierPresentToClear.dstQueueFamilyIndex = UINT32_MAX;
-		barrierPresentToClear.image = VK_NULL_HANDLE;
+		barrierPresentToClear.image = VK_NULL_HANDLE; // defined during access
 		barrierPresentToClear.subresourceRange = imageSubresourceRange;
 
 		barrierClearToPresent.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -195,9 +204,10 @@ struct SRecordCommandBuffer // state used during command buffer recording
 
 	VkCommandBufferBeginInfo commandBufferBeginInfo;
 	VkImageSubresourceRange imageSubresourceRange;
+	VkRenderPassBeginInfo renderPassBeginInfo;
 	VkImageMemoryBarrier barrierPresentToClear;
 	VkImageMemoryBarrier barrierClearToPresent;
-	VkClearColorValue clearColor;
+	VkClearValue clearColor;
 };
 
 // TODO: Add allocation callbacks for debugging
@@ -665,6 +675,9 @@ bool RecordCommandBuffers()
 	assert(g_device.state == SDevice::EState::Initialized);
 	assert(g_swapChain.state == SSwapChain::EState::Initialized);
 
+	g_recordBufferState.renderPassBeginInfo.renderPass = g_renderPass;
+	g_recordBufferState.renderPassBeginInfo.renderArea.extent = g_swapChain.extent;
+
 	for (uint32_t i = 0; i < g_swapChain.imageCount; ++i)
 	{
 		g_recordBufferState.barrierPresentToClear.image = g_swapChain.images[i].handle;
@@ -683,13 +696,11 @@ bool RecordCommandBuffers()
 			1,
 			&g_recordBufferState.barrierPresentToClear);
 
-		g_device.vkCmdClearColorImage(
-			g_presentCommandBuffers[i],
-			g_swapChain.images[i].handle,
-			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-			&g_recordBufferState.clearColor,
-			1,
-			&g_recordBufferState.imageSubresourceRange);
+		g_recordBufferState.renderPassBeginInfo.framebuffer = g_frameBuffers[i];
+		g_device.vkCmdBeginRenderPass(g_presentCommandBuffers[i], &g_recordBufferState.renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+		g_device.vkCmdBindPipeline(g_presentCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, g_graphicsPipeline);
+		g_device.vkCmdDraw(g_presentCommandBuffers[i], 3, 1, 0, 0);
+		g_device.vkCmdEndRenderPass(g_presentCommandBuffers[i]);
 
 		g_device.vkCmdPipelineBarrier(
 			g_presentCommandBuffers[i],

@@ -110,19 +110,23 @@ SDL_Window* GetWindow()
 	return g_pWindow;
 }
 
-const char* fileTypeDescriptors[EFileType::NUM_FILETYPES] = { "r", "rb" };
+static constexpr size_t kNumFileTypes = size_t(EFileType::NUM_FILETYPES);
+static const char* fileTypeDescriptors[kNumFileTypes] = { "r", "rb" };
+
+#pragma warning(push)
+#pragma warning(disable: 6385) // disable warning about invalid data access to fileTypeDescripters, we assert before access
 
 // TODO: consider pak filesystem instead of just standard file IO
 bool LoadFiles(const char* fileNames[], size_t numFiles, EFileType fileType, SFile* pOutArray)
 {
 	assert(numFiles > 0);
-	assert((size_t)fileType < (size_t)EFileType::NUM_FILETYPES);
+	assert((size_t) fileType < kNumFileTypes);
 	assert(pOutArray != nullptr);
 	bool bSuccess = true;
 	for (size_t i = 0; i < numFiles; ++i)
 	{
 		assert(fileNames[i] && fileNames[i][0] != 0);
-		FILE* pFile = fopen(fileNames[i], fileTypeDescriptors[size_t(fileType)]);
+		FILE* pFile = fopen(fileNames[i], fileTypeDescriptors[uint8_t(fileType)]);
 		if (pFile)
 		{
 			pOutArray[i] = SFile();
@@ -157,5 +161,6 @@ bool LoadFiles(const char* fileNames[], size_t numFiles, EFileType fileType, SFi
 	}
 	return bSuccess;
 }
+#pragma warning(pop)
 
 } // platform namespace
