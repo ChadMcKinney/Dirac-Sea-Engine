@@ -110,16 +110,19 @@ SDL_Window* GetWindow()
 	return g_pWindow;
 }
 
+const char* fileTypeDescriptors[EFileType::NUM_FILETYPES] = { "r", "rb" };
+
 // TODO: consider pak filesystem instead of just standard file IO
-bool LoadFiles(const char* fileNames[], size_t numFiles, SFile* pOutArray)
+bool LoadFiles(const char* fileNames[], size_t numFiles, EFileType fileType, SFile* pOutArray)
 {
 	assert(numFiles > 0);
+	assert((size_t)fileType < (size_t)EFileType::NUM_FILETYPES);
 	assert(pOutArray != nullptr);
 	bool bSuccess = true;
 	for (size_t i = 0; i < numFiles; ++i)
 	{
 		assert(fileNames[i] && fileNames[i][0] != 0);
-		FILE* pFile = fopen(fileNames[i], "r");
+		FILE* pFile = fopen(fileNames[i], fileTypeDescriptors[size_t(fileType)]);
 		if (pFile)
 		{
 			pOutArray[i] = SFile();
@@ -134,9 +137,14 @@ bool LoadFiles(const char* fileNames[], size_t numFiles, SFile* pOutArray)
 				int fileError = ferror(pFile);
 				if (fileError != 0)
 				{
-					printf("[%s] file error: %d\n", __FUNCTION__, fileError);
+					printf("[%s] file error: %d, failed for file name: %s\n", __FUNCTION__, fileError, fileNames[i]);
 					bSuccess = false;
 				}
+			}
+			else
+			{
+				printf("[%s] file size 0 or error detecting size. Failed for file name: %s\n", __FUNCTION__, fileNames[i]);
+				bSuccess = false;
 			}
 			fclose(pFile);
 		}

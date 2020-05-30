@@ -18,5 +18,5 @@ void RunTests()
   RunVectorTests();
   RunMatrixTests();
   RunQuaternionTests();
-  puts("TESTS SUCCESFUL!");
+  puts("[DiracSea] tests successful");
 }

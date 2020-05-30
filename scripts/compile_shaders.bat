@@ -31,11 +31,13 @@ echo compiling shaders in folder: %folder%
 for %%a in (*.vert) do (
     echo Converting the following shader file: %%a
     glslangValidator.exe -V -H -o %%a.spv %%a > %%a.spv.txt
+    type %%a.spv.txt
 )
 
 for %%a in (*.frag) do (
     echo Converting the following shader file: %%a
     glslangValidator.exe -V -H -o %%a.spv %%a > %%a.spv.txt
+    type %%a.spv.txt
 )
 :end
 

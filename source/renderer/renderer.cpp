@@ -12,7 +12,6 @@
 
 #include "platform/platform.h"
 
-
 #define VK_FUNCTION_PTR_DECLARATION(fun) PFN_##fun fun = nullptr;
 
 #define PLATFORM_SPECIFIC_INSTANCE_LEVEL_FUNCTIONS(x)
@@ -218,6 +217,7 @@ static VkCommandPool g_presentCommandPool = VK_NULL_HANDLE;
 static SRecordCommandBuffer g_recordBufferState;
 
 static VkRenderPass g_renderPass = VK_NULL_HANDLE;
+static VkPipeline g_graphicsPipeline = VK_NULL_HANDLE;
 static VkFramebuffer g_frameBuffers[MAX_IMAGE_COUNT] = { VK_NULL_HANDLE };
 
 ///////////////////////////
@@ -241,6 +241,10 @@ static VkFramebuffer g_frameBuffers[MAX_IMAGE_COUNT] = { VK_NULL_HANDLE };
 // MyShaders.DestroyShaderModules();
 // MyShaders.UnloadFiles();
 
+#ifndef _RELEASE
+#define PRINT_SHADERS_ON_LOAD 0
+#endif
+
 VkShaderModule CreateShaderModule(const char* fileName, const platform::SFile& shaderFile);
 
 template <typename Enum, size_t EnumCount>
@@ -248,68 +252,92 @@ class SShaderBankState
 {
 public:
 	SShaderBankState(const char** _vertexShaderFilePaths, const char** _fragmentShaderFilePaths)
-		: vertexShaderFilePaths(_vertexShaderFilePaths)
-		, fragmentShaderFilePaths(_fragmentShaderFilePaths)
+		: m_vertexShaderFilePaths(_vertexShaderFilePaths)
+		, m_fragmentShaderFilePaths(_fragmentShaderFilePaths)
 	{
-		assert(vertexShaderFilePaths);
-		assert(fragmentShaderFilePaths);
+		assert(m_vertexShaderFilePaths);
+		assert(m_fragmentShaderFilePaths);
+	}
+
+	~SShaderBankState()
+	{
+		assert(m_bShaderModulesCreated == false);
+		assert(m_bShadersLoaded == false);
 	}
 
 	bool UnloadFiles()
 	{
-		bool bSuccess = bShadersLoaded;
+		bool bSuccess = m_bShadersLoaded;
 		for (size_t i = 0; i < EnumCount; ++i)
 		{
-			vertexShaders[i] = platform::SFile();
-			fragmentShaders[i] = platform::SFile();
+			m_vertexShaders[i] = platform::SFile();
+			m_fragmentShaders[i] = platform::SFile();
 		}
-		bShadersLoaded = false;
+		m_bShadersLoaded = false;
 		return bSuccess;
 	}
 
 	bool LoadFiles()
 	{
-		assert(bShadersLoaded == false);
-		bShadersLoaded = true;
-		bool bVertexFilesLoaded = platform::LoadFiles(vertexShaderFilePaths, EnumCount, vertexShaders);
+		assert(m_bShadersLoaded == false);
+		m_bShadersLoaded = true;
+		bool bVertexFilesLoaded = platform::LoadFiles(m_vertexShaderFilePaths, EnumCount, platform::EFileType::Binary, m_vertexShaders);
 		if (bVertexFilesLoaded)
 		{
-			bool bFragFilesLoaded = platform::LoadFiles(fragmentShaderFilePaths, EnumCount, fragmentShaders);
-			if (bFragFilesLoaded) return true;
+			bool bFragFilesLoaded = platform::LoadFiles(m_fragmentShaderFilePaths, EnumCount, platform::EFileType::Binary, m_fragmentShaders);
+#if PRINT_SHADERS_ON_LOAD
+			if (bFragFilesLoaded)
+			{
+				for (size_t i = 0; i < EnumCount; ++i)
+				{
+					puts("=====================================================");
+					printf("Shader: %s\n", m_vertexShaderFilePaths[i]);
+					const size_t numBytes = m_vertexShaders[i].numBytes;
+					const char* pData = m_vertexShaders[i].pData.get();
+					for (size_t j = 0; j < numBytes; ++j)
+					{
+						printf("%c", pData[j]);
+					}
+					puts("\n=====================================================");
+				}
+			}
+#endif
+			if (bFragFilesLoaded)
+				return true;
 		}
 		UnloadFiles();
-		bShadersLoaded = false;
+		m_bShadersLoaded = false;
 		return false;
 	}
 
 	bool DestroyShaderModules()
 	{
-		assert(bShadersLoaded == true);
-		bool bSuccess = bShaderModulesCreated;
+		assert(m_bShadersLoaded == true);
+		bool bSuccess = m_bShaderModulesCreated;
 		for (size_t i = 0; i < EnumCount; ++i)
 		{
-			g_device.vkDestroyShaderModule(g_device.handle, vertexShaderModules[i], g_pAllocationCallbacks);
-			vertexShaderModules[i] = VK_NULL_HANDLE;
-			g_device.vkDestroyShaderModule(g_device.handle, fragmentShaderModules[i], g_pAllocationCallbacks);
-			fragmentShaderModules[i] = VK_NULL_HANDLE;
+			g_device.vkDestroyShaderModule(g_device.handle, m_vertexShaderModules[i], g_pAllocationCallbacks);
+			m_vertexShaderModules[i] = VK_NULL_HANDLE;
+			g_device.vkDestroyShaderModule(g_device.handle, m_fragmentShaderModules[i], g_pAllocationCallbacks);
+			m_fragmentShaderModules[i] = VK_NULL_HANDLE;
 		}
-		bShaderModulesCreated = false;
+		m_bShaderModulesCreated = false;
 		return bSuccess;
 	}
 
 	bool CreateShaderModules()
 	{
-		assert(bShadersLoaded == true);
-		assert(bShaderModulesCreated == false);
+		assert(m_bShadersLoaded == true);
+		assert(m_bShaderModulesCreated == false);
 		bool bSuccess = true;
 		for (size_t i = 0; i < EnumCount && bSuccess; ++i)
 		{
-			vertexShaderModules[i] = CreateShaderModule(vertexShaderFilePaths[i], vertexShaders[i]);
-			fragmentShaderModules[i] = CreateShaderModule(fragmentShaderFilePaths[i], fragmentShaders[i]);
-			bSuccess &= vertexShaderModules[i] != VK_NULL_HANDLE && fragmentShaderModules[i] != VK_NULL_HANDLE;
+			m_vertexShaderModules[i] = CreateShaderModule(m_vertexShaderFilePaths[i], m_vertexShaders[i]);
+			m_fragmentShaderModules[i] = CreateShaderModule(m_fragmentShaderFilePaths[i], m_fragmentShaders[i]);
+			bSuccess &= m_vertexShaderModules[i] != VK_NULL_HANDLE && m_fragmentShaderModules[i] != VK_NULL_HANDLE;
 		}
 
-		bShaderModulesCreated = true;
+		m_bShaderModulesCreated = true;
 		if (bSuccess == false)
 		{
 			DestroyShaderModules();
@@ -322,54 +350,56 @@ public:
 	inline const char* GetVertexShaderFilePath(Enum shaderEnum)
 	{
 		assert((size_t)shaderEnum < EnumCount);
-		assert(bShadersLoaded);
-		return vertexShaderFilePaths[(size_t)shaderEnum];
+		assert(m_bShadersLoaded);
+		return m_vertexShaderFilePaths[(size_t)shaderEnum];
 	}
 
 	inline const char* GetFragmentShaderFilePath(Enum shaderEnum)
 	{
 		assert((size_t)shaderEnum < EnumCount);
-		assert(bShadersLoaded);
-		return fragmentShaderFilePaths[(size_t)shaderEnum];
+		assert(m_bShadersLoaded);
+		return m_fragmentShaderFilePaths[(size_t)shaderEnum];
 	}
 
 	inline const platform::SFile& GetVertexShader(Enum shaderEnum)
 	{
 		assert((size_t)shaderEnum < EnumCount);
-		assert(bShadersLoaded);
-		return vertexShaders[(size_t)shaderEnum];
+		assert(m_bShadersLoaded);
+		return m_vertexShaders[(size_t)shaderEnum];
 	}
 
 	inline const platform::SFile& GetFragmentShader(Enum shaderEnum)
 	{
 		assert((size_t)shaderEnum < EnumCount);
-		assert(bShadersLoaded);
-		return fragmentShaders[(size_t)shaderEnum];
+		assert(m_bShadersLoaded);
+		return m_fragmentShaders[(size_t)shaderEnum];
 	}
 
 	inline VkShaderModule GetVertexShaderModule(Enum shaderEnum)
 	{
 		assert((size_t)shaderEnum < EnumCount);
-		assert(bShaderModulesCreated);
-		return vertexShaderModules[(size_t)shaderEnum];
+		assert(m_bShaderModulesCreated);
+		assert(m_vertexShaderModules[(size_t)shaderEnum] != VK_NULL_HANDLE);
+		return m_vertexShaderModules[(size_t)shaderEnum];
 	}
 
 	inline VkShaderModule GetFragmentShaderModule(Enum shaderEnum)
 	{
 		assert((size_t)shaderEnum < EnumCount);
-		assert(bShaderModulesCreated);
-		return fragmentShaderModules[(size_t)shaderEnum];
+		assert(m_bShaderModulesCreated);
+		assert(m_fragmentShaderModules[(size_t)shaderEnum] != VK_NULL_HANDLE);
+		return m_fragmentShaderModules[(size_t)shaderEnum];
 	}
 
 private:
-	const char** vertexShaderFilePaths;
-	const char** fragmentShaderFilePaths;
-	platform::SFile vertexShaders[EnumCount] = { platform::SFile() };
-	platform::SFile fragmentShaders[EnumCount] = { platform::SFile() };
-	VkShaderModule vertexShaderModules[EnumCount] = { VK_NULL_HANDLE };
-	VkShaderModule fragmentShaderModules[EnumCount] = { VK_NULL_HANDLE };
-	bool bShadersLoaded = false;
-	bool bShaderModulesCreated = false;
+	const char** m_vertexShaderFilePaths;
+	const char** m_fragmentShaderFilePaths;
+	platform::SFile m_vertexShaders[EnumCount] = { platform::SFile() };
+	platform::SFile m_fragmentShaders[EnumCount] = { platform::SFile() };
+	VkShaderModule m_vertexShaderModules[EnumCount] = { VK_NULL_HANDLE };
+	VkShaderModule m_fragmentShaderModules[EnumCount] = { VK_NULL_HANDLE };
+	bool m_bShadersLoaded = false;
+	bool m_bShaderModulesCreated = false;
 };
 
 #define SHADER_BANK_MEMBER_VERT_FILENAME(member) "data/shaders/"#member".vert.spv",
@@ -750,6 +780,16 @@ ERunResult DestroyState()
 		{
 			g_device.vkDestroySemaphore(g_device.handle, g_imageAvailableSemaphore, g_pAllocationCallbacks);
 			g_imageAvailableSemaphore = VK_NULL_HANDLE;
+		}
+		else
+		{
+			destroyResult = eRR_Error;
+		}
+
+		if (g_graphicsPipeline != VK_NULL_HANDLE)
+		{
+			g_device.vkDestroyPipeline(g_device.handle, g_graphicsPipeline, g_pAllocationCallbacks);
+			g_graphicsPipeline = VK_NULL_HANDLE;
 		}
 		else
 		{
@@ -1294,7 +1334,7 @@ ERunResult Initialize()
 					colorAttachmentReferences, // pColorAttachments
 					nullptr, // pResolveAttachments
 					nullptr, // pDepthStencilAttachments
-					0, // presetveAttachmentCount
+					0, // preserveAttachmentCount
 					nullptr, // pPreserveAttachments
 				}
 			};
@@ -1322,6 +1362,8 @@ ERunResult Initialize()
 		} // ~create render pass
 
 		{ // create frame buffers
+			assert(vulkan::g_renderPass != VK_NULL_HANDLE);
+
 			VkFramebufferCreateInfo frameBufferCreateInfo;
 			frameBufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 			frameBufferCreateInfo.pNext = nullptr;
@@ -1340,7 +1382,7 @@ ERunResult Initialize()
 					vulkan::g_device.handle,
 					&frameBufferCreateInfo,
 					vulkan::g_pAllocationCallbacks,
-					vulkan::g_frameBuffers) != VK_SUCCESS)
+					&vulkan::g_frameBuffers[i]) != VK_SUCCESS)
 				{
 					puts("Vulkan failed to create frame buffer!");
 					return eRR_Error;
@@ -1349,7 +1391,184 @@ ERunResult Initialize()
 		} // ~create frame buffers
 
 		{ // create rendering pipeline
-			vulkan::DefaultShaders.CreateShaderModules();
+			if (!vulkan::DefaultShaders.CreateShaderModules())
+			{
+				puts("Vulkan failed to create graphics pipeline!");
+				return eRR_Error;
+			}
+
+			static const uint32_t numShaderStageCreateInfos = 2;
+			VkPipelineShaderStageCreateInfo shaderStageCreateInfos[numShaderStageCreateInfos] =
+			{
+				// Vertex shader
+				{
+					VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, // sType
+					nullptr, // pNext
+					0, // flags
+					VK_SHADER_STAGE_VERTEX_BIT, // stage
+					vulkan::DefaultShaders.GetVertexShaderModule(vulkan::EDefaultShaders::Enum::test), // module
+					"main", // name
+					nullptr, // pSpecializationInfo
+				},
+				// Fragment shader
+				{
+					VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, // sType
+					nullptr, // pNext
+					0, // flags
+					VK_SHADER_STAGE_FRAGMENT_BIT, // stage
+					vulkan::DefaultShaders.GetFragmentShaderModule(vulkan::EDefaultShaders::Enum::test), // module
+					"main", // name
+					nullptr, // pSpecializationInfo
+				},
+			};
+
+			VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo;
+			vertexInputStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+			vertexInputStateCreateInfo.pNext = nullptr;
+			vertexInputStateCreateInfo.flags = 0;
+			vertexInputStateCreateInfo.vertexBindingDescriptionCount = 0;
+			vertexInputStateCreateInfo.pVertexBindingDescriptions = nullptr;
+			vertexInputStateCreateInfo.vertexAttributeDescriptionCount = 0;
+			vertexInputStateCreateInfo.pVertexAttributeDescriptions = nullptr;
+
+			VkPipelineInputAssemblyStateCreateInfo inputAssemblyeStateCreateInfo;
+			inputAssemblyeStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+			inputAssemblyeStateCreateInfo.pNext = nullptr;
+			inputAssemblyeStateCreateInfo.flags = 0;
+			inputAssemblyeStateCreateInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+			inputAssemblyeStateCreateInfo.primitiveRestartEnable = VK_FALSE;
+
+			// TODO: when the pipeline is more developed we need to be checking against the swapchain size, can't exceed
+			VkViewport viewport;
+			viewport.x = 0;
+			viewport.y = 0;
+			viewport.width = 300.0f;
+			viewport.height = 300.0f;
+			viewport.minDepth = 0.0f;
+			viewport.maxDepth = 1.0f;
+
+			VkRect2D scissor;
+			scissor.offset = { 0, 0 };
+			scissor.extent = { 300, 300 };
+
+			VkPipelineViewportStateCreateInfo viewportStateCreateInfo;
+			viewportStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+			viewportStateCreateInfo.pNext = nullptr;
+			viewportStateCreateInfo.flags = 0;
+			viewportStateCreateInfo.viewportCount = 1;
+			viewportStateCreateInfo.pViewports = &viewport;
+			viewportStateCreateInfo.scissorCount = 1;
+			viewportStateCreateInfo.pScissors = &scissor;
+
+			VkPipelineRasterizationStateCreateInfo rasterizationStateCreateInfo;
+			rasterizationStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+			rasterizationStateCreateInfo.pNext = nullptr;
+			rasterizationStateCreateInfo.flags = 0;
+			rasterizationStateCreateInfo.depthClampEnable = VK_FALSE;
+			rasterizationStateCreateInfo.rasterizerDiscardEnable = VK_FALSE;
+			rasterizationStateCreateInfo.polygonMode = VK_POLYGON_MODE_FILL;
+			rasterizationStateCreateInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+			rasterizationStateCreateInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE; // TODO: change to clockwise?
+			rasterizationStateCreateInfo.depthBiasEnable = VK_FALSE;
+			rasterizationStateCreateInfo.depthBiasConstantFactor = 0.0f;
+			rasterizationStateCreateInfo.depthBiasClamp = 0.0f;
+			rasterizationStateCreateInfo.depthBiasSlopeFactor = 0.0f;
+			rasterizationStateCreateInfo.lineWidth = 1.0f;
+
+			VkPipelineMultisampleStateCreateInfo multisampleStateCreateInfo;
+			multisampleStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+			multisampleStateCreateInfo.pNext = nullptr;
+			multisampleStateCreateInfo.flags = 0;
+			multisampleStateCreateInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+			multisampleStateCreateInfo.sampleShadingEnable = VK_FALSE;
+			multisampleStateCreateInfo.minSampleShading = 1.0f;
+			multisampleStateCreateInfo.pSampleMask = nullptr;
+			multisampleStateCreateInfo.alphaToCoverageEnable = VK_FALSE;
+			multisampleStateCreateInfo.alphaToOneEnable = VK_FALSE;
+
+			VkPipelineColorBlendAttachmentState colorBlendAttachmentState;
+			colorBlendAttachmentState.blendEnable = VK_FALSE;
+			colorBlendAttachmentState.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+			colorBlendAttachmentState.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+			colorBlendAttachmentState.colorBlendOp = VK_BLEND_OP_ADD;
+			colorBlendAttachmentState.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+			colorBlendAttachmentState.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+			colorBlendAttachmentState.alphaBlendOp = VK_BLEND_OP_ADD;
+			colorBlendAttachmentState.colorWriteMask =
+				VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+				VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+
+			VkPipelineColorBlendStateCreateInfo colorBlendStateCreateInfo;
+			colorBlendStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+			colorBlendStateCreateInfo.pNext = nullptr;
+			colorBlendStateCreateInfo.flags = 0;
+			colorBlendStateCreateInfo.logicOpEnable = VK_FALSE;
+			colorBlendStateCreateInfo.logicOp = VK_LOGIC_OP_COPY;
+			colorBlendStateCreateInfo.attachmentCount = 1;
+			colorBlendStateCreateInfo.pAttachments = &colorBlendAttachmentState;
+			memset(colorBlendStateCreateInfo.blendConstants, 0, sizeof(float) * 4);
+
+			VkPipelineLayout pipelineLayout;
+			{ // create pipeline layout
+				VkPipelineLayoutCreateInfo layoutCreateInfo;
+				layoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+				layoutCreateInfo.pNext = nullptr;
+				layoutCreateInfo.flags = 0;
+				layoutCreateInfo.setLayoutCount = 0;
+				layoutCreateInfo.pSetLayouts = nullptr;
+				layoutCreateInfo.pushConstantRangeCount = 0;
+				layoutCreateInfo.pPushConstantRanges = nullptr;
+
+				if (vulkan::g_device.vkCreatePipelineLayout(
+					vulkan::g_device.handle,
+					&layoutCreateInfo,
+					vulkan::g_pAllocationCallbacks,
+					&pipelineLayout) != VK_SUCCESS)
+				{
+					puts("Vulkan failed to create pipeline layout!");
+					return eRR_Error;
+				}
+
+			} // ~create pipeline layout
+
+			assert(pipelineLayout != VK_NULL_HANDLE);
+
+			VkGraphicsPipelineCreateInfo pipelineCreateInfo;
+			pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+			pipelineCreateInfo.pNext = nullptr;
+			pipelineCreateInfo.flags = 0;
+			pipelineCreateInfo.stageCount = numShaderStageCreateInfos;
+			pipelineCreateInfo.pStages = shaderStageCreateInfos;
+			pipelineCreateInfo.pVertexInputState = &vertexInputStateCreateInfo;
+			pipelineCreateInfo.pInputAssemblyState = &inputAssemblyeStateCreateInfo;
+			pipelineCreateInfo.pTessellationState = nullptr;
+			pipelineCreateInfo.pViewportState = &viewportStateCreateInfo;
+			pipelineCreateInfo.pRasterizationState = &rasterizationStateCreateInfo;
+			pipelineCreateInfo.pMultisampleState = &multisampleStateCreateInfo;
+			pipelineCreateInfo.pDepthStencilState = nullptr;
+			pipelineCreateInfo.pColorBlendState = &colorBlendStateCreateInfo;
+			pipelineCreateInfo.pDynamicState = nullptr;
+			pipelineCreateInfo.layout = pipelineLayout;
+			pipelineCreateInfo.renderPass = vulkan::g_renderPass;
+			pipelineCreateInfo.subpass = 0;
+			pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
+			pipelineCreateInfo.basePipelineIndex = -1;
+
+			if (vulkan::g_device.vkCreateGraphicsPipelines(
+				vulkan::g_device.handle,
+				VK_NULL_HANDLE,
+				1,
+				&pipelineCreateInfo,
+				vulkan::g_pAllocationCallbacks,
+				&vulkan::g_graphicsPipeline) != VK_SUCCESS)
+			{
+				puts("Vulkan failed to create graphics pipeline!");
+				return eRR_Error;
+			}
+
+			// For now no longer need the layout
+			// TODO: more contextual handling of layout given other usages
+			vulkan::g_device.vkDestroyPipelineLayout(vulkan::g_device.handle, pipelineLayout, vulkan::g_pAllocationCallbacks);
 		} // ~create rendering pipeline
 
 		{ // Create command buffers

@@ -16,6 +16,13 @@ namespace platform
 	ERunResult Shutdown();
 	SDL_Window* GetWindow();
 
+	enum class EFileType : uint8_t
+	{
+		Text,
+		Binary,
+		NUM_FILETYPES
+	};
+
 	struct SFile
 	{
 		size_t numBytes = 0;
@@ -24,6 +31,6 @@ namespace platform
 
 	// pOutArray is assumed to be the same size as numFiles
 	// caller owns data allocation (hence, unique_ptr in SFile)
-	bool LoadFiles(const char* fileNames[], size_t numFiles, SFile* pOutArray);
+	bool LoadFiles(const char* fileNames[], size_t numFiles, EFileType fileType, SFile* pOutArray);
 } // platform namespace
 
