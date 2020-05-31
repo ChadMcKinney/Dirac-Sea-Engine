@@ -566,10 +566,10 @@ ERunResult SetDevice(
 	g_device.vkGetDeviceQueue(g_device.handle, g_device.presentQueueFamilyIndex, 0, &g_device.presentQueue);
 	assert(g_device.presentQueue != nullptr);
 
-	// Update the record buffer state to reference the correct present queue family index
+	// Update the prepare frame state to reference the correct queue family indexes
 	g_prepareFrameState.barrierPresentToDraw.srcQueueFamilyIndex = g_device.presentQueueFamilyIndex;
-	g_prepareFrameState.barrierPresentToDraw.dstQueueFamilyIndex = g_device.presentQueueFamilyIndex;
-	g_prepareFrameState.barrierDrawToPresent.srcQueueFamilyIndex = g_device.presentQueueFamilyIndex;
+	g_prepareFrameState.barrierPresentToDraw.dstQueueFamilyIndex = g_device.graphicsQueueFamilyIndex;
+	g_prepareFrameState.barrierDrawToPresent.srcQueueFamilyIndex = g_device.graphicsQueueFamilyIndex;
 	g_prepareFrameState.barrierDrawToPresent.dstQueueFamilyIndex = g_device.presentQueueFamilyIndex;
 
 	g_device.state = SDevice::EState::Initialized;
