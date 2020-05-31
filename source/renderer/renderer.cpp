@@ -290,12 +290,12 @@ struct SVertexData
 };
 
 ///////////////////////////
-// SVertexBuffer
-struct SVertexBuffer
+// SBuffer
+struct SBuffer
 {
 	VkBuffer handle = VK_NULL_HANDLE;
 	VkDeviceMemory memory = VK_NULL_HANDLE;
-	uint32_t size = 0;
+	VkDeviceSize size = 0;
 };
 
 ///////////////////////////
@@ -318,14 +318,15 @@ static SInstance g_instance;
 static VkSurfaceKHR g_presentationSurface = VK_NULL_HANDLE;
 static SSwapChain g_swapChain;
 
-static VkCommandPool g_presentCommandPool = VK_NULL_HANDLE;
+static VkCommandPool g_graphicsCommandPool = VK_NULL_HANDLE;
 static SPrepareFrame g_prepareFrameState;
 
 static SRenderResources g_renderResources[RENDER_RESOURCES_COUNT];
 
 static VkRenderPass g_renderPass = VK_NULL_HANDLE;
 static VkPipeline g_graphicsPipeline = VK_NULL_HANDLE;
-static SVertexBuffer g_vertexBuffer;
+static SBuffer g_vertexBuffer;
+static SBuffer g_stagingBuffer;
 
 ///////////////////////////
 // Shader Bank
@@ -908,6 +909,26 @@ ERunResult DestroyState()
 	{
 		g_device.vkDeviceWaitIdle(g_device.handle);
 
+		if (g_vertexBuffer.handle != VK_NULL_HANDLE)
+		{
+			g_device.vkDestroyBuffer(g_device.handle, g_vertexBuffer.handle, g_pAllocationCallbacks);
+		}
+		else
+		{
+			printf("[%s] g_verteBuffer.handle is unexpectedly null!\n", __FUNCTION__);
+			destroyResult = eRR_Error;
+		}
+
+		if (g_stagingBuffer.handle != VK_NULL_HANDLE)
+		{
+			g_device.vkDestroyBuffer(g_device.handle, g_stagingBuffer.handle, g_pAllocationCallbacks);
+		}
+		else
+		{
+			printf("[%s] g_stagingBuffer.handle is unexpectedly null!\n", __FUNCTION__);
+			destroyResult = eRR_Error;
+		}
+
 		for (size_t i = 0; i < RENDER_RESOURCES_COUNT; ++i)
 		{
 			SRenderResources& resource = g_renderResources[i];
@@ -918,10 +939,11 @@ ERunResult DestroyState()
 
 			if (resource.commandBuffer != VK_NULL_HANDLE)
 			{
-				g_device.vkFreeCommandBuffers(g_device.handle, g_presentCommandPool, 1, &resource.commandBuffer);
+				g_device.vkFreeCommandBuffers(g_device.handle, g_graphicsCommandPool, 1, &resource.commandBuffer);
 			}
 			else
 			{
+				printf("[%s] commandBuffer is unexpectedly null!\n", __FUNCTION__);
 				destroyResult = eRR_Error;
 			}
 
@@ -931,6 +953,7 @@ ERunResult DestroyState()
 			}
 			else
 			{
+				printf("[%s] imageAvailableSemaphore is unexpectedly null!\n", __FUNCTION__);
 				destroyResult = eRR_Error;
 			}
 
@@ -940,6 +963,7 @@ ERunResult DestroyState()
 			}
 			else
 			{
+				printf("[%s] rendingFinishedSemaphore is unexpectedly null!\n", __FUNCTION__);
 				destroyResult = eRR_Error;
 			}
 
@@ -949,19 +973,21 @@ ERunResult DestroyState()
 			}
 			else
 			{
+				printf("[%s] fence is unexpectedly null!\n", __FUNCTION__);
 				destroyResult = eRR_Error;
 			}
 
 			resource = SRenderResources();
 		}
 
-		if (g_presentCommandPool != VK_NULL_HANDLE)
+		if (g_graphicsCommandPool != VK_NULL_HANDLE)
 		{
-			g_device.vkDestroyCommandPool(g_device.handle, g_presentCommandPool, g_pAllocationCallbacks);
-			g_presentCommandPool = VK_NULL_HANDLE;
+			g_device.vkDestroyCommandPool(g_device.handle, g_graphicsCommandPool, g_pAllocationCallbacks);
+			g_graphicsCommandPool = VK_NULL_HANDLE;
 		}
 		else
 		{
+			printf("[%s] g_graphicsCommandPool is unexpectedly null!\n", __FUNCTION__);
 			destroyResult = eRR_Error;
 		}
 
@@ -972,6 +998,7 @@ ERunResult DestroyState()
 		}
 		else
 		{
+			printf("[%s] g_graphicsPipeline is unexpectedly null!\n", __FUNCTION__);
 			destroyResult = eRR_Error;
 		}
 
@@ -999,11 +1026,13 @@ ERunResult DestroyState()
 	}
 	else
 	{
+		printf("[%s] g_device is unexpectedly null!\n", __FUNCTION__);
 		destroyResult = eRR_Error;
 	}
 
 	if (g_instance.state != SInstance::EState::Initialized)
 	{
+		printf("[%s] g_instance is uninitialized!\n", __FUNCTION__);
 		destroyResult = eRR_Error;
 	}
 
@@ -1015,6 +1044,11 @@ ERunResult DestroyState()
 			g_presentationSurface = VK_NULL_HANDLE;
 		}
 		vkDestroyInstance(g_instance.handle, g_pAllocationCallbacks);
+	}
+	else
+	{
+		printf("[%s] g_instance is unexpectedly null!\n", __FUNCTION__);
+		destroyResult = eRR_Error;
 	}
 
 	g_instance.handle = VK_NULL_HANDLE;
@@ -1029,6 +1063,95 @@ ERunResult DestroyState()
 	}
 
 	return destroyResult;
+}
+
+bool CreateBuffer(
+	VkBufferUsageFlags usage,
+	VkMemoryPropertyFlagBits memoryProperty,
+	VkDeviceSize size,
+	SBuffer& outBuffer)
+{
+	assert(g_device.handle != VK_NULL_HANDLE);
+	assert(size > 0);
+	assert(outBuffer.handle == VK_NULL_HANDLE);
+	assert(memoryProperty != 0);
+
+	VkBufferCreateInfo bufferCreateInfo;
+	bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	bufferCreateInfo.pNext = nullptr;
+	bufferCreateInfo.flags = 0;
+	bufferCreateInfo.size = size;
+	bufferCreateInfo.usage = usage;
+	bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	bufferCreateInfo.queueFamilyIndexCount = 0;
+	bufferCreateInfo.pQueueFamilyIndices = nullptr;
+
+	VkBuffer bufferHandle;
+	if (vulkan::g_device.vkCreateBuffer(
+		vulkan::g_device.handle,
+		&bufferCreateInfo,
+		vulkan::g_pAllocationCallbacks,
+		&bufferHandle) != VK_SUCCESS)
+	{
+		puts("Vulkan failed to created vertex buffer!");
+		return eRR_Error;
+	}
+
+	assert(bufferHandle);
+	outBuffer.handle = bufferHandle;
+	outBuffer.size = size;
+
+	////////////////////////////
+	{ // allocate buffer memory
+		bool bMemoryAllocated = false;
+		VkMemoryRequirements bufferMemoryRequirements;
+		vulkan::g_device.vkGetBufferMemoryRequirements(vulkan::g_device.handle, bufferHandle, &bufferMemoryRequirements);
+
+		VkPhysicalDeviceMemoryProperties memoryProperties;
+		vkGetPhysicalDeviceMemoryProperties(vulkan::g_device.physicalDevice, &memoryProperties);
+
+		VkMemoryAllocateInfo memoryAllocateInfo;
+		memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		memoryAllocateInfo.pNext = nullptr;
+		memoryAllocateInfo.allocationSize = bufferMemoryRequirements.size;
+		for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; ++i)
+		{
+			if ((bufferMemoryRequirements.memoryTypeBits & BIT(i)) &&
+				(memoryProperties.memoryTypes[i].propertyFlags & memoryProperty))
+			{
+				memoryAllocateInfo.memoryTypeIndex = i;
+				if (vulkan::g_device.vkAllocateMemory(
+					vulkan::g_device.handle,
+					&memoryAllocateInfo,
+					vulkan::g_pAllocationCallbacks,
+					&outBuffer.memory) == VK_SUCCESS)
+				{
+					bMemoryAllocated = true;
+					break;
+				}
+			}
+		}
+
+		if (!bMemoryAllocated)
+		{
+			puts("Vulkan failed to allocate memory for vertex buffer!");
+			return false;
+		}
+	} // ~allocate buffer memory
+	////////////////////////////
+
+	assert(outBuffer.memory != VK_NULL_HANDLE);
+	if (vulkan::g_device.vkBindBufferMemory(
+		vulkan::g_device.handle,
+		outBuffer.handle,
+		outBuffer.memory,
+		0) != VK_SUCCESS)
+	{
+		puts("Vulkan failed to bind vertex buffer memory!");
+		return false;
+	}
+
+	return true;
 }
 
 } // vulkan namespace
@@ -1764,140 +1887,18 @@ ERunResult Initialize()
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////
-	{ // create vertex buffer
-		vulkan::SVertexData vertexData[] =
-		{
-			{
-				-0.7f, -0.7f, 0.0f, 1.0f,
-				1.0f, 0.0f, 0.0f, 0.0f
-			},
-			{
-				-0.7f, 0.7f, 0.0f, 1.0f,
-				0.0f, 1.0f, 0.0f, 0.0f
-			},
-			{
-				0.7f, -0.7f, 0.0f, 1.0f,
-				0.0f, 0.0f, 1.0f, 0.0f
-			},
-			{
-				0.7f, 0.7f, 0.0f, 1.0f,
-				0.3f, 0.3f, 0.3f, 0.0f
-			}
-		};
-
-		const uint32_t vertexBufferSize = sizeof(vertexData);
-		VkBuffer vertexBuffer = VK_NULL_HANDLE;
-
-		VkBufferCreateInfo bufferCreateInfo;
-		bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		bufferCreateInfo.pNext = nullptr;
-		bufferCreateInfo.flags = 0;
-		bufferCreateInfo.size = vertexBufferSize;
-		bufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-		bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-		bufferCreateInfo.queueFamilyIndexCount = 0;
-		bufferCreateInfo.pQueueFamilyIndices = nullptr;
-
-		if (vulkan::g_device.vkCreateBuffer(
-			vulkan::g_device.handle,
-			&bufferCreateInfo,
-			vulkan::g_pAllocationCallbacks,
-			&vertexBuffer) != VK_SUCCESS)
-		{
-			puts("Vulkan failed to created vertex buffer!");
-			return eRR_Error;
-		}
-
-		vulkan::g_vertexBuffer.handle = vertexBuffer;
-		vulkan::g_vertexBuffer.size = vertexBufferSize;
-
-		{ // allocate buffer memory
-			bool bMemoryAllocated = false;
-			VkMemoryRequirements bufferMemoryRequirements;
-			vulkan::g_device.vkGetBufferMemoryRequirements(vulkan::g_device.handle, vertexBuffer, &bufferMemoryRequirements);
-
-			VkPhysicalDeviceMemoryProperties memoryProperties;
-			vkGetPhysicalDeviceMemoryProperties(vulkan::g_device.physicalDevice, &memoryProperties);
-
-			VkMemoryAllocateInfo memoryAllocateInfo;
-			memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-			memoryAllocateInfo.pNext = nullptr;
-			memoryAllocateInfo.allocationSize = bufferMemoryRequirements.size;
-			for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; ++i)
-			{
-				if ((bufferMemoryRequirements.memoryTypeBits & BIT(i)) &&
-					(memoryProperties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
-				{
-					memoryAllocateInfo.memoryTypeIndex = i;
-					if (vulkan::g_device.vkAllocateMemory(
-						vulkan::g_device.handle,
-						&memoryAllocateInfo,
-						vulkan::g_pAllocationCallbacks,
-						&vulkan::g_vertexBuffer.memory) == VK_SUCCESS)
-					{
-						bMemoryAllocated = true;
-						break;
-					}
-				}
-			}
-
-			if (!bMemoryAllocated)
-			{
-				puts("Vulkan failed to allocate memory for vertex buffer!");
-				return eRR_Error;
-			}
-		} // ~allocate buffer memory
-
-		if (vulkan::g_device.vkBindBufferMemory(
-			vulkan::g_device.handle,
-			vulkan::g_vertexBuffer.handle,
-			vulkan::g_vertexBuffer.memory,
-			0) != VK_SUCCESS)
-		{
-			puts("Vulkan failed to bind vertex buffer memory!");
-			return eRR_Error;
-		}
-
-		void* pVertexBufferMemory = nullptr;
-		if (vulkan::g_device.vkMapMemory(
-			vulkan::g_device.handle,
-			vulkan::g_vertexBuffer.memory,
-			0, // offset
-			vulkan::g_vertexBuffer.size,
-			0, // flags
-			&pVertexBufferMemory) != VK_SUCCESS)
-		{
-			puts("Vulkan failed to map vertex buffer memory!");
-			return eRR_Error;
-		}
-
-		memcpy(pVertexBufferMemory, vertexData, vulkan::g_vertexBuffer.size);
-
-		VkMappedMemoryRange flushRange;
-		flushRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
-		flushRange.pNext = nullptr;
-		flushRange.memory = vulkan::g_vertexBuffer.memory;
-		flushRange.offset = 0;
-		flushRange.size = VK_WHOLE_SIZE;
-
-		vulkan::g_device.vkFlushMappedMemoryRanges(vulkan::g_device.handle, 1, &flushRange);
-		vulkan::g_device.vkUnmapMemory(vulkan::g_device.handle, vulkan::g_vertexBuffer.memory);
-	} // ~create vertex buffer
-	///////////////////////////////////////////////////////////////////////////////////////////////////
-
-	///////////////////////////////////////////////////////////////////////////////////////////////////
 	{ // Create command buffers
 		VkCommandPoolCreateInfo commandPoolCreateInfo;
 		commandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 		commandPoolCreateInfo.pNext = nullptr;
 		commandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT | VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
-		commandPoolCreateInfo.queueFamilyIndex = vulkan::g_device.presentQueueFamilyIndex;
+		commandPoolCreateInfo.queueFamilyIndex = vulkan::g_device.graphicsQueueFamilyIndex;
 
 		if (vulkan::g_device.vkCreateCommandPool(
 			vulkan::g_device.handle,
 			&commandPoolCreateInfo,
 			vulkan::g_pAllocationCallbacks,
-			&vulkan::g_presentCommandPool) != VK_SUCCESS)
+			&vulkan::g_graphicsCommandPool) != VK_SUCCESS)
 		{
 			puts("Vulkan could not create a command pool!");
 			return eRR_Error;
@@ -1906,7 +1907,7 @@ ERunResult Initialize()
 		VkCommandBufferAllocateInfo commandBufferAllocateInfo;
 		commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 		commandBufferAllocateInfo.pNext = nullptr;
-		commandBufferAllocateInfo.commandPool = vulkan::g_presentCommandPool;
+		commandBufferAllocateInfo.commandPool = vulkan::g_graphicsCommandPool;
 		commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 		commandBufferAllocateInfo.commandBufferCount = 1;
 
@@ -1978,7 +1979,171 @@ ERunResult Initialize()
 	} // ~fence creation
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 
-  return eRR_Success;
+	const vulkan::SVertexData vertexData[] =
+	{
+		{
+			-0.7f, -0.7f, 0.0f, 1.0f,
+			1.0f, 0.0f, 0.0f, 0.0f
+		},
+		{
+			-0.7f, 0.7f, 0.0f, 1.0f,
+			0.0f, 1.0f, 0.0f, 0.0f
+		},
+		{
+			0.7f, -0.7f, 0.0f, 1.0f,
+			0.0f, 0.0f, 1.0f, 0.0f
+		},
+		{
+			0.7f, 0.7f, 0.0f, 1.0f,
+			0.3f, 0.3f, 0.3f, 0.0f
+		}
+	};
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////
+	{ // create vertex buffer
+		const uint32_t vertexBufferSize = sizeof(vertexData);
+		const VkBufferUsageFlags vertexBufferUsage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+		const VkMemoryPropertyFlagBits vertexBufferMemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+		if (vulkan::CreateBuffer(
+			vertexBufferUsage,
+			vertexBufferMemoryProperty,
+			vertexBufferSize,
+			vulkan::g_vertexBuffer) == false)
+		{
+			puts("Failed to create vertex buffer!");
+			return eRR_Error;
+		}
+	} // ~create vertex buffer
+	///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////
+	{ // create staging buffer
+		assert(vulkan::g_vertexBuffer.handle != VK_NULL_HANDLE);
+		assert(vulkan::g_vertexBuffer.memory != VK_NULL_HANDLE);
+		assert(vulkan::g_vertexBuffer.size > 0);
+
+		const uint32_t stagingBufferSize = 4096;
+		const VkBufferUsageFlags stagingBufferUsage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+		const VkMemoryPropertyFlagBits stagingBufferMemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+
+		if (vulkan::CreateBuffer(
+			stagingBufferUsage,
+			stagingBufferMemoryProperty,
+			stagingBufferSize,
+			vulkan::g_stagingBuffer) == false)
+		{
+			puts("Failed to create vertex buffer!");
+			return eRR_Error;
+		}
+	} // ~create staging buffer
+	///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////
+	{ // copy vertex data from staging buffer -> vertex buffer
+		assert(vulkan::g_stagingBuffer.handle != VK_NULL_HANDLE);
+		assert(vulkan::g_stagingBuffer.memory != VK_NULL_HANDLE);
+		assert(vulkan::g_stagingBuffer.size > 0);
+
+		void* pStagingBufferMemory = nullptr;
+		if (vulkan::g_device.vkMapMemory(
+			vulkan::g_device.handle,
+			vulkan::g_stagingBuffer.memory,
+			0, // offset
+			vulkan::g_stagingBuffer.size,
+			0, // flags
+			&pStagingBufferMemory) != VK_SUCCESS)
+		{
+			puts("Vulkan failed to map vertex buffer memory!");
+			return eRR_Error;
+		}
+
+		assert(pStagingBufferMemory != nullptr);
+		memcpy(pStagingBufferMemory, vertexData, vulkan::g_vertexBuffer.size);
+
+		VkMappedMemoryRange flushRange;
+		flushRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+		flushRange.pNext = nullptr;
+		flushRange.memory = vulkan::g_stagingBuffer.memory;
+		flushRange.offset = 0;
+		flushRange.size = VK_WHOLE_SIZE;
+
+		vulkan::g_device.vkFlushMappedMemoryRanges(vulkan::g_device.handle, 1, &flushRange);
+		vulkan::g_device.vkUnmapMemory(vulkan::g_device.handle, vulkan::g_vertexBuffer.memory);
+
+		VkCommandBufferBeginInfo commandBufferBeginInfo;
+		commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		commandBufferBeginInfo.pNext = nullptr;
+		commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		commandBufferBeginInfo.pInheritanceInfo = nullptr;
+
+		VkCommandBuffer commandBuffer = vulkan::g_renderResources[0].commandBuffer;
+		assert(commandBuffer != VK_NULL_HANDLE);
+
+		vulkan::g_device.vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo);
+
+		VkBufferCopy bufferCopyInfo;
+		bufferCopyInfo.srcOffset = 0;
+		bufferCopyInfo.dstOffset = 0;
+		bufferCopyInfo.size = vulkan::g_vertexBuffer.size;
+
+		vulkan::g_device.vkCmdCopyBuffer(
+			commandBuffer,
+			vulkan::g_stagingBuffer.handle,
+			vulkan::g_vertexBuffer.handle,
+			1, // regionCount
+			&bufferCopyInfo);
+
+		VkBufferMemoryBarrier bufferMemoryBarrier;
+		bufferMemoryBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+		bufferMemoryBarrier.pNext = nullptr;
+		bufferMemoryBarrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
+		bufferMemoryBarrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+		bufferMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		bufferMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		bufferMemoryBarrier.buffer = vulkan::g_vertexBuffer.handle;
+		bufferMemoryBarrier.offset = 0;
+		bufferMemoryBarrier.size = VK_WHOLE_SIZE;
+
+		vulkan::g_device.vkCmdPipelineBarrier(
+			commandBuffer,
+			VK_PIPELINE_STAGE_TRANSFER_BIT,
+			VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
+			0,
+			0,
+			nullptr,
+			1,
+			&bufferMemoryBarrier,
+			0,
+			nullptr);
+
+		vulkan::g_device.vkEndCommandBuffer(commandBuffer);
+
+		VkSubmitInfo submitInfo;
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.pNext = nullptr;
+		submitInfo.waitSemaphoreCount = 0;
+		submitInfo.pWaitSemaphores = nullptr;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &commandBuffer;
+		submitInfo.signalSemaphoreCount = 0;
+		submitInfo.pSignalSemaphores = nullptr;
+
+		if (vulkan::g_device.vkQueueSubmit(
+			vulkan::g_device.graphicsQueue,
+			1,
+			&submitInfo,
+			VK_NULL_HANDLE) != VK_SUCCESS)
+		{
+			puts("Vulkan failed to submit queue to copy staging buffer to vertex buffer");
+			return eRR_Error;
+		}
+
+		vulkan::g_device.vkDeviceWaitIdle(vulkan::g_device.handle);
+	} // ~copy vertex data from staging buffer -> vertex buffer
+	///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	return eRR_Success;
 }
 
 ERunResult Render()
