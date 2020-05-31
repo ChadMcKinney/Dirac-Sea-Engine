@@ -316,8 +316,6 @@ static SDevice g_device;
 static SInstance g_instance;
 
 static VkSurfaceKHR g_presentationSurface = VK_NULL_HANDLE;
-static VkSemaphore g_imageAvailableSemaphore = VK_NULL_HANDLE;
-static VkSemaphore g_renderingFinishedSemaphore = VK_NULL_HANDLE;
 static SSwapChain g_swapChain;
 
 static VkCommandPool g_presentCommandPool = VK_NULL_HANDLE;
@@ -913,6 +911,11 @@ ERunResult DestroyState()
 		for (size_t i = 0; i < RENDER_RESOURCES_COUNT; ++i)
 		{
 			SRenderResources& resource = g_renderResources[i];
+			if (resource.frameBuffer != VK_NULL_HANDLE)
+			{
+				g_device.vkDestroyFramebuffer(g_device.handle, resource.frameBuffer, g_pAllocationCallbacks);
+			}
+
 			if (resource.commandBuffer != VK_NULL_HANDLE)
 			{
 				g_device.vkFreeCommandBuffers(g_device.handle, g_presentCommandPool, 1, &resource.commandBuffer);
@@ -921,32 +924,41 @@ ERunResult DestroyState()
 			{
 				destroyResult = eRR_Error;
 			}
+
+			if (resource.imageAvailableSemaphore != VK_NULL_HANDLE)
+			{
+				g_device.vkDestroySemaphore(g_device.handle, resource.imageAvailableSemaphore, g_pAllocationCallbacks);
+			}
+			else
+			{
+				destroyResult = eRR_Error;
+			}
+
+			if (resource.renderingFinishedSemaphore != VK_NULL_HANDLE)
+			{
+				g_device.vkDestroySemaphore(g_device.handle, resource.renderingFinishedSemaphore, g_pAllocationCallbacks);
+			}
+			else
+			{
+				destroyResult = eRR_Error;
+			}
+
+			if (resource.fence != VK_NULL_HANDLE)
+			{
+				g_device.vkDestroyFence(g_device.handle, resource.fence, g_pAllocationCallbacks);
+			}
+			else
+			{
+				destroyResult = eRR_Error;
+			}
+
+			resource = SRenderResources();
 		}
 
 		if (g_presentCommandPool != VK_NULL_HANDLE)
 		{
 			g_device.vkDestroyCommandPool(g_device.handle, g_presentCommandPool, g_pAllocationCallbacks);
 			g_presentCommandPool = VK_NULL_HANDLE;
-		}
-		else
-		{
-			destroyResult = eRR_Error;
-		}
-
-		if (g_renderingFinishedSemaphore != VK_NULL_HANDLE)
-		{
-			g_device.vkDestroySemaphore(g_device.handle, g_renderingFinishedSemaphore, g_pAllocationCallbacks);
-			g_renderingFinishedSemaphore = VK_NULL_HANDLE;
-		}
-		else
-		{
-			destroyResult = eRR_Error;
-		}
-
-		if (g_imageAvailableSemaphore != VK_NULL_HANDLE)
-		{
-			g_device.vkDestroySemaphore(g_device.handle, g_imageAvailableSemaphore, g_pAllocationCallbacks);
-			g_imageAvailableSemaphore = VK_NULL_HANDLE;
 		}
 		else
 		{
