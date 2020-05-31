@@ -4,7 +4,8 @@
 
 * Job System (probably need custom synchronization primitives to go with it)
 * Map out rendering architecure more completely
-* SDF
+* Signed Distance Fields
+* Consider entity system architecture
 * Polar Coordinates
 * SSE support
 * Projection Matrix: add w normalization for depth buffer precision
