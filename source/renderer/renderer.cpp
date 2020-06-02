@@ -133,6 +133,7 @@ struct SDevice
 	VkQueue presentQueue = VK_NULL_HANDLE;
 	uint32_t graphicsQueueFamilyIndex = INVALID_QUEUE_FAMILY_PROPERTIES_INDEX;
 	uint32_t presentQueueFamilyIndex = INVALID_QUEUE_FAMILY_PROPERTIES_INDEX;
+	VkDeviceSize memoryAlignment = { 0 };
 	EState state = EState::Uninitialized;
 };
 
@@ -549,7 +550,8 @@ ERunResult SetDevice(
 	VkDevice _device,
 	VkPhysicalDevice _physicalDevice,
 	uint32_t _graphicsQueueFamilyIndex,
-	uint32_t _presentQueueFamilyIndex)
+	uint32_t _presentQueueFamilyIndex,
+	VkDeviceSize _memoryAlignment)
 {
 	assert(g_device.state == SDevice::EState::Uninitialized);
 	assert(_device != VK_NULL_HANDLE);
@@ -561,6 +563,7 @@ ERunResult SetDevice(
 	g_device.physicalDevice = _physicalDevice;
 	g_device.graphicsQueueFamilyIndex = _graphicsQueueFamilyIndex;
 	g_device.presentQueueFamilyIndex = _presentQueueFamilyIndex;
+	g_device.memoryAlignment = _memoryAlignment;
 
 #define SET_DEVICE_LEVEL_FUNCTION(fun)                                                                            \
 		g_device.fun = (PFN_##fun)vkGetDeviceProcAddr(g_device.handle, #fun);                                         \
@@ -644,7 +647,8 @@ bool CheckExtensionAvailability(const char* extensionName, const VkExtensionProp
 bool CheckPhysicalDeviceProperties(
 	VkPhysicalDevice physicalDevice, 
 	uint32_t* pGraphicsQueueFamiliesIndex,
-	uint32_t* pPresentQueueFamiliesIndex)
+	uint32_t* pPresentQueueFamiliesIndex,
+	VkDeviceSize* memoryAlignment)
 {
 	assert(pGraphicsQueueFamiliesIndex != nullptr);
 	*pGraphicsQueueFamiliesIndex = INVALID_QUEUE_FAMILY_PROPERTIES_INDEX;
@@ -713,6 +717,7 @@ bool CheckPhysicalDeviceProperties(
 				{
 					*pGraphicsQueueFamiliesIndex = i;
 					*pPresentQueueFamiliesIndex = i;
+					*memoryAlignment = deviceProperties.limits.nonCoherentAtomSize;
 					return true;
 				}
 			}
@@ -729,6 +734,7 @@ bool CheckPhysicalDeviceProperties(
 			if (pQueuePresentSupport[i])
 			{
 				*pPresentQueueFamiliesIndex = i;
+				*memoryAlignment = deviceProperties.limits.nonCoherentAtomSize;
 				return true;
 			}
 		}
@@ -931,26 +937,6 @@ ERunResult DestroyState()
 	{
 		g_device.vkDeviceWaitIdle(g_device.handle);
 
-		if (g_vertexBuffer.handle != VK_NULL_HANDLE)
-		{
-			g_device.vkDestroyBuffer(g_device.handle, g_vertexBuffer.handle, g_pAllocationCallbacks);
-		}
-		else
-		{
-			printf("[%s] g_verteBuffer.handle is unexpectedly null!\n", __FUNCTION__);
-			destroyResult = eRR_Error;
-		}
-
-		if (g_stagingBuffer.handle != VK_NULL_HANDLE)
-		{
-			g_device.vkDestroyBuffer(g_device.handle, g_stagingBuffer.handle, g_pAllocationCallbacks);
-		}
-		else
-		{
-			printf("[%s] g_stagingBuffer.handle is unexpectedly null!\n", __FUNCTION__);
-			destroyResult = eRR_Error;
-		}
-
 		for (size_t i = 0; i < RENDER_RESOURCES_COUNT; ++i)
 		{
 			SRenderResources& resource = g_renderResources[i];
@@ -962,6 +948,7 @@ ERunResult DestroyState()
 			if (resource.commandBuffer != VK_NULL_HANDLE)
 			{
 				g_device.vkFreeCommandBuffers(g_device.handle, g_graphicsCommandPool, 1, &resource.commandBuffer);
+				resource.commandBuffer = VK_NULL_HANDLE;
 			}
 			else
 			{
@@ -972,6 +959,7 @@ ERunResult DestroyState()
 			if (resource.imageAvailableSemaphore != VK_NULL_HANDLE)
 			{
 				g_device.vkDestroySemaphore(g_device.handle, resource.imageAvailableSemaphore, g_pAllocationCallbacks);
+				resource.imageAvailableSemaphore = VK_NULL_HANDLE;
 			}
 			else
 			{
@@ -982,6 +970,7 @@ ERunResult DestroyState()
 			if (resource.renderingFinishedSemaphore != VK_NULL_HANDLE)
 			{
 				g_device.vkDestroySemaphore(g_device.handle, resource.renderingFinishedSemaphore, g_pAllocationCallbacks);
+				resource.renderingFinishedSemaphore = VK_NULL_HANDLE;
 			}
 			else
 			{
@@ -992,6 +981,7 @@ ERunResult DestroyState()
 			if (resource.fence != VK_NULL_HANDLE)
 			{
 				g_device.vkDestroyFence(g_device.handle, resource.fence, g_pAllocationCallbacks);
+				resource.fence = VK_NULL_HANDLE;
 			}
 			else
 			{
@@ -1010,6 +1000,50 @@ ERunResult DestroyState()
 		else
 		{
 			printf("[%s] g_graphicsCommandPool is unexpectedly null!\n", __FUNCTION__);
+			destroyResult = eRR_Error;
+		}
+
+		if (g_vertexBuffer.handle != VK_NULL_HANDLE)
+		{
+			g_device.vkDestroyBuffer(g_device.handle, g_vertexBuffer.handle, g_pAllocationCallbacks);
+			g_vertexBuffer.handle = VK_NULL_HANDLE;
+		}
+		else
+		{
+			printf("[%s] g_verteBuffer.handle is unexpectedly null!\n", __FUNCTION__);
+			destroyResult = eRR_Error;
+		}
+
+		if (g_vertexBuffer.memory != VK_NULL_HANDLE)
+		{
+			g_device.vkFreeMemory(g_device.handle, g_vertexBuffer.memory, g_pAllocationCallbacks);
+			g_vertexBuffer.memory = VK_NULL_HANDLE;
+		}
+		else
+		{
+			printf("[%s] g_verteBuffer.memory is unexpectedly null!\n", __FUNCTION__);
+			destroyResult = eRR_Error;
+		}
+
+		if (g_stagingBuffer.handle != VK_NULL_HANDLE)
+		{
+			g_device.vkDestroyBuffer(g_device.handle, g_stagingBuffer.handle, g_pAllocationCallbacks);
+			g_stagingBuffer.handle = VK_NULL_HANDLE;
+		}
+		else
+		{
+			printf("[%s] g_stagingBuffer.handle is unexpectedly null!\n", __FUNCTION__);
+			destroyResult = eRR_Error;
+		}
+
+		if (g_stagingBuffer.memory != VK_NULL_HANDLE)
+		{
+			g_device.vkFreeMemory(g_device.handle, g_stagingBuffer.memory, g_pAllocationCallbacks);
+			g_stagingBuffer.memory = VK_NULL_HANDLE;
+		}
+		else
+		{
+			printf("[%s] g_stagingBuffer.handle is unexpectedly null!\n", __FUNCTION__);
 			destroyResult = eRR_Error;
 		}
 
@@ -1038,6 +1072,94 @@ ERunResult DestroyState()
 		{
 			puts("[Renderer] Unloading destroying default shader modules found unexpected behavior!");
 			destroyResult = eRR_Error;
+		}
+
+		if (g_renderPass != VK_NULL_HANDLE)
+		{
+			g_device.vkDestroyRenderPass(g_device.handle, g_renderPass, g_pAllocationCallbacks);
+			g_renderPass = VK_NULL_HANDLE;
+		}
+		else
+		{
+			printf("[%s] g_renderPass is unexpectedly null!\n", __FUNCTION__);
+			destroyResult = eRR_Error;
+		}
+
+		if (g_descriptorSet.pool != VK_NULL_HANDLE)
+		{
+			g_device.vkDestroyDescriptorPool(g_device.handle, g_descriptorSet.pool, g_pAllocationCallbacks);
+			g_descriptorSet.pool = VK_NULL_HANDLE;
+		}
+		else
+		{
+			printf("[%s] g_descriptorSet.pool is unexpectedly null!\n", __FUNCTION__);
+			destroyResult = eRR_Error;
+		}
+
+		if (g_descriptorSet.layout != VK_NULL_HANDLE)
+		{
+			g_device.vkDestroyDescriptorSetLayout(g_device.handle, g_descriptorSet.layout, g_pAllocationCallbacks);
+			g_descriptorSet.layout = VK_NULL_HANDLE;
+		}
+		else
+		{
+			printf("[%s] g_descriptorSet.layout is unexpectedly null!\n", __FUNCTION__);
+			destroyResult = eRR_Error;
+		}
+
+		if (g_image.sampler != VK_NULL_HANDLE)
+		{
+			g_device.vkDestroySampler(g_device.handle, g_image.sampler, g_pAllocationCallbacks);
+			g_image.sampler = VK_NULL_HANDLE;
+		}
+		else
+		{
+			printf("[%s] g_image.sampler is unexpectedly null!\n", __FUNCTION__);
+			destroyResult = eRR_Error;
+		}
+
+		if (g_image.view != VK_NULL_HANDLE)
+		{
+			g_device.vkDestroyImageView(g_device.handle, g_image.view, g_pAllocationCallbacks);
+			g_image.view = VK_NULL_HANDLE;
+		}
+		else
+		{
+			printf("[%s] g_image.view is unexpectedly null!\n", __FUNCTION__);
+			destroyResult = eRR_Error;
+		}
+
+		if (g_image.handle != VK_NULL_HANDLE)
+		{
+			g_device.vkDestroyImage(g_device.handle, g_image.handle, g_pAllocationCallbacks);
+			g_image.handle = VK_NULL_HANDLE;
+		}
+		else
+		{
+			printf("[%s] g_image.handle is unexpectedly null!\n", __FUNCTION__);
+			destroyResult = eRR_Error;
+		}
+
+		if (g_image.memory != VK_NULL_HANDLE)
+		{
+			g_device.vkFreeMemory(g_device.handle, g_image.memory, g_pAllocationCallbacks);
+			g_image.memory = VK_NULL_HANDLE;
+		}
+		else
+		{
+			printf("[%s] g_image.memory is unexpectedly null!\n", __FUNCTION__);
+			destroyResult = eRR_Error;
+		}
+
+		for (uint32_t i = 0; i < g_swapChain.imageCount; ++i)
+		{
+			SImage& image = g_swapChain.images[i];
+			if (g_swapChain.images[i].view != VK_NULL_HANDLE)
+			{
+				g_device.vkDestroyImageView(g_device.handle, image.view, g_pAllocationCallbacks);
+			}
+
+			g_swapChain.images[i] = SImage();
 		}
 
 		if (g_swapChain.state == SSwapChain::EState::Initialized && g_swapChain.handle != VK_NULL_HANDLE)
@@ -1423,12 +1545,14 @@ bool CreateTexture()
 			}
 		}
 
+		const VkDeviceSize flushSize = (dataSize + g_device.memoryAlignment - 1) / g_device.memoryAlignment;
+
 		VkMappedMemoryRange flushRange;
 		flushRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
 		flushRange.pNext = nullptr;
 		flushRange.memory = g_stagingBuffer.memory;
 		flushRange.offset = 0;
-		flushRange.size = dataSize;
+		flushRange.size = flushSize * g_device.memoryAlignment;
 
 		g_device.vkFlushMappedMemoryRanges(g_device.handle, 1, &flushRange);
 		g_device.vkUnmapMemory(g_device.handle, g_stagingBuffer.memory);
@@ -1631,6 +1755,7 @@ ERunResult Initialize()
 		VkDevice vkDevice;
 		uint32_t graphicsQueueFamilyIndex = vulkan::INVALID_QUEUE_FAMILY_PROPERTIES_INDEX;
 		uint32_t presentQueueFamilyIndex = vulkan::INVALID_QUEUE_FAMILY_PROPERTIES_INDEX;
+		VkDeviceSize memoryAlignment = { 8llu };
 		uint32_t numDevices = 0;
 		if (vkEnumeratePhysicalDevices(vulkan::g_instance.handle, &numDevices, nullptr) != VK_SUCCESS)
 		{
@@ -1654,7 +1779,11 @@ ERunResult Initialize()
 		VkPhysicalDevice selectedPhysicalDevice = VK_NULL_HANDLE;
 		for (uint32_t i = 0; i < numDevices; ++i)
 		{
-			if (vulkan::CheckPhysicalDeviceProperties(physicalDevices[i], &graphicsQueueFamilyIndex, &presentQueueFamilyIndex))
+			if (vulkan::CheckPhysicalDeviceProperties(
+				physicalDevices[i], 
+				&graphicsQueueFamilyIndex, 
+				&presentQueueFamilyIndex,
+				&memoryAlignment))
 			{
 				selectedPhysicalDevice = physicalDevices[i];
 			}
@@ -1732,7 +1861,12 @@ ERunResult Initialize()
 			return eRR_Error;
 		}
 
-		if (vulkan::SetDevice(vkDevice, selectedPhysicalDevice, graphicsQueueFamilyIndex, presentQueueFamilyIndex))
+		if (vulkan::SetDevice(
+			vkDevice,
+			selectedPhysicalDevice,
+			graphicsQueueFamilyIndex,
+			presentQueueFamilyIndex,
+			memoryAlignment))
 		{
 			return eRR_Error;
 		}
@@ -2571,12 +2705,14 @@ ERunResult Initialize()
 		assert(pStagingBufferMemory != nullptr);
 		memcpy(pStagingBufferMemory, vertexData, vulkan::g_vertexBuffer.size);
 
+		const VkDeviceSize flushSize = (vulkan::g_vertexBuffer.size + vulkan::g_device.memoryAlignment - 1) / vulkan::g_device.memoryAlignment;
+
 		VkMappedMemoryRange flushRange;
 		flushRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
 		flushRange.pNext = nullptr;
 		flushRange.memory = vulkan::g_stagingBuffer.memory;
 		flushRange.offset = 0;
-		flushRange.size = vulkan::g_vertexBuffer.size;
+		flushRange.size = flushSize * vulkan::g_device.memoryAlignment;
 
 		vulkan::g_device.vkFlushMappedMemoryRanges(vulkan::g_device.handle, 1, &flushRange);
 		vulkan::g_device.vkUnmapMemory(vulkan::g_device.handle, vulkan::g_stagingBuffer.memory);
