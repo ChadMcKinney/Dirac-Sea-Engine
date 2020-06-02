@@ -16,6 +16,13 @@ enum ERunResult : int32_t
 
 #define BIT(x) (1 << x)
 
+static const union
+{
+	uint32_t i;
+	char c[4];
+} _endianInt = { 0x01020304 };
+static const bool kIsBigEndian = _endianInt.c[0] == 1;
+
 /////////////////////////////////////////////////////////////////////
 // Enum macros for reflection and range handling
 

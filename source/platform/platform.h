@@ -8,6 +8,7 @@
 #include <memory>
 
 struct SDL_Window;
+struct SDL_Surface;
 
 namespace platform
 {
@@ -32,5 +33,13 @@ namespace platform
 	// pOutArray is assumed to be the same size as numFiles
 	// caller owns data allocation (hence, unique_ptr in SFile)
 	bool LoadFiles(const char* fileNames[], size_t numFiles, EFileType fileType, SFile* pOutArray);
+
+	struct SImageSurfaceDeleter
+	{
+		void operator()(SDL_Surface* pSurface);
+	};
+	typedef std::unique_ptr<SDL_Surface, SImageSurfaceDeleter> ImageSurfacePtr;
+
+	ImageSurfacePtr LoadImage(const char* filePath);
 } // platform namespace
 

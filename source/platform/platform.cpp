@@ -162,5 +162,23 @@ bool LoadFiles(const char* fileNames[], size_t numFiles, EFileType fileType, SFi
 	return bSuccess;
 }
 #pragma warning(pop)
+	
+void SImageSurfaceDeleter::operator()(SDL_Surface* pSurface)
+{
+	SDL_FreeSurface(pSurface);
+}
+
+ImageSurfacePtr LoadImage(const char* filePath)
+{
+	assert(filePath && filePath[0]);
+	SDL_Surface* pSurface = SDL_LoadBMP(filePath);
+	if (pSurface == nullptr)
+	{
+		printf("[%s] failed to load image: %s\n", __FUNCTION__, SDL_GetError());
+		return ImageSurfacePtr();
+	}
+
+	return ImageSurfacePtr(pSurface);
+}
 
 } // platform namespace

@@ -4,6 +4,7 @@
 
 * Job System (probably need custom synchronization primitives to go with it)
 * Map out rendering architecure more completely
+* Consider gpu memory allocation strategy, likely need to allocate larger buffers and use offsets to allocate within
 * Signed Distance Fields
 * Consider entity system architecture
 * Polar Coordinates
@@ -11,3 +12,4 @@
 * Projection Matrix: add w normalization for depth buffer precision
 * Add FOV calculation for X/Y
 * Cleanup CMake behavior with dlls
+* Pak filesystem for file I/O
