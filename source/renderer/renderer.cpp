@@ -10,6 +10,7 @@
 #include <SDL_vulkan.h>
 #include <Vulkan.h>
 
+#include "math/matrix44.h"
 #include "platform/platform.h"
 
 #define VK_FUNCTION_PTR_DECLARATION(fun) PFN_##fun fun = nullptr;
@@ -340,6 +341,7 @@ static VkRenderPass g_renderPass = VK_NULL_HANDLE;
 static VkPipelineLayout g_pipelineLayout = VK_NULL_HANDLE;
 static VkPipeline g_graphicsPipeline = VK_NULL_HANDLE;
 static SBuffer g_vertexBuffer;
+static SBuffer g_uniformBuffer;
 static SBuffer g_stagingBuffer;
 static SImage g_image;
 static SDescriptorSet g_descriptorSet;
@@ -1109,6 +1111,28 @@ ERunResult DestroyState()
 		else
 		{
 			printf("[%s] g_descriptorSet.layout is unexpectedly null!\n", __FUNCTION__);
+			destroyResult = eRR_Error;
+		}
+
+		if (g_uniformBuffer.handle != VK_NULL_HANDLE)
+		{
+			g_device.vkDestroyBuffer(g_device.handle, g_uniformBuffer.handle, g_pAllocationCallbacks);
+			g_uniformBuffer.handle = VK_NULL_HANDLE;
+		}
+		else
+		{
+			printf("[%s] g_uniformBuffer.handle is unexpectedly null!\n", __FUNCTION__);
+			destroyResult = eRR_Error;
+		}
+
+		if (g_uniformBuffer.memory != VK_NULL_HANDLE)
+		{
+			g_device.vkFreeMemory(g_device.handle, g_uniformBuffer.memory, g_pAllocationCallbacks);
+			g_stagingBuffer.memory = VK_NULL_HANDLE;
+		}
+		else
+		{
+			printf("[%s] g_uniformBuffer.memory is unexpectedly null!\n", __FUNCTION__);
 			destroyResult = eRR_Error;
 		}
 
@@ -2240,6 +2264,23 @@ ERunResult Initialize()
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////
+	{ // Create uniform buffer
+		const VkBufferUsageFlags uniformBufferUsage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+		const VkMemoryPropertyFlagBits uniformBufferMemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+		if (vulkan::CreateBuffer(
+			uniformBufferUsage,
+			uniformBufferMemoryProperty,
+			sizeof(Matrix44l),
+			vulkan::g_uniformBuffer) == false)
+		{
+			puts("Vulkan failed to create uniform buffer!");
+			return eRR_Error;
+		}
+	} // ~create uniform buffer
+	///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////
 	{ // create texture
 	if (!vulkan::CreateTexture())
 	{
@@ -2252,21 +2293,33 @@ ERunResult Initialize()
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 	{ // create descriptor set
 		assert(vulkan::g_image.handle != VK_NULL_HANDLE);
+		const uint32_t numDescriptors = 2;
 
 		{ // create descriptor set layout
-			VkDescriptorSetLayoutBinding layoutBinding;
-			layoutBinding.binding = 0;
-			layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			layoutBinding.descriptorCount = 1;
-			layoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-			layoutBinding.pImmutableSamplers = nullptr;
+			VkDescriptorSetLayoutBinding layoutBindings[numDescriptors]
+			{
+				{
+					0, // binding
+					VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, // descriptor type
+					1, // descriptor count
+					VK_SHADER_STAGE_FRAGMENT_BIT, // stage flags
+					nullptr // immutable samplers
+				},
+				{
+					1, // binding
+					VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, // descriptor type
+					1, // descriptor count
+					VK_SHADER_STAGE_VERTEX_BIT, // stage flags
+					nullptr // immutable samplers
+				}
+			};
 
 			VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo;
 			descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 			descriptorSetLayoutCreateInfo.pNext = nullptr;
 			descriptorSetLayoutCreateInfo.flags = 0;
-			descriptorSetLayoutCreateInfo.bindingCount = 1;
-			descriptorSetLayoutCreateInfo.pBindings = &layoutBinding;
+			descriptorSetLayoutCreateInfo.bindingCount = numDescriptors;
+			descriptorSetLayoutCreateInfo.pBindings = layoutBindings;
 
 			if (vulkan::g_device.vkCreateDescriptorSetLayout(
 				vulkan::g_device.handle,
@@ -2280,15 +2333,19 @@ ERunResult Initialize()
 		} // ~create descriptor set layout
 
 		{ // create descriptor pool
-			const VkDescriptorPoolSize poolSize = { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1 };
+			const VkDescriptorPoolSize poolSizes[numDescriptors] =
+			{
+				{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1 },
+				{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1 }
+			};
 
 			VkDescriptorPoolCreateInfo descriptorPoolCreateInfo;
 			descriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 			descriptorPoolCreateInfo.pNext = nullptr;
 			descriptorPoolCreateInfo.flags = 0;
 			descriptorPoolCreateInfo.maxSets = 1;
-			descriptorPoolCreateInfo.poolSizeCount = 1;
-			descriptorPoolCreateInfo.pPoolSizes = &poolSize;
+			descriptorPoolCreateInfo.poolSizeCount = numDescriptors;
+			descriptorPoolCreateInfo.pPoolSizes = poolSizes;
 
 			if (vulkan::g_device.vkCreateDescriptorPool(
 				vulkan::g_device.handle,
@@ -2331,22 +2388,43 @@ ERunResult Initialize()
 			imageInfo.imageView = vulkan::g_image.view;
 			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-			VkWriteDescriptorSet descriptorWrites;
-			descriptorWrites.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrites.pNext = nullptr;
-			descriptorWrites.dstSet = vulkan::g_descriptorSet.handle;
-			descriptorWrites.dstBinding = 0;
-			descriptorWrites.dstArrayElement = 0;
-			descriptorWrites.descriptorCount = 1;
-			descriptorWrites.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			descriptorWrites.pImageInfo = &imageInfo;
-			descriptorWrites.pBufferInfo = nullptr;
-			descriptorWrites.pTexelBufferView = nullptr;
+			VkDescriptorBufferInfo bufferInfo;
+			bufferInfo.buffer = vulkan::g_uniformBuffer.handle;
+			bufferInfo.offset = 0;
+			bufferInfo.range = vulkan::g_uniformBuffer.size;
+
+			VkWriteDescriptorSet descriptorWrites[numDescriptors] =
+			{
+				{
+					VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, // sType
+					nullptr, // pNext
+					vulkan::g_descriptorSet.handle, // dstSet
+					0, // dstBinding
+					0, // dstArrayElement
+					1, // descriptor count
+					VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, // descriptorType
+					&imageInfo, // pImageInfo
+					nullptr, // pBufferInfo
+					nullptr // pTexelBufferView
+				},
+				{
+					VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, // sType
+					nullptr, // pNext
+					vulkan::g_descriptorSet.handle, // dstSet
+					1, // dstBinding
+					0, // dstArrayElement
+					1, // descriptor count
+					VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, // descriptorType
+					nullptr, // pImageInfo
+					&bufferInfo, // pBufferInfo
+					nullptr // pTexelBufferView
+				}
+			};
 
 			vulkan::g_device.vkUpdateDescriptorSets(
 				vulkan::g_device.handle,
-				1, // descriptor write count
-				&descriptorWrites,
+				2, // descriptor write count
+				descriptorWrites,
 				0, // descriptor copy count
 				nullptr /* descriptor copies */);
 		} // ~update descriptor set
@@ -2792,6 +2870,115 @@ ERunResult Initialize()
 
 		vulkan::g_device.vkDeviceWaitIdle(vulkan::g_device.handle); // TODO: use semaphores instead of simply waiting on the device
 	} // ~copy vertex data from staging buffer -> vertex buffer
+	///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////
+	{ // Copy matrix to staging buffer, then copy to host memory uniform buffer
+		static const Matrix44l matrix = Matrix44l::CreateRotationAndTranslation(
+			Matrix33l::CreateRotationZ(kFLocalQuarterPi),
+			Vec3l(-0.5f, -0.5f, 0.0f)
+		);
+		static const VkDeviceSize matrixSize = sizeof(matrix);
+
+		{ // Map staging buffer memory and copy projection matrix to it
+			void* pStagingBufferMemoryPoint;
+			if (vulkan::g_device.vkMapMemory(
+				vulkan::g_device.handle,
+				vulkan::g_stagingBuffer.memory,
+				0, // offset
+				matrixSize,
+				0, // flags
+				&pStagingBufferMemoryPoint) != VK_SUCCESS)
+			{
+				puts("Vulkan failed to map staging buffer for uniform data!");
+				return eRR_Error;
+			}
+
+			memcpy(pStagingBufferMemoryPoint, &matrix, matrixSize);
+
+			VkMappedMemoryRange flushRange;
+			flushRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+			flushRange.pNext = nullptr;
+			flushRange.memory = vulkan::g_stagingBuffer.memory;
+			flushRange.offset = 0;
+			flushRange.size = matrixSize;
+
+			vulkan::g_device.vkFlushMappedMemoryRanges(vulkan::g_device.handle, 1, &flushRange);
+			vulkan::g_device.vkUnmapMemory(vulkan::g_device.handle, vulkan::g_stagingBuffer.memory);
+		} // ~Map staging buffer memory and copy projection matrix to it
+
+		{ // copy from the staging buffer into the uniform buffer's device local memory
+			VkCommandBuffer commandBuffer = vulkan::g_renderResources[0].commandBuffer;
+			VkCommandBufferBeginInfo commandBufferBeginInfo;
+			commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+			commandBufferBeginInfo.pNext = nullptr;
+			commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+			commandBufferBeginInfo.pInheritanceInfo = nullptr;
+
+			vulkan::g_device.vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo);
+
+			VkBufferCopy bufferCopyInfo;
+			bufferCopyInfo.srcOffset = 0;
+			bufferCopyInfo.dstOffset = 0;
+			bufferCopyInfo.size = matrixSize;
+
+			vulkan::g_device.vkCmdCopyBuffer(
+				commandBuffer,
+				vulkan::g_stagingBuffer.handle,
+				vulkan::g_uniformBuffer.handle,
+				1,
+				&bufferCopyInfo);
+
+			VkBufferMemoryBarrier bufferMemoryBarrier;
+			bufferMemoryBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+			bufferMemoryBarrier.pNext = nullptr;
+			bufferMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			bufferMemoryBarrier.dstAccessMask = VK_ACCESS_UNIFORM_READ_BIT;
+			bufferMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			bufferMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			bufferMemoryBarrier.buffer = vulkan::g_uniformBuffer.handle;
+			bufferMemoryBarrier.offset = 0;
+			bufferMemoryBarrier.size = matrixSize;
+
+			vulkan::g_device.vkCmdPipelineBarrier(
+				commandBuffer,
+				VK_PIPELINE_STAGE_TRANSFER_BIT,
+				VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
+				0, // dependency flags
+				0, // memory barrier count
+				nullptr, // memory barriers
+				1, // buffer memory barrier count
+				&bufferMemoryBarrier, // buffer memory barriers
+				0, // image memory barrier count
+				nullptr /* image memory barriers */);
+
+			vulkan::g_device.vkEndCommandBuffer(commandBuffer);
+
+			VkSubmitInfo submitInfo;
+			submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+			submitInfo.pNext = nullptr;
+			submitInfo.waitSemaphoreCount = 0;
+			submitInfo.pWaitSemaphores = nullptr;
+			submitInfo.pWaitDstStageMask = nullptr;
+			submitInfo.commandBufferCount = 1;
+			submitInfo.pCommandBuffers = &commandBuffer;
+			submitInfo.signalSemaphoreCount = 0;
+			submitInfo.pSignalSemaphores = nullptr;
+
+			if (vulkan::g_device.vkQueueSubmit(
+				vulkan::g_device.graphicsQueue,
+				1,
+				&submitInfo,
+				VK_NULL_HANDLE) != VK_SUCCESS)
+			{
+				puts("Vulkan failed to submit graphics queue for the uniform buffer!");
+				return eRR_Error;
+			}
+
+			vulkan::g_device.vkDeviceWaitIdle(vulkan::g_device.handle); // TODO: use semaphores instead of simply waiting on the device
+		} // Copy uniform buffer to staging buffer, then copy to host memory
+
+	} // ~Copy matrix to staging buffer, then copy to host memory uniform buffer
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	return eRR_Success;

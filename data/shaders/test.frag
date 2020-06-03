@@ -21,6 +21,7 @@ layout(location = 0) out vec4 o_Color;
 
 ////////////////////////////////////////////
 // main
-void main() {
+void main()
+{
   o_Color = texture(u_Texture, v_Texcoord);
 }
