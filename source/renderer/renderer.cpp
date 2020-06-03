@@ -111,6 +111,11 @@ static constexpr size_t MAX_COMMAND_BUFFER_COUNT = MAX_IMAGE_COUNT;
 static constexpr size_t RENDER_RESOURCES_COUNT = 3;
 static_assert(RENDER_RESOURCES_COUNT <= MAX_COMMAND_BUFFER_COUNT);
 
+static constexpr VkDeviceSize kMatrix44Alignment = 4;
+static constexpr VkDeviceSize kMatrix43Alignment = 4;
+static constexpr VkDeviceSize kMatrix33Alignment = 4;
+static constexpr VkDeviceSize kMatrix22Alignment = 2;
+
 /////////////////////////////////////////////////////////
 // State
 
