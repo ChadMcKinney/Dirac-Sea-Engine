@@ -10,22 +10,6 @@
 #include <iostream>
 #include <SDL.h>
 
-// NOTES TO SELF:
-
-// BREAK OUT VULKAN CODE INTO DIFFERNT FILE
-// HAVE Main work like this:
-
-// Platform::Initialize
-// Renderer::Initialize
-//	-> Use a #define list for shaders (should be precompiled to spir-v from via cmake build step, gathers all shaders in folder and compiles them!)
-//	-> During initialize: Automatically load them into array (using TFileBatchHandle Platform::LoadFileBatch(const char* fileNames[], size_t numFiles, const char** outData), enum value is index
-//  -> can then reference them during graphics pipeline building
-// Renderer::Render while (true)
-// Renderer::Shutdown
-//	-> Calls Platform::UnloadFiles(TFileBatchHandle fileBatchHandle)
-//  free dynamic memory allocation for compiled shaders
-// Platform::Shutdown
-
 namespace platform
 {
 static SDL_Window* g_pWindow = nullptr;

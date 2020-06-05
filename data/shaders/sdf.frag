@@ -70,11 +70,118 @@ vec3 rayDirection(float fieldOfView, vec2 size)
     return normalize(vec3(xy, -z));
 }
 
+// Use the gradient of the SDF to estimate the normal on the surface at point p
+vec3 estimateNormal(vec3 p)
+{
+    return normalize(
+        vec3(
+            sceneSDF(vec3(p.x + EPSILON, p.y, p.z)) - sceneSDF(vec3(p.x - EPSILON, p.y, p.z)),
+            sceneSDF(vec3(p.x, p.y + EPSILON, p.z)) - sceneSDF(vec3(p.x, p.y - EPSILON, p.z)),
+            sceneSDF(vec3(p.x, p.y, p.z + EPSILON)) - sceneSDF(vec3(p.x, p.y, p.z - EPSILON))
+        ));
+}
+
+/*
+ * Lighting contribution of a single point light source via Phong illumination
+ *
+ * The vec3 returned is the RGB color of the light's contribution
+ *
+ * k_a: Ambient color
+ * k_d: Diffuse colo
+ * k_s: specular
+ * alpha: shininess coefficient
+ * p: position of point being lit
+ * eye: position of the camera
+ * lightPos: the position of the light
+ * lightIntensity color/intensity of the light
+ */
+
+vec3 phoneContributionForLight(
+    vec3 k_d,
+    vec3 k_s,
+    float alpha,
+    vec3 p,
+    vec3 eye,
+    vec3 lightPos,
+    vec3 lightIntensity)
+{
+    vec3 N = estimateNormal(p);
+    vec3 L = normalize(lightPos - p);
+    vec3 V = normalize(eye - p);
+    vec3 R = normalize(reflect(-L, N));
+
+    float dotLN = dot(L, N);
+    float dotRV = dot(R, N);
+
+    // facing away from light
+    if (dotLN < 0.0)
+    {
+        return vec3(0.0, 0.0, 0.0);
+    }
+
+    // facing away from view, apply only diffuse
+    if (dotRV < 0.0)
+    {
+        lightIntensity * (k_d * dotLN);
+    }
+
+    return lightIntensity * (k_d * dotLN + k_s * pow(dotRV, alpha));
+}
+
+/*
+ * Lighting via Phong illumination
+ * 
+ * The vec3 return is the RGB color of that point after lighting is applied
+ * k_a: Ambient color
+ * k_d: Diffuse colo
+ * k_s: specular
+ * alpha: shininess coefficient
+ * p: position of point being lit
+ * eye: position of the camera
+ */
+vec3 phongIllumination(
+    vec3 k_a,
+    vec3 k_d,
+    vec3 k_s,
+    float alpha,
+    vec3 p,
+    vec3 eye)
+{
+    const vec3 ambientLight = 0.5 * vec3(1.0, 1.0, 1.0);
+    vec3 color = ambientLight * k_a;
+
+    vec3 light1Pos = vec3(4.0, 2.0, 4.0); // TODO: Animate
+    vec3 light1Intensity = vec3(0.4, 0.4, 0.4);
+
+    color += phoneContributionForLight(
+        k_d,
+        k_s,
+        alpha,
+        p,
+        eye,
+        light1Pos,
+        light1Intensity);
+
+    vec3 light2Pos = vec3(2.0, 2.0, 2.0); // TODO: Animate
+    vec3 light2Intensity = vec3(0.4, 0.4, 0.4);
+
+    color += phoneContributionForLight(
+        k_d,
+        k_s,
+        alpha,
+        p,
+        eye,
+        light2Pos,
+        light2Intensity);
+
+    return color;
+}
+
 ////////////////////////////////////////////
 // main
 void main()
 {
-    vec2 size = vec2(1024.0, 768.0);
+    vec2 size = vec2(1024.0, 768.0); // TODO: pass in as uniform
     vec3 dir = rayDirection(45.0, size);
     vec3 eye = vec3(0.0, 0.0, 8.0);
     float dist = shortestDistanceToSurface(eye, dir, MIN_DIST, MAX_DIST);
@@ -83,8 +190,14 @@ void main()
         o_Color = vec4(0.0, 0.0, 0.0, 0.0);
         return;
     }
-    else
-    {
-        o_Color = vec4(1.0, 0.0, 0.0, 1.0);
-    }
+
+    // The closest point on the surface to the eyepoint along the view ray
+    vec3 p = eye + dist * dir;
+
+    vec3 k_a = vec3(0.2, 0.2, 0.2);
+    vec3 k_d = vec3(0.7, 0.2, 0.2);
+    vec3 k_s = vec3(1.0, 1.0, 1.0);
+    float shininess = 10.0;
+    vec3 color = phongIllumination(k_a, k_d, k_s, shininess, p, eye);
+    o_Color = vec4(color, 1.0);
 }
