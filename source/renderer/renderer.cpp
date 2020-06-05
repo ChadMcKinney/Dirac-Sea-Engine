@@ -2986,7 +2986,7 @@ ERunResult Initialize()
 	return eRR_Success;
 }
 
-ERunResult Render()
+ERunResult Render(const SFrameContext&)
 {
 	/////////////////////////
 	// Rendering setup

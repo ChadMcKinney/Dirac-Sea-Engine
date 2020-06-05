@@ -4,9 +4,22 @@
  */
 
 #include <cassert>
+#include <chrono>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+
+typedef std::chrono::steady_clock TClock;
+typedef std::chrono::steady_clock::time_point TTime;
+typedef std::chrono::steady_clock::duration TDuration;
+typedef double TDurationSeconds;
+typedef int64_t TDurationMilliseconds;
+
+struct SFrameContext
+{
+	TTime frameStartTime;
+	TDuration lastFrameDuration;
+};
 	
 enum ERunResult : int32_t
 {

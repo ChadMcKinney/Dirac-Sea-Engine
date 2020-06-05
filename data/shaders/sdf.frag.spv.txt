@@ -24,7 +24,7 @@ sdf.frag
                               Name 28  "size"
                               Name 33  "estimateNormal(vf3;"
                               Name 32  "p"
-                              Name 43  "phoneContributionForLight(vf3;vf3;f1;vf3;vf3;vf3;vf3;"
+                              Name 43  "phongContributionForLight(vf3;vf3;f1;vf3;vf3;vf3;vf3;"
                               Name 36  "k_d"
                               Name 37  "k_s"
                               Name 38  "alpha"
@@ -452,7 +452,7 @@ sdf.frag
              212:    7(fvec3) ExtInst 1(GLSL.std.450) 69(Normalize) 211
                               ReturnValue 212
                               FunctionEnd
-43(phoneContributionForLight(vf3;vf3;f1;vf3;vf3;vf3;vf3;):    7(fvec3) Function None 35
+43(phongContributionForLight(vf3;vf3;f1;vf3;vf3;vf3;vf3;):    7(fvec3) Function None 35
          36(k_d):      8(ptr) FunctionParameter
          37(k_s):      8(ptr) FunctionParameter
        38(alpha):     16(ptr) FunctionParameter
@@ -574,7 +574,7 @@ sdf.frag
                               Store 292(param) 293
              295:    7(fvec3) Load 279(light1Intensity)
                               Store 294(param) 295
-             296:    7(fvec3) FunctionCall 43(phoneContributionForLight(vf3;vf3;f1;vf3;vf3;vf3;vf3;) 282(param) 284(param) 286(param) 288(param) 290(param) 292(param) 294(param)
+             296:    7(fvec3) FunctionCall 43(phongContributionForLight(vf3;vf3;f1;vf3;vf3;vf3;vf3;) 282(param) 284(param) 286(param) 288(param) 290(param) 292(param) 294(param)
              297:    7(fvec3) Load 271(color)
              298:    7(fvec3) FAdd 297 296
                               Store 271(color) 298
@@ -594,7 +594,7 @@ sdf.frag
                               Store 312(param) 313
              315:    7(fvec3) Load 301(light2Intensity)
                               Store 314(param) 315
-             316:    7(fvec3) FunctionCall 43(phoneContributionForLight(vf3;vf3;f1;vf3;vf3;vf3;vf3;) 302(param) 304(param) 306(param) 308(param) 310(param) 312(param) 314(param)
+             316:    7(fvec3) FunctionCall 43(phongContributionForLight(vf3;vf3;f1;vf3;vf3;vf3;vf3;) 302(param) 304(param) 306(param) 308(param) 310(param) 312(param) 314(param)
              317:    7(fvec3) Load 271(color)
              318:    7(fvec3) FAdd 317 316
                               Store 271(color) 318

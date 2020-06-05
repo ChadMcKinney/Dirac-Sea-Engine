@@ -8,6 +8,6 @@
 namespace renderer
 {
 	ERunResult Initialize();
-	ERunResult Render();
+	ERunResult Render(const SFrameContext& frameContext);
 	ERunResult Shutdown();
 } // renderer namespace

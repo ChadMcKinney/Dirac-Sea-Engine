@@ -5,6 +5,8 @@
 
 #include "diracsea.h"
 
+#include <chrono>
+
 #include "platform/platform.h"
 #include "renderer/renderer.h"
 #include "tests/tests.h"
@@ -32,14 +34,21 @@ ERunResult Run()
 		puts("[DiracSea] Running...");
     RunTests();
 
-    bool bExit = false;
-    ERunResult platformRunIOResult = eRR_Success;
-    ERunResult renderResult = eRR_Success;
-    while (bExit == false && (platformRunIOResult | renderResult) == eRR_Success)
-    {
+		bool bExit = false;
+		ERunResult platformRunIOResult = eRR_Success;
+		ERunResult renderResult = eRR_Success;
+
+		TTime lastFrameTime = std::chrono::steady_clock::now();
+		SFrameContext frameContext = { lastFrameTime, TDuration() };
+
+		while (bExit == false && (platformRunIOResult | renderResult) == eRR_Success)
+		{
+			lastFrameTime = frameContext.frameStartTime;
+			frameContext.frameStartTime = std::chrono::steady_clock::now();
+			frameContext.lastFrameDuration = frameContext.frameStartTime - lastFrameTime;
 			platformRunIOResult = platform::RunIO(&bExit);
-			renderResult = renderer::Render();
-    }
+			renderResult = renderer::Render(frameContext);
+		}
 
     if (platformRunIOResult != eRR_Success)
     {

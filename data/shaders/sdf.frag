@@ -96,7 +96,7 @@ vec3 estimateNormal(vec3 p)
  * lightIntensity color/intensity of the light
  */
 
-vec3 phoneContributionForLight(
+vec3 phongContributionForLight(
     vec3 k_d,
     vec3 k_s,
     float alpha,
@@ -153,7 +153,7 @@ vec3 phongIllumination(
     vec3 light1Pos = vec3(4.0, 2.0, 4.0); // TODO: Animate
     vec3 light1Intensity = vec3(0.4, 0.4, 0.4);
 
-    color += phoneContributionForLight(
+    color += phongContributionForLight(
         k_d,
         k_s,
         alpha,
@@ -165,7 +165,7 @@ vec3 phongIllumination(
     vec3 light2Pos = vec3(2.0, 2.0, 2.0); // TODO: Animate
     vec3 light2Intensity = vec3(0.4, 0.4, 0.4);
 
-    color += phoneContributionForLight(
+    color += phongContributionForLight(
         k_d,
         k_s,
         alpha,
