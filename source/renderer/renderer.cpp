@@ -6,6 +6,7 @@
 #include "diracsea.h"
 #include "renderer.h"
 
+#include <array>
 #include <SDL.h>
 #include <SDL_vulkan.h>
 #include <Vulkan.h>
@@ -407,10 +408,10 @@ public:
 	{
 		assert(m_bShadersLoaded == false);
 		m_bShadersLoaded = true;
-		bool bVertexFilesLoaded = platform::LoadFiles(m_vertexShaderFilePaths, EnumCount, platform::EFileType::Binary, m_vertexShaders);
+		bool bVertexFilesLoaded = platform::LoadFiles(m_vertexShaderFilePaths, EnumCount, platform::EFileType::Binary, m_vertexShaders.data());
 		if (bVertexFilesLoaded)
 		{
-			bool bFragFilesLoaded = platform::LoadFiles(m_fragmentShaderFilePaths, EnumCount, platform::EFileType::Binary, m_fragmentShaders);
+			bool bFragFilesLoaded = platform::LoadFiles(m_fragmentShaderFilePaths, EnumCount, platform::EFileType::Binary, m_fragmentShaders.data());
 #if PRINT_SHADERS_ON_LOAD
 			if (bFragFilesLoaded)
 			{
@@ -503,7 +504,7 @@ public:
 
 	inline VkShaderModule GetVertexShaderModule(Enum shaderEnum)
 	{
-		assert((size_t)shaderEnum < EnumCount);
+		assert((size_t)shaderEnum < m_vertexShaderModules.size());
 		assert(m_bShaderModulesCreated);
 		assert(m_vertexShaderModules[(size_t)shaderEnum] != VK_NULL_HANDLE);
 		return m_vertexShaderModules[(size_t)shaderEnum];
@@ -511,7 +512,7 @@ public:
 
 	inline VkShaderModule GetFragmentShaderModule(Enum shaderEnum)
 	{
-		assert((size_t)shaderEnum < EnumCount);
+		assert((size_t)shaderEnum < m_fragmentShaderModules.size());
 		assert(m_bShaderModulesCreated);
 		assert(m_fragmentShaderModules[(size_t)shaderEnum] != VK_NULL_HANDLE);
 		return m_fragmentShaderModules[(size_t)shaderEnum];
@@ -520,10 +521,10 @@ public:
 private:
 	const char** m_vertexShaderFilePaths;
 	const char** m_fragmentShaderFilePaths;
-	platform::SFile m_vertexShaders[EnumCount] = { platform::SFile() };
-	platform::SFile m_fragmentShaders[EnumCount] = { platform::SFile() };
-	VkShaderModule m_vertexShaderModules[EnumCount] = { VK_NULL_HANDLE };
-	VkShaderModule m_fragmentShaderModules[EnumCount] = { VK_NULL_HANDLE };
+	std::array<platform::SFile, EnumCount> m_vertexShaders = { platform::SFile() };
+	std::array<platform::SFile, EnumCount> m_fragmentShaders = { platform::SFile() };
+	std::array<VkShaderModule, EnumCount> m_vertexShaderModules = { VK_NULL_HANDLE };
+	std::array<VkShaderModule, EnumCount> m_fragmentShaderModules = { VK_NULL_HANDLE };
 	bool m_bShadersLoaded = false;
 	bool m_bShaderModulesCreated = false;
 };
@@ -546,7 +547,8 @@ private:
 ///////////////////////////
 // Default Shaders
 #define DEFAULT_SHADERS(x)\
-	x(test)
+	x(test)\
+	x(sdf)
 
 SHADER_BANK(DefaultShaders, DEFAULT_SHADERS)
 
