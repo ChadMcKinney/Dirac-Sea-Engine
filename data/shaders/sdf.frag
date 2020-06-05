@@ -14,6 +14,11 @@ layout(set=0, binding=1) uniform u_UniformBuffer
     mat4 u_ViewMatrix;
 };
 
+layout(push_constant) uniform PushConstants
+{
+    float timeSecs;
+};
+
 layout(location = 0) in vec2 v_Texcoord;
 
 ////////////////////////////////////////////
@@ -150,7 +155,7 @@ vec3 phongIllumination(
     const vec3 ambientLight = 0.5 * vec3(1.0, 1.0, 1.0);
     vec3 color = ambientLight * k_a;
 
-    vec3 light1Pos = vec3(4.0, 2.0, 4.0); // TODO: Animate
+    vec3 light1Pos = vec3(4.0 * sin(timeSecs), 2.0, 4.0 * cos(timeSecs));
     vec3 light1Intensity = vec3(0.4, 0.4, 0.4);
 
     color += phongContributionForLight(
@@ -162,7 +167,7 @@ vec3 phongIllumination(
         light1Pos,
         light1Intensity);
 
-    vec3 light2Pos = vec3(2.0, 2.0, 2.0); // TODO: Animate
+    vec3 light2Pos = vec3(2.0 * sin(timeSecs * 0.333), 2.0 * cos(timeSecs * 0.333), 2.0);
     vec3 light2Intensity = vec3(0.4, 0.4, 0.4);
 
     color += phongContributionForLight(

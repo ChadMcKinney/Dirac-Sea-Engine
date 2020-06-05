@@ -9,16 +9,16 @@
 #include <cstdio>
 #include <cstring>
 
-typedef std::chrono::steady_clock TClock;
+typedef std::chrono::steady_clock TSteadyClock;
 typedef std::chrono::steady_clock::time_point TTime;
-typedef std::chrono::steady_clock::duration TDuration;
-typedef double TDurationSeconds;
-typedef int64_t TDurationMilliseconds;
+typedef std::chrono::duration<double, std::ratio<60, 1>> TMinutes;
+typedef std::chrono::duration<double, std::ratio<1, 1>> TSeconds;
+typedef std::chrono::duration<double, std::ratio<1, 1000>> TMilliseconds;
 
 struct SFrameContext
 {
 	TTime frameStartTime;
-	TDuration lastFrameDuration;
+	TMilliseconds lastFrameDuration;
 };
 	
 enum ERunResult : int32_t

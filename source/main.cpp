@@ -39,7 +39,7 @@ ERunResult Run()
 		ERunResult renderResult = eRR_Success;
 
 		TTime lastFrameTime = std::chrono::steady_clock::now();
-		SFrameContext frameContext = { lastFrameTime, TDuration() };
+		SFrameContext frameContext = { lastFrameTime, TMilliseconds() };
 
 		while (bExit == false && (platformRunIOResult | renderResult) == eRR_Success)
 		{

@@ -101,12 +101,14 @@
 	x(vkDestroyDescriptorPool)\
 	x(vkDestroyDescriptorSetLayout)\
 	x(vkDestroySampler)\
-	x(vkDestroyImage)
+	x(vkDestroyImage)\
+	x(vkCmdPushConstants)
 
 namespace vulkan
 {
 /////////////////////////////////////////////////////////
 // Constants
+static constexpr VkDeviceSize MAX_PUSH_CONSTANTS_SIZE = 128;
 static constexpr uint32_t INVALID_QUEUE_FAMILY_PROPERTIES_INDEX = UINT32_MAX;
 static constexpr size_t MAX_IMAGE_COUNT = 4;
 static constexpr size_t MAX_COMMAND_BUFFER_COUNT = MAX_IMAGE_COUNT;
@@ -120,6 +122,12 @@ static constexpr VkDeviceSize kMatrix22Alignment = 2;
 
 /////////////////////////////////////////////////////////
 // State
+
+struct SPushConstants
+{
+	float timeSecs = 0;
+};
+static_assert(sizeof(SPushConstants) <= MAX_PUSH_CONSTANTS_SIZE);
 
 ///////////////////////////
 // SDevice
@@ -326,7 +334,7 @@ struct SDescriptorSet
 
 // TODO: Add allocation callbacks for debugging
 static const VkAllocationCallbacks* g_pAllocationCallbacks = nullptr;
-
+static SPushConstants g_pushConstants;
 static SDevice g_device;
 static SInstance g_instance;
 
@@ -792,7 +800,11 @@ bool CreateSwapChainImageViews()
 	return true;
 }
 
-bool PrepareFrame(VkCommandBuffer commandBuffer, const SImage& image, VkFramebuffer& outFrameBuffer)
+bool PrepareFrame(
+	VkCommandBuffer commandBuffer,
+	const SImage& image,
+	const SFrameContext&,
+	VkFramebuffer& outFrameBuffer)
 {
 	assert(g_device.state == SDevice::EState::Initialized);
 	assert(g_swapChain.state == SSwapChain::EState::Initialized);
@@ -873,17 +885,25 @@ bool PrepareFrame(VkCommandBuffer commandBuffer, const SImage& image, VkFramebuf
 		&g_vertexBuffer.handle,
 		&offset);
 
-	assert(vulkan::g_pipelineLayout != VK_NULL_HANDLE);
-	assert(vulkan::g_descriptorSet.handle != VK_NULL_HANDLE);
+	assert(g_pipelineLayout != VK_NULL_HANDLE);
+	assert(g_descriptorSet.handle != VK_NULL_HANDLE);
 	g_device.vkCmdBindDescriptorSets(
 		commandBuffer,
 		VK_PIPELINE_BIND_POINT_GRAPHICS,
-		vulkan::g_pipelineLayout,
+		g_pipelineLayout,
 		0, // first set
 		1, // descriptor set count
 		&g_descriptorSet.handle,
 		0, // dynamic offset count
 		nullptr /* dynamic offsets */);
+
+	g_device.vkCmdPushConstants(
+		commandBuffer,
+		g_pipelineLayout,
+		VK_SHADER_STAGE_FRAGMENT_BIT,
+		0,
+		sizeof(SPushConstants),
+		&g_pushConstants);
 
 	g_device.vkCmdDraw(commandBuffer, 4, 1, 0, 0);
 	g_device.vkCmdEndRenderPass(commandBuffer);
@@ -2660,14 +2680,20 @@ ERunResult Initialize()
 		{ // create pipeline layout
 			assert(vulkan::g_descriptorSet.handle != VK_NULL_HANDLE);
 			assert(vulkan::g_descriptorSet.layout != VK_NULL_HANDLE);
+
+			VkPushConstantRange pushConstantInfo;
+			pushConstantInfo.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+			pushConstantInfo.offset = 0;
+			pushConstantInfo.size = sizeof(vulkan::SPushConstants);
+
 			VkPipelineLayoutCreateInfo layoutCreateInfo;
 			layoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 			layoutCreateInfo.pNext = nullptr;
 			layoutCreateInfo.flags = 0;
 			layoutCreateInfo.setLayoutCount = 1;
 			layoutCreateInfo.pSetLayouts = &vulkan::g_descriptorSet.layout;
-			layoutCreateInfo.pushConstantRangeCount = 0;
-			layoutCreateInfo.pPushConstantRanges = nullptr;
+			layoutCreateInfo.pushConstantRangeCount = 1;
+			layoutCreateInfo.pPushConstantRanges = &pushConstantInfo;
 
 			if (vulkan::g_device.vkCreatePipelineLayout(
 				vulkan::g_device.handle,
@@ -2986,13 +3012,14 @@ ERunResult Initialize()
 	return eRR_Success;
 }
 
-ERunResult Render(const SFrameContext&)
+ERunResult Render(const SFrameContext& frameContext)
 {
 	/////////////////////////
 	// Rendering setup
 	static size_t resourceIndex = 0;
 	vulkan::SRenderResources& currentRenderingResource = vulkan::g_renderResources[resourceIndex];
 	resourceIndex = (resourceIndex + 1) % vulkan::RENDER_RESOURCES_COUNT;
+	vulkan::g_pushConstants.timeSecs += (float) TSeconds(frameContext.lastFrameDuration).count();
 
 	/////////////////////////
 	// Fence handling
@@ -3041,6 +3068,7 @@ ERunResult Render(const SFrameContext&)
 	if (!vulkan::PrepareFrame(
 		currentRenderingResource.commandBuffer,
 		vulkan::g_swapChain.images[imageIndex],
+		frameContext,
 		currentRenderingResource.frameBuffer))
 	{
 		puts("renderer failed to prepare frame!");
