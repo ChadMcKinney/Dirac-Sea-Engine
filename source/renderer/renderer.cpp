@@ -555,7 +555,6 @@ private:
 ///////////////////////////
 // Default Shaders
 #define DEFAULT_SHADERS(x)\
-	x(test)\
 	x(sdf)
 
 SHADER_BANK(DefaultShaders, DEFAULT_SHADERS)
