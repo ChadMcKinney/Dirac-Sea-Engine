@@ -2311,7 +2311,7 @@ ERunResult Initialize()
 					1, // binding
 					VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, // descriptor type
 					1, // descriptor count
-					VK_SHADER_STAGE_VERTEX_BIT, // stage flags
+					VK_SHADER_STAGE_FRAGMENT_BIT, // stage flags
 					nullptr // immutable samplers
 				}
 			};
@@ -2540,7 +2540,7 @@ ERunResult Initialize()
 				nullptr, // pNext
 				0, // flags
 				VK_SHADER_STAGE_VERTEX_BIT, // stage
-				vulkan::DefaultShaders.GetVertexShaderModule(vulkan::EDefaultShaders::Enum::test), // module
+				vulkan::DefaultShaders.GetVertexShaderModule(vulkan::EDefaultShaders::Enum::sdf), // module
 				"main", // name
 				nullptr, // pSpecializationInfo
 			},
@@ -2550,7 +2550,7 @@ ERunResult Initialize()
 				nullptr, // pNext
 				0, // flags
 				VK_SHADER_STAGE_FRAGMENT_BIT, // stage
-				vulkan::DefaultShaders.GetFragmentShaderModule(vulkan::EDefaultShaders::Enum::test), // module
+				vulkan::DefaultShaders.GetFragmentShaderModule(vulkan::EDefaultShaders::Enum::sdf), // module
 				"main", // name
 				nullptr, // pSpecializationInfo
 			},
@@ -2730,19 +2730,19 @@ ERunResult Initialize()
 	const vulkan::SVertexData vertexData[] =
 	{
 		{
-			-0.3f, -0.3f, 0.0f, 1.0f,
+			-1.f, -1.f, 0.0f, 1.0f,
       -0.1f, -0.1f,
 		},
 		{
-			-0.3f, 0.3f, 0.0f, 1.0f,
+			-1.f, 1.f, 0.0f, 1.0f,
       -0.1f, 1.1f,
 		},
 		{
-			0.3f, -0.3f, 0.0f, 1.0f,
+			1.f, -1.f, 0.0f, 1.0f,
       1.1f, -0.1f,
 		},
 		{
-			0.3f, 0.3f, 0.0f, 1.0f,
+			1.f, 1.f, 0.0f, 1.0f,
       1.1f, 1.1f,
 		}
 	};
