@@ -230,8 +230,8 @@ sdf.frag
              498:    6(float) Constant 1051361018
              511:   21(fvec3) ConstantComposite 468 468 467
              514:    6(float) Constant 1090519040
-             540:    6(float) Constant 1149239296
-             541:    6(float) Constant 1145044992
+             540:    6(float) Constant 1156579328
+             541:    6(float) Constant 1149698048
              542:   46(fvec2) ConstantComposite 540 541
              544:    6(float) Constant 1110704128
              550:    138(int) Constant 3

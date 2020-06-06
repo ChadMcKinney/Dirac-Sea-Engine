@@ -242,7 +242,8 @@ mat4 viewMatrix(vec3 eye, vec3 center, vec3 up)
 // main
 void main()
 {
-    vec2 size = vec2(1024.0, 768.0); // TODO: pass in as uniform
+    /* vec2 size = vec2(1024.0, 768.0); // TODO: pass in as uniform */
+    vec2 size = vec2(1920, 1080); // TODO: pass in as uniform
     vec3 viewDir = rayDirection(45.0, size);
     vec3 eye = u_ViewMatrix[3].xyz;
     /* vec3 eye = vec3(8.0, 5.0, 7.0);; */

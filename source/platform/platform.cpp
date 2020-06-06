@@ -23,8 +23,8 @@ ERunResult Initialize()
 		return eRR_Error;
 	}
 
-	static const int kScreenWidth = 1024;
-	static const int kScreenHeight = 768;
+	static const int kScreenWidth = 1920;
+	static const int kScreenHeight = 1080;
 
 	SDL_Window* pWindow = SDL_CreateWindow(
 		"Dirac Sea Engine",
@@ -32,7 +32,7 @@ ERunResult Initialize()
 		SDL_WINDOWPOS_CENTERED,
 		kScreenWidth,
 		kScreenHeight,
-		SDL_WINDOW_VULKAN | SDL_WINDOW_SHOWN);
+		SDL_WINDOW_VULKAN | SDL_WINDOW_SHOWN | SDL_WINDOW_FULLSCREEN);
 
 	if (pWindow == nullptr)
 	{
