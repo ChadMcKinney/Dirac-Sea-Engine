@@ -37,14 +37,28 @@ const float EPSILON = 0.0001;
 ////////////////////////////////////////////
 // SDF scene
 
-float sphereSDF(vec3 samplePoint)
+float sphereSDF(vec3 pos)
 {
-    return length(samplePoint) - 1.0f;
+    return length(pos) - 1.0f;
 }
 
-float sceneSDF(vec3 samplePoint)
+float cubeSDF(vec3 pos)
 {
-    return sphereSDF(samplePoint);
+    // if d.x < 0 then -1 < p.x < 1, same for p.y, p.z
+    // so if all components of d are negative, then p is inside the unit cube
+    vec3 d = abs(pos) - vec3(1.0, 1.0, 1.0);
+    float insideDistance = min(max(d.x, max(d.y, d.z)), 0.0);
+
+    // Assuming p is inside the cube, how far is it from the surface?
+    // Result will be negative or zero
+    float outsideDistance = length(max(d, 0.0));
+    return insideDistance + outsideDistance;
+}
+
+float sceneSDF(vec3 pos)
+{
+    /* return sphereSDF(pos); */
+    return cubeSDF(pos);
 }
 
 float shortestDistanceToSurface(vec3 eye, vec3 marchingDirection, float start, float end)
@@ -188,8 +202,9 @@ vec3 phongIllumination(
 void main()
 {
     vec2 size = vec2(1024.0, 768.0); // TODO: pass in as uniform
-    vec3 dir = rayDirection(45.0, size);
+    vec3 viewDir = rayDirection(45.0, size);
     vec3 eye = u_ViewMatrix[3].xyz;
+    vec3 dir = viewDir * mat3(u_ViewMatrix[0].xyz, u_ViewMatrix[1].xyz, u_ViewMatrix[2].xyz);
     float dist = shortestDistanceToSurface(eye, dir, MIN_DIST, MAX_DIST);
     if (dist > MAX_DIST - EPSILON)
     {

@@ -31,7 +31,11 @@ ERunResult Initialize()
 
 ERunResult Run(const SFrameContext& frameContext)
 {
-  g_camera.transform.m43 = -8.0f + (float)std::sin(TSeconds(frameContext.gameDuration).count()) * 4.0f;
+  fworld distance = -8.0 + std::sin(TSeconds(frameContext.gameDuration).count()) * 2.0;
+  Vec3w pos(0.0, 0.0, distance);
+  g_camera.transform = localspace_cast(Matrix44w::CreateRotationAndTranslation(EIdentity::Constructor, pos));
+  g_camera.transform *= Matrix33l::CreateRotationY((float)std::fmod(TSeconds(frameContext.gameDuration).count() * 0.5, kFWorldTwoPi));
+  // printf("pos: (x: %f, y: %f, z: %f\n", g_camera.transform.m41, g_camera.transform.m42, g_camera.transform.m43);
   renderer::SetViewMatrix(g_camera.transform);
   return eRR_Success;
 }

@@ -256,3 +256,15 @@ inline T Vec4<T>::Dot(const Vec4& rhs) const
   return (x * rhs.x) + (y * rhs.y) + (z * rhs.z) + (w * rhs.w);
 }
 
+///////////////////////////////////////////////////////////////////////
+typedef Vec4<fworld> Vec4w;
+typedef Vec4<flocal> Vec4l;
+typedef Vec4<int32_t> Vec4i;
+typedef Vec4<uint32_t> Vec4u;
+
+///////////////////////////////////////////////////////////////////////
+typedef Vec4w Point4w;
+typedef Vec4l Point4l;
+typedef Vec4i Point4i;
+typedef Vec4u Point4u;
+
