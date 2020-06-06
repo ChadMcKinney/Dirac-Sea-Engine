@@ -35,6 +35,25 @@ const float MAX_DIST = 100.0;
 const float EPSILON = 0.0001;
 
 ////////////////////////////////////////////
+// SDF helpers
+//
+
+float intersectSDF(float distA, float distB)
+{
+    return max(distA, distB);
+}
+
+float unionSDF(float distA, float distB)
+{
+    return min(distA, distB);
+}
+
+
+float differenceSDF(float distA, float distB)
+{
+    return max(distA, -distB);
+}
+////////////////////////////////////////////
 // SDF scene
 
 float sphereSDF(vec3 pos)
@@ -58,7 +77,10 @@ float cubeSDF(vec3 pos)
 float sceneSDF(vec3 pos)
 {
     /* return sphereSDF(pos); */
-    return cubeSDF(pos);
+    /* return cubeSDF(pos); */
+    float sphereDist = sphereSDF(pos / 1.2) * 1.2;
+    float cubeDist = cubeSDF(pos);
+    return intersectSDF(cubeDist, sphereDist);
 }
 
 float shortestDistanceToSurface(vec3 eye, vec3 marchingDirection, float start, float end)
@@ -197,6 +219,19 @@ vec3 phongIllumination(
     return color;
 }
 
+mat4 viewMatrix(vec3 eye, vec3 center, vec3 up)
+{
+    vec3 f = normalize(center - eye);
+    vec3 s = normalize(cross(f, up));
+    vec3 u = cross(s, f);
+    return mat4(
+        vec4(s, 0.0),
+        vec4(u, 0.0),
+        vec4(-f, 0.0),
+        vec4(0.0, 0.0, 0.0, 1)
+    );
+}
+
 ////////////////////////////////////////////
 // main
 void main()
@@ -204,7 +239,10 @@ void main()
     vec2 size = vec2(1024.0, 768.0); // TODO: pass in as uniform
     vec3 viewDir = rayDirection(45.0, size);
     vec3 eye = u_ViewMatrix[3].xyz;
+    /* vec3 eye = vec3(8.0, 5.0, 7.0);; */
     vec3 dir = viewDir * mat3(u_ViewMatrix[0].xyz, u_ViewMatrix[1].xyz, u_ViewMatrix[2].xyz);
+    /* mat4 viewToWorld = viewMatrix(eye, vec3(0.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0)); */
+    /* vec3 dir = (viewToWorld * vec4(viewDir, 0.0)).xyz; */
     float dist = shortestDistanceToSurface(eye, dir, MIN_DIST, MAX_DIST);
     if (dist > MAX_DIST - EPSILON)
     {
