@@ -15,5 +15,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Author
 Chad McKinney\
-http://chadmckinneyaudio.com\
+http://chadmckinneyaudio.com \
 chad@chadmckinneyaudio.com
