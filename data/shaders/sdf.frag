@@ -56,16 +56,16 @@ float differenceSDF(float distA, float distB)
 ////////////////////////////////////////////
 // SDF scene
 
-float sphereSDF(vec3 pos)
+float sphereSDF(vec3 samplePos, vec3 spherePos, float radius)
 {
-    return length(pos) - 1.0f;
+    return length(samplePos - spherePos) - radius;
 }
 
-float cubeSDF(vec3 pos)
+float cubeSDF(vec3 samplePos, vec3 cubePos, vec3 halfExtents)
 {
     // if d.x < 0 then -1 < p.x < 1, same for p.y, p.z
     // so if all components of d are negative, then p is inside the unit cube
-    vec3 d = abs(pos) - vec3(1.0, 1.0, 1.0);
+    vec3 d = abs(samplePos - cubePos) - halfExtents;
     float insideDistance = min(max(d.x, max(d.y, d.z)), 0.0);
 
     // Assuming p is inside the cube, how far is it from the surface?
@@ -78,9 +78,15 @@ float sceneSDF(vec3 pos)
 {
     /* return sphereSDF(pos); */
     /* return cubeSDF(pos); */
-    float sphereDist = sphereSDF(pos / 1.2) * 1.2;
-    float cubeDist = cubeSDF(pos);
-    return intersectSDF(cubeDist, sphereDist);
+    vec3 spherePos = vec3(sin(u_TimeSecs * 0.5) * 0.25, cos(u_TimeSecs * 2) * 0.125, 0.0);
+    float sphereRadius = sin(u_TimeSecs * 4) * 0.75 + 1.5;
+    vec3 cubePos = vec3(cos(u_TimeSecs * 5) * 0.125, sin(u_TimeSecs) * 0.25, 0.0);
+    vec3 cubeHalfExtents = vec3(0.5, 0.5, 0.5) * (sin(u_TimeSecs * 5) * 0.5 + 1);
+    float sphereDist = sphereSDF(pos, spherePos, sphereRadius);
+    float cubeDist = cubeSDF(pos, cubePos, cubeHalfExtents);
+    float d1 = intersectSDF(cubeDist, sphereDist);
+    float d2 = intersectSDF(d1, differenceSDF(-sphereDist * 0.25, -cubeDist * 0.25));
+    return unionSDF(d2, intersectSDF((d2 - d1) * 0.25, ((d1 - d2) * 0.125)) + sphereSDF(pos, spherePos, 0.8));
 }
 
 float shortestDistanceToSurface(vec3 eye, vec3 marchingDirection, float start, float end)
@@ -192,8 +198,8 @@ vec3 phongIllumination(
     const vec3 ambientLight = 0.5 * vec3(1.0, 1.0, 1.0);
     vec3 color = ambientLight * k_a;
 
-    vec3 light1Pos = vec3(4.0 * sin(u_TimeSecs), 2.0, 4.0 * cos(u_TimeSecs));
-    vec3 light1Intensity = vec3(0.4, 0.4, 0.4);
+    vec3 light1Pos = vec3(4.0 * sin(u_TimeSecs * 1.5), 2.0 * sin(u_TimeSecs * 0.25), 4.0 * cos(u_TimeSecs * 1.5));
+    vec3 light1Intensity = vec3(0.6, 0.4, 0.4) + (vec3(0.125) * sin(u_TimeSecs * 16.0));
 
     color += phongContributionForLight(
         k_d,
@@ -204,8 +210,8 @@ vec3 phongIllumination(
         light1Pos,
         light1Intensity);
 
-    vec3 light2Pos = vec3(2.0 * sin(u_TimeSecs * 0.333), 2.0 * cos(u_TimeSecs * 0.333), 2.0);
-    vec3 light2Intensity = vec3(0.4, 0.4, 0.4);
+    vec3 light2Pos = vec3(4.0 * sin(u_TimeSecs * 0.333), 4.0 * cos(u_TimeSecs * 0.5), 2.0) + eye;
+    vec3 light2Intensity = vec3(0.4, 0.4, 0.6) + (vec3(0.125) * sin(u_TimeSecs * 8.0));
 
     color += phongContributionForLight(
         k_d,
@@ -254,7 +260,7 @@ void main()
     vec3 p = eye + dist * dir;
 
     vec3 k_a = vec3(0.2, 0.2, 0.2);
-    vec3 k_d = vec3(0.7, 0.2, 0.2);
+    vec3 k_d = vec3(0.2, 0.2, 0.4);
     vec3 k_s = vec3(1.0, 1.0, 1.0);
     float shininess = 10.0;
     vec3 color = phongIllumination(k_a, k_d, k_s, shininess, p, eye);
