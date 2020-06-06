@@ -5,13 +5,9 @@
 
 #pragma once
 
-template <typename T>
-struct Matrix44;
-
-namespace renderer
+namespace game
 {
 	ERunResult Initialize();
-	ERunResult Render(const SFrameContext& frameContext);
+	ERunResult Run(const SFrameContext& frameContext);
 	ERunResult Shutdown();
-	void SetViewMatrix(const Matrix44<float>& viewMatrix);
-} // renderer namespace
+} // namespace game

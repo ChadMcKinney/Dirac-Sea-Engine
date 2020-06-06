@@ -5,8 +5,7 @@
 
 #include "diracsea.h"
 
-#include <chrono>
-
+#include "game/game.h"
 #include "platform/platform.h"
 #include "renderer/renderer.h"
 #include "tests/tests.h"
@@ -17,6 +16,12 @@ ERunResult Initialize()
   if (platform::Initialize() != eRR_Success)
   {
     puts("Platform initialization failed!");
+    return eRR_Error;
+  }
+
+  if (game::Initialize() != eRR_Success)
+  {
+    puts("Game initialized failed!");
     return eRR_Error;
   }
 
@@ -36,17 +41,21 @@ ERunResult Run()
 
 		bool bExit = false;
 		ERunResult platformRunIOResult = eRR_Success;
+    ERunResult gameRunResult = eRR_Success;
 		ERunResult renderResult = eRR_Success;
 
 		TTime lastFrameTime = std::chrono::steady_clock::now();
 		SFrameContext frameContext = { lastFrameTime, TMilliseconds() };
 
-		while (bExit == false && (platformRunIOResult | renderResult) == eRR_Success)
+		while (bExit == false && (platformRunIOResult | gameRunResult | renderResult) == eRR_Success)
 		{
 			lastFrameTime = frameContext.frameStartTime;
 			frameContext.frameStartTime = std::chrono::steady_clock::now();
 			frameContext.lastFrameDuration = frameContext.frameStartTime - lastFrameTime;
+      frameContext.gameDuration += frameContext.lastFrameDuration;
+
 			platformRunIOResult = platform::RunIO(&bExit);
+      gameRunResult = game::Run(frameContext);
 			renderResult = renderer::Render(frameContext);
 		}
 
@@ -55,12 +64,17 @@ ERunResult Run()
       puts("Platform RunIO failed!");
     }
 
+    if (gameRunResult != eRR_Success)
+    {
+      puts("Game run failed!");
+    }
+
     if (renderResult != eRR_Success)
     {
       puts("Renderer render failed!");
     }
 
-    return ERunResult(platformRunIOResult | renderResult);
+    return ERunResult(platformRunIOResult | gameRunResult | renderResult);
 }
 
 ERunResult Shutdown()

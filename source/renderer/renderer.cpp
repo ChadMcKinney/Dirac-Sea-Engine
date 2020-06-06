@@ -125,6 +125,7 @@ static constexpr VkDeviceSize kMatrix22Alignment = 2;
 
 struct SPushConstants
 {
+	Matrix44l viewMatrix = { EIdentity::Constructor };
 	float timeSecs = 0;
 };
 static_assert(sizeof(SPushConstants) <= MAX_PUSH_CONSTANTS_SIZE);
@@ -3130,6 +3131,11 @@ ERunResult Render(const SFrameContext& frameContext)
 ERunResult Shutdown()
 {
 	return vulkan::DestroyState();
+}
+
+void SetViewMatrix(const Matrix44<float>& viewMatrix)
+{
+	vulkan::g_pushConstants.viewMatrix = viewMatrix;
 }
 
 } // renderer namespace

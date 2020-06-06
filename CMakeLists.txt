@@ -32,6 +32,7 @@ add_definitions(${CMAKE_CXX_FLAGS})
 
 set(INCLUDE_DIR
     source
+    source/game
     source/math
     source/math/geometry
     source/platform
@@ -45,9 +46,11 @@ set(INCLUDE_DIR
 include_directories(${INCLUDE_DIR})
 
 set(project_SOURCES
+    source/game/game.cpp
     source/main.cpp
     source/math/coordinate_system.cpp
     source/platform/platform.cpp
+    source/renderer/camera.cpp
     source/renderer/renderer.cpp
     source/tests/tests.cpp
     source/tests/test_framework.cpp
@@ -59,6 +62,7 @@ set(project_SOURCES
 
 set(project_HEADERS
     source/diracsea.h
+    source/game/game.h
     source/math/types.h
     source/math/matrix22.h
     source/math/matrix33.h
@@ -76,6 +80,7 @@ set(project_HEADERS
     source/math/geometry/sphere.h
     source/math/geometry/triangle.h
     source/platform/platform.h
+    source/renderer/camera.h
     source/renderer/renderer.h
     source/tests/tests.h
     source/tests/test_framework.h

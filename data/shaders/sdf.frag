@@ -11,12 +11,13 @@
 layout(set=0, binding=0) uniform sampler2D u_Texture;
 layout(set=0, binding=1) uniform u_UniformBuffer
 {
-    mat4 u_ViewMatrix;
+    mat4 u_UnusedMatrix; // TODO; remove/repurpose this
 };
 
 layout(push_constant) uniform PushConstants
 {
-    float timeSecs;
+    mat4 u_ViewMatrix;
+    float u_TimeSecs;
 };
 
 layout(location = 0) in vec2 v_Texcoord;
@@ -155,7 +156,7 @@ vec3 phongIllumination(
     const vec3 ambientLight = 0.5 * vec3(1.0, 1.0, 1.0);
     vec3 color = ambientLight * k_a;
 
-    vec3 light1Pos = vec3(4.0 * sin(timeSecs), 2.0, 4.0 * cos(timeSecs));
+    vec3 light1Pos = vec3(4.0 * sin(u_TimeSecs), 2.0, 4.0 * cos(u_TimeSecs));
     vec3 light1Intensity = vec3(0.4, 0.4, 0.4);
 
     color += phongContributionForLight(
@@ -167,7 +168,7 @@ vec3 phongIllumination(
         light1Pos,
         light1Intensity);
 
-    vec3 light2Pos = vec3(2.0 * sin(timeSecs * 0.333), 2.0 * cos(timeSecs * 0.333), 2.0);
+    vec3 light2Pos = vec3(2.0 * sin(u_TimeSecs * 0.333), 2.0 * cos(u_TimeSecs * 0.333), 2.0);
     vec3 light2Intensity = vec3(0.4, 0.4, 0.4);
 
     color += phongContributionForLight(
@@ -188,7 +189,7 @@ void main()
 {
     vec2 size = vec2(1024.0, 768.0); // TODO: pass in as uniform
     vec3 dir = rayDirection(45.0, size);
-    vec3 eye = vec3(0.0, 0.0, 8.0);
+    vec3 eye = u_ViewMatrix[3].xyz;
     float dist = shortestDistanceToSurface(eye, dir, MIN_DIST, MAX_DIST);
     if (dist > MAX_DIST - EPSILON)
     {

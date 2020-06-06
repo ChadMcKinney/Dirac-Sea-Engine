@@ -19,6 +19,7 @@ struct SFrameContext
 {
 	TTime frameStartTime;
 	TMilliseconds lastFrameDuration;
+	TMinutes gameDuration;
 };
 	
 enum ERunResult : int32_t
