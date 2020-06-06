@@ -32,6 +32,8 @@ struct Matrix44
 	Matrix44(const Matrix33<T>& matrix33);
 	Matrix44(const Matrix43<T>& matrix43);
 
+	inline Matrix33<T> GetRotation() const;
+
 	inline bool operator==(const Matrix44& rhs) const;
 	inline bool operator!=(const Matrix44& rhs) const;
 	inline bool IsEquivalent(const Matrix44& rhs, T epsilon) const;
@@ -188,6 +190,16 @@ inline bool Matrix44<T>::operator!=(const Matrix44& rhs) const
 		m21 != rhs.m21 && m22 != rhs.m22 && m23 != rhs.m23 && m24 != rhs.m24 &&
 		m31 != rhs.m31 && m32 != rhs.m32 && m33 != rhs.m33 && m34 != rhs.m34 &&
 		m41 != rhs.m41 && m42 != rhs.m42 && m43 != rhs.m43 && m44 != rhs.m44;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Matrix33<T> Matrix44<T>::GetRotation() const
+{
+	return Matrix33<T>(
+		m11, m12, m13,
+		m21, m22, m23,
+		m31, m32, m33);
 }
 
 ///////////////////////////////////////////////////////////////////////

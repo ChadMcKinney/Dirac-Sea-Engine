@@ -3135,7 +3135,9 @@ ERunResult Shutdown()
 
 void SetViewMatrix(const Matrix44<float>& viewMatrix)
 {
-	vulkan::g_pushConstants.viewMatrix = viewMatrix;
+	Matrix33l rotation = viewMatrix.GetRotation();
+	Vec3 translation(viewMatrix.m41, -viewMatrix.m42, -viewMatrix.m43);
+	vulkan::g_pushConstants.viewMatrix = Matrix44l::CreateRotationAndTranslation(rotation, translation);
 }
 
 } // renderer namespace
