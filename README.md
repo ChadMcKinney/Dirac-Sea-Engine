@@ -6,7 +6,7 @@ Experimental Engine for 3D games
 
 This is a research project for what a game engine could look like when rendering, animation, and physics are based on signed distance fields.
 
-Here's a linke to a short demo of SDF rendering in the engine, which shows how unique shapes and transformations are possible:
+Here's a link to a short demo of SDF rendering in the engine, which shows how unique shapes and transformations are possible:
 
 https://www.youtube.com/watch?v=1-J3dU--QEY&feature=youtu.be
 
