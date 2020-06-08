@@ -10,21 +10,40 @@
 #include <iostream>
 #include <SDL.h>
 
+#include "game.h"
+#include "vector2.h"
+
 namespace platform
 {
+////////////////////////////////////////////////
+// Constants
+
+static constexpr int kScreenWidth = 1920;
+static constexpr int kScreenHeight = 1080;
+static constexpr int kScreenHalfWidth = kScreenWidth / 2;
+static constexpr int kScreenHalfHeight = kScreenHeight / 2;
+
+////////////////////////////////////////////////
+// State
+
 static SDL_Window* g_pWindow = nullptr;
+
+typedef std::pair<TActionMapId, TActionMap> TActionMapEntry;
+typedef std::vector<TActionMapEntry> TActionMapStack;
+TActionMapId g_actionMapIdAllocator = 0;
+TActionMapStack g_actionMapStack;
+
+////////////////////////////////////////////////
+// Functions
 
 ERunResult Initialize()
 {
 	assert(g_pWindow == nullptr);
 	if (SDL_Init(SDL_INIT_VIDEO) < 0)
 	{
-		printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
+		DiracError("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
 		return eRR_Error;
 	}
-
-	static const int kScreenWidth = 1920;
-	static const int kScreenHeight = 1080;
 
 	SDL_Window* pWindow = SDL_CreateWindow(
 		"Dirac Sea Engine",
@@ -32,19 +51,21 @@ ERunResult Initialize()
 		SDL_WINDOWPOS_CENTERED,
 		kScreenWidth,
 		kScreenHeight,
-		SDL_WINDOW_VULKAN | SDL_WINDOW_SHOWN | SDL_WINDOW_FULLSCREEN);
+		SDL_WINDOW_VULKAN | SDL_WINDOW_SHOWN /*| SDL_WINDOW_FULLSCREEN */);
 
 	if (pWindow == nullptr)
 	{
-		printf("SDL could not create window! SDL_Error: %s\n", SDL_GetError());
+		DiracError("SDL could not create window! SDL_Error: %s\n", SDL_GetError());
 		return eRR_Error;
 	}
+
+	SDL_SetRelativeMouseMode(SDL_TRUE);
 
 	g_pWindow = pWindow;
 	return eRR_Success;
 }
 
-ERunResult RunIO(bool* pExit)
+ERunResult RunIO(const SFrameContext& /*frameContext*/, bool* pExit)
 {
 	assert(pExit != nullptr);
 
@@ -55,10 +76,32 @@ ERunResult RunIO(bool* pExit)
 		{
 		case SDL_KEYDOWN:
 		case SDL_KEYUP:
-			if (event.key.keysym.sym == SDLK_ESCAPE ||
-					(event.key.keysym.sym == SDLK_q && event.key.keysym.mod & KMOD_LCTRL))
+			if (event.key.keysym.sym == SDLK_ESCAPE)
 			{
 				*pExit = true;
+			}
+			if (g_actionMapStack.size() > 0)
+			{
+				bool bActionHandled = false;
+				for (
+					TActionMapStack::reverse_iterator it = g_actionMapStack.rbegin();
+					it != g_actionMapStack.rend() && bActionHandled == false;
+					++it)
+				{
+					const TActionMap& rActionMap = it->second;
+					for (const SActionHandler& rHandler : rActionMap)
+					{
+						if (rHandler.keyCode == event.key.keysym.sym && 
+							(rHandler.requiredKeyMods == 0 || (rHandler.requiredKeyMods == event.key.keysym.mod)))
+						{
+							assert(rHandler.callback != nullptr);
+							EKeyChange eKeyChange = event.type == SDL_KEYDOWN ? EKeyChange::Pressed : EKeyChange::Released;
+							rHandler.callback(event.key.keysym.sym, event.key.keysym.mod, eKeyChange);
+							bActionHandled = true;
+							break;
+						}
+					}
+				}
 			}
 			break;
 		case SDL_QUIT:
@@ -81,7 +124,7 @@ ERunResult Shutdown()
 	}
 	else
 	{
-		puts("[platform::Shutdown] window is null!");
+		DiracError("[platform::Shutdown] window is null!");
 		shutdownResult = eRR_Error;
 	}
 
@@ -125,13 +168,13 @@ bool LoadFiles(const char* fileNames[], size_t numFiles, EFileType fileType, SFi
 				int fileError = ferror(pFile);
 				if (fileError != 0)
 				{
-					printf("[%s] file error: %d, failed for file name: %s\n", __FUNCTION__, fileError, fileNames[i]);
+					DiracError("[%s] file error: %d, failed for file name: %s", __FUNCTION__, fileError, fileNames[i]);
 					bSuccess = false;
 				}
 			}
 			else
 			{
-				printf("[%s] file size 0 or error detecting size. Failed for file name: %s\n", __FUNCTION__, fileNames[i]);
+				DiracError("[%s] file size 0 or error detecting size. Failed for file name: %s", __FUNCTION__, fileNames[i]);
 				bSuccess = false;
 			}
 			fclose(pFile);
@@ -139,7 +182,7 @@ bool LoadFiles(const char* fileNames[], size_t numFiles, EFileType fileType, SFi
 		else
 		{
 			pOutArray[i] = SFile();
-			printf("[%s] Failed to load file: %s\n", __FUNCTION__, fileNames[i]);
+			DiracError("[%s] Failed to load file: %s", __FUNCTION__, fileNames[i]);
 			bSuccess = false;
 		}
 	}
@@ -158,11 +201,49 @@ ImageSurfacePtr LoadImage(const char* filePath)
 	SDL_Surface* pSurface = SDL_LoadBMP(filePath);
 	if (pSurface == nullptr)
 	{
-		printf("[%s] failed to load image: %s\n", __FUNCTION__, SDL_GetError());
+		DiracError("[%s] failed to load image: %s\n", __FUNCTION__, SDL_GetError());
 		return ImageSurfacePtr();
 	}
 
 	return ImageSurfacePtr(pSurface);
+}
+
+TActionMapId PushActionMap(TActionMap&& actionMap)
+{
+	TActionMapId id = g_actionMapIdAllocator++;
+	g_actionMapStack.emplace_back(id, actionMap);
+	return id;
+}
+
+void RemoveActionMap(TActionMapId id)
+{
+	assert(g_actionMapStack.empty() == false);
+	for (
+		TActionMapStack::iterator it = g_actionMapStack.begin();
+		it != g_actionMapStack.end();
+		++it)
+	{
+		if (it->first == id)
+		{
+			g_actionMapStack.erase(it);
+			return;
+		}
+	}
+
+	assert(false && "RemoveActionMap failed to find id!");
+}
+
+uint32_t GetRelativeMouseState(Vec2<int>* pOutRawRel, Vec2<float>* pOutScreenRatioRel)
+{
+	assert(pOutRawRel != nullptr);
+	assert(pOutScreenRatioRel != nullptr);
+	int x, y;
+	int buttonState = SDL_GetRelativeMouseState(&x, &y);
+	pOutRawRel->x = x;
+	pOutRawRel->y = y;
+	pOutScreenRatioRel->x = float(x) / float(kScreenHalfWidth);
+	pOutScreenRatioRel->y = float(y) / float(kScreenHalfHeight);
+	return buttonState;
 }
 
 } // platform namespace

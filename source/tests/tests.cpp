@@ -3,6 +3,7 @@
  * Proprietary and confidential
  */
 
+#include "diracsea.h"
 #include "tests.h"
 
 #include <cstdio>
@@ -18,5 +19,5 @@ void RunTests()
   RunVectorTests();
   RunMatrixTests();
   RunQuaternionTests();
-  puts("[DiracSea] tests successful");
+  DiracLog(1, "[DiracSea] tests successful");
 }

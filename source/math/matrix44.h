@@ -827,11 +827,11 @@ inline void Matrix44<T>::SetRotationAndTranslation4D(const Matrix33<T>& m, const
 
 ///////////////////////////////////////////////////////////////////////
 template <typename T>
-inline static Matrix44<T> Matrix44<T>::CreateRotationAndTranslation4D(const Matrix33<T>& m, const Vec4<T>& t)
+inline Matrix44<T> Matrix44<T>::CreateRotationAndTranslation4D(const Matrix33<T>& m, const Vec4<T>& t)
 {
-	Matrix44<T> m(EUninitialized::Constructor);
-	m.SetRotationAndTranslation4D(m, t);
-	return m;
+	Matrix44<T> m2(EUninitialized::Constructor);
+	m2.SetRotationAndTranslation4D(m, t);
+	return m2;
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -1020,5 +1020,5 @@ inline Matrix44<float> localspace_cast(const Matrix44w m)
 		(float) m.m11, (float) m.m12, (float) m.m13, (float) m.m14,
 		(float) m.m21, (float) m.m22, (float) m.m23, (float) m.m24,
 		(float) m.m31, (float) m.m32, (float) m.m33, (float) m.m34,
-		(float) m.m41, (float) m.m42, (float) m.m43, (float) m.m14);
+		(float) m.m41, (float) m.m42, (float) m.m43, (float) m.m44);
 }

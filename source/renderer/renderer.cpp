@@ -426,15 +426,15 @@ public:
 			{
 				for (size_t i = 0; i < EnumCount; ++i)
 				{
-					puts("=====================================================");
-					printf("Shader: %s\n", m_vertexShaderFilePaths[i]);
+					DiracLog(1, "=====================================================");
+					DiracLog(1, "Shader: %s", m_vertexShaderFilePaths[i]);
 					const size_t numBytes = m_vertexShaders[i].numBytes;
 					const char* pData = m_vertexShaders[i].pData.get();
 					for (size_t j = 0; j < numBytes; ++j)
 					{
-						printf("%c", pData[j]);
+						DiracLogSameLine(1, "%c", pData[j]);
 					}
-					puts("\n=====================================================");
+					DiracLog(1, "\n=====================================================");
 				}
 			}
 #endif
@@ -584,7 +584,7 @@ ERunResult SetDevice(
 
 #define SET_DEVICE_LEVEL_FUNCTION(fun)                                                                            \
 		g_device.fun = (PFN_##fun)vkGetDeviceProcAddr(g_device.handle, #fun);                                         \
-		if (g_device.fun == nullptr) { printf("Vulkan failed to load device function %s\n", #fun); return eRR_Error; }
+		if (g_device.fun == nullptr) { DiracError("Vulkan failed to load device function %s", #fun); return eRR_Error; }
 
 	DEVICE_LEVEL_FUNCTIONS(SET_DEVICE_LEVEL_FUNCTION)
 #undef SET_DEVICE_LEVEL_FUNCTION
@@ -606,7 +606,7 @@ ERunResult SetInstance(VkInstance _instance)
 
 #define SET_INSTANCE_LEVEL_FUNCTION(fun)                                                                               \
 		g_instance.fun = (PFN_##fun)vkGetInstanceProcAddr(g_instance.handle, #fun);                                        \
-		if (g_instance.fun == nullptr) { printf("Vulkan failed to load instance function %s\n", #fun); return eRR_Error; } 
+		if (g_instance.fun == nullptr) { DiracError("Vulkan failed to load instance function %s", #fun); return eRR_Error; } 
 
 	INSTANCE_LEVEL_FUNCTIONS(SET_INSTANCE_LEVEL_FUNCTION)
 #undef SET_DEVICE_LEVEL_FUNCTION
@@ -690,14 +690,14 @@ bool CheckPhysicalDeviceProperties(
 		uint32_t extensionsCount = 0;
 		if ((g_instance.vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionsCount, nullptr) != VK_SUCCESS) || extensionsCount == 0)
 		{
-			puts("Vulkan failed to get device extensions count!");
+			DiracError("Vulkan failed to get device extensions count!");
 			return false;
 		}
 
 		VkExtensionProperties* const availableExtensions = (VkExtensionProperties*)alloca(sizeof(VkExtensionProperties) * extensionsCount);
 		if ((g_instance.vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionsCount, availableExtensions) != VK_SUCCESS) || extensionsCount == 0)
 		{
-			puts("Vulkan failed to enumerate device extension properties!");
+			DiracError("Vulkan failed to enumerate device extension properties!");
 			return false;
 		}
 
@@ -712,7 +712,7 @@ bool CheckPhysicalDeviceProperties(
 		vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamiliesCount, nullptr);
 		if (queueFamiliesCount == 0)
 		{
-			puts("Vulkan failed to get queue family properties count!");
+			DiracError("Vulkan failed to get queue family properties count!");
 			return false;
 		}
 
@@ -792,7 +792,7 @@ bool CreateSwapChainImageViews()
 			g_pAllocationCallbacks,
 			&g_swapChain.images[i].view) != VK_SUCCESS)
 		{
-			puts("Vulkan failed to create image view!");
+			DiracError("Vulkan failed to create image view!");
 			return false;
 		}
 	}
@@ -832,7 +832,7 @@ bool PrepareFrame(
 			g_pAllocationCallbacks,
 			&outFrameBuffer) != VK_NULL_HANDLE)
 		{
-			puts("Vulkan failed to create frame buffer!");
+			DiracError("Vulkan failed to create frame buffer!");
 			return false;
 		}
 	} // ~create frame buffer
@@ -926,7 +926,7 @@ bool PrepareFrame(
 
 	if (g_device.vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
 	{
-		puts("Vulkan could not record command buffers!");
+		DiracError("Vulkan could not record command buffers!");
 		return false;
 	}
 
@@ -952,7 +952,7 @@ VkShaderModule CreateShaderModule(const char* fileName, const platform::SFile& s
 		g_pAllocationCallbacks,
 		&shaderModule) != VK_SUCCESS)
 	{
-		printf("Failed to create shader module for shader file: %s\n", fileName);
+		DiracError("Failed to create shader module for shader file: %s", fileName);
 		return VK_NULL_HANDLE;
 	}
 
@@ -981,7 +981,7 @@ ERunResult DestroyState()
 			}
 			else
 			{
-				printf("[%s] commandBuffer is unexpectedly null!\n", __FUNCTION__);
+				DiracError("[%s] commandBuffer is unexpectedly null!", __FUNCTION__);
 				destroyResult = eRR_Error;
 			}
 
@@ -992,7 +992,7 @@ ERunResult DestroyState()
 			}
 			else
 			{
-				printf("[%s] imageAvailableSemaphore is unexpectedly null!\n", __FUNCTION__);
+				DiracError("[%s] imageAvailableSemaphore is unexpectedly null!", __FUNCTION__);
 				destroyResult = eRR_Error;
 			}
 
@@ -1003,7 +1003,7 @@ ERunResult DestroyState()
 			}
 			else
 			{
-				printf("[%s] rendingFinishedSemaphore is unexpectedly null!\n", __FUNCTION__);
+				DiracError("[%s] rendingFinishedSemaphore is unexpectedly null!", __FUNCTION__);
 				destroyResult = eRR_Error;
 			}
 
@@ -1014,7 +1014,7 @@ ERunResult DestroyState()
 			}
 			else
 			{
-				printf("[%s] fence is unexpectedly null!\n", __FUNCTION__);
+				DiracError("[%s] fence is unexpectedly null!", __FUNCTION__);
 				destroyResult = eRR_Error;
 			}
 
@@ -1028,7 +1028,7 @@ ERunResult DestroyState()
 		}
 		else
 		{
-			printf("[%s] g_graphicsCommandPool is unexpectedly null!\n", __FUNCTION__);
+			DiracError("[%s] g_graphicsCommandPool is unexpectedly null!", __FUNCTION__);
 			destroyResult = eRR_Error;
 		}
 
@@ -1039,7 +1039,7 @@ ERunResult DestroyState()
 		}
 		else
 		{
-			printf("[%s] g_verteBuffer.handle is unexpectedly null!\n", __FUNCTION__);
+			DiracError("[%s] g_verteBuffer.handle is unexpectedly null!", __FUNCTION__);
 			destroyResult = eRR_Error;
 		}
 
@@ -1050,7 +1050,7 @@ ERunResult DestroyState()
 		}
 		else
 		{
-			printf("[%s] g_verteBuffer.memory is unexpectedly null!\n", __FUNCTION__);
+			DiracError("[%s] g_verteBuffer.memory is unexpectedly null!", __FUNCTION__);
 			destroyResult = eRR_Error;
 		}
 
@@ -1061,7 +1061,7 @@ ERunResult DestroyState()
 		}
 		else
 		{
-			printf("[%s] g_stagingBuffer.handle is unexpectedly null!\n", __FUNCTION__);
+			DiracError("[%s] g_stagingBuffer.handle is unexpectedly null!", __FUNCTION__);
 			destroyResult = eRR_Error;
 		}
 
@@ -1072,7 +1072,7 @@ ERunResult DestroyState()
 		}
 		else
 		{
-			printf("[%s] g_stagingBuffer.handle is unexpectedly null!\n", __FUNCTION__);
+			DiracError("[%s] g_stagingBuffer.handle is unexpectedly null!", __FUNCTION__);
 			destroyResult = eRR_Error;
 		}
 
@@ -1083,7 +1083,7 @@ ERunResult DestroyState()
 		}
 		else
 		{
-			printf("[%s] g_pipelineLayout is unexpectedly null!\n", __FUNCTION__);
+			DiracError("[%s] g_pipelineLayout is unexpectedly null!", __FUNCTION__);
 		}
 
 		if (g_graphicsPipeline != VK_NULL_HANDLE)
@@ -1093,13 +1093,13 @@ ERunResult DestroyState()
 		}
 		else
 		{
-			printf("[%s] g_graphicsPipeline is unexpectedly null!\n", __FUNCTION__);
+			DiracError("[%s] g_graphicsPipeline is unexpectedly null!", __FUNCTION__);
 			destroyResult = eRR_Error;
 		}
 
 		if (DefaultShaders.DestroyShaderModules() == false)
 		{
-			puts("[Renderer] Unloading destroying default shader modules found unexpected behavior!");
+			DiracError("[Renderer] Unloading destroying default shader modules found unexpected behavior!");
 			destroyResult = eRR_Error;
 		}
 
@@ -1110,7 +1110,7 @@ ERunResult DestroyState()
 		}
 		else
 		{
-			printf("[%s] g_renderPass is unexpectedly null!\n", __FUNCTION__);
+			DiracError("[%s] g_renderPass is unexpectedly null!", __FUNCTION__);
 			destroyResult = eRR_Error;
 		}
 
@@ -1121,7 +1121,7 @@ ERunResult DestroyState()
 		}
 		else
 		{
-			printf("[%s] g_descriptorSet.pool is unexpectedly null!\n", __FUNCTION__);
+			DiracError("[%s] g_descriptorSet.pool is unexpectedly null!", __FUNCTION__);
 			destroyResult = eRR_Error;
 		}
 
@@ -1132,7 +1132,7 @@ ERunResult DestroyState()
 		}
 		else
 		{
-			printf("[%s] g_descriptorSet.layout is unexpectedly null!\n", __FUNCTION__);
+			DiracLog(1, "[%s] g_descriptorSet.layout is unexpectedly null!", __FUNCTION__);
 			destroyResult = eRR_Error;
 		}
 
@@ -1143,7 +1143,7 @@ ERunResult DestroyState()
 		}
 		else
 		{
-			printf("[%s] g_uniformBuffer.handle is unexpectedly null!\n", __FUNCTION__);
+			DiracLog(1, "[%s] g_uniformBuffer.handle is unexpectedly null!", __FUNCTION__);
 			destroyResult = eRR_Error;
 		}
 
@@ -1154,7 +1154,7 @@ ERunResult DestroyState()
 		}
 		else
 		{
-			printf("[%s] g_uniformBuffer.memory is unexpectedly null!\n", __FUNCTION__);
+			DiracLog(1, "[%s] g_uniformBuffer.memory is unexpectedly null!", __FUNCTION__);
 			destroyResult = eRR_Error;
 		}
 
@@ -1165,7 +1165,7 @@ ERunResult DestroyState()
 		}
 		else
 		{
-			printf("[%s] g_image.sampler is unexpectedly null!\n", __FUNCTION__);
+			DiracLog(1, "[%s] g_image.sampler is unexpectedly null!", __FUNCTION__);
 			destroyResult = eRR_Error;
 		}
 
@@ -1176,7 +1176,7 @@ ERunResult DestroyState()
 		}
 		else
 		{
-			printf("[%s] g_image.view is unexpectedly null!\n", __FUNCTION__);
+			DiracLog(1, "[%s] g_image.view is unexpectedly null!", __FUNCTION__);
 			destroyResult = eRR_Error;
 		}
 
@@ -1187,7 +1187,7 @@ ERunResult DestroyState()
 		}
 		else
 		{
-			printf("[%s] g_image.handle is unexpectedly null!\n", __FUNCTION__);
+			DiracLog(1, "[%s] g_image.handle is unexpectedly null!", __FUNCTION__);
 			destroyResult = eRR_Error;
 		}
 
@@ -1198,7 +1198,7 @@ ERunResult DestroyState()
 		}
 		else
 		{
-			printf("[%s] g_image.memory is unexpectedly null!\n", __FUNCTION__);
+			DiracLog(1, "[%s] g_image.memory is unexpectedly null!", __FUNCTION__);
 			destroyResult = eRR_Error;
 		}
 
@@ -1231,13 +1231,13 @@ ERunResult DestroyState()
 	}
 	else
 	{
-		printf("[%s] g_device is unexpectedly null!\n", __FUNCTION__);
+		DiracLog(1, "[%s] g_device is unexpectedly null!", __FUNCTION__);
 		destroyResult = eRR_Error;
 	}
 
 	if (g_instance.state != SInstance::EState::Initialized)
 	{
-		printf("[%s] g_instance is uninitialized!\n", __FUNCTION__);
+		DiracLog(1, "[%s] g_instance is uninitialized!", __FUNCTION__);
 		destroyResult = eRR_Error;
 	}
 
@@ -1252,7 +1252,7 @@ ERunResult DestroyState()
 	}
 	else
 	{
-		printf("[%s] g_instance is unexpectedly null!\n", __FUNCTION__);
+		DiracLog(1, "[%s] g_instance is unexpectedly null!", __FUNCTION__);
 		destroyResult = eRR_Error;
 	}
 
@@ -1263,7 +1263,7 @@ ERunResult DestroyState()
 
 	if (DefaultShaders.UnloadFiles() == false)
 	{
-		puts("[Renderer] Unloading default shader files found unexpected behavior!");
+		DiracError("[Renderer] Unloading default shader files found unexpected behavior!");
 		destroyResult = eRR_Error;
 	}
 
@@ -1298,7 +1298,7 @@ bool CreateBuffer(
 		vulkan::g_pAllocationCallbacks,
 		&bufferHandle) != VK_SUCCESS)
 	{
-		puts("Vulkan failed to created vertex buffer!");
+		DiracError("Vulkan failed to created vertex buffer!");
 		return eRR_Error;
 	}
 
@@ -1339,7 +1339,7 @@ bool CreateBuffer(
 
 		if (!bMemoryAllocated)
 		{
-			puts("Vulkan failed to allocate memory for vertex buffer!");
+			DiracError("Vulkan failed to allocate memory for vertex buffer!");
 			return false;
 		}
 	} // ~allocate buffer memory
@@ -1352,7 +1352,7 @@ bool CreateBuffer(
 		outBuffer.memory,
 		0) != VK_SUCCESS)
 	{
-		puts("Vulkan failed to bind vertex buffer memory!");
+		DiracError("Vulkan failed to bind vertex buffer memory!");
 		return false;
 	}
 
@@ -1366,7 +1366,7 @@ bool CreateTexture()
 	platform::ImageSurfacePtr pImage = platform::LoadImage("data/images/tentacle.bmp");
 	if (!pImage)
 	{
-		printf("[%s] Failed to load texture!\n", __FUNCTION__);
+		DiracLog(1, "[%s] Failed to load texture!", __FUNCTION__);
 		return false;
 	}
 
@@ -1402,7 +1402,7 @@ bool CreateTexture()
 			g_pAllocationCallbacks,
 			&g_image.handle) != VK_SUCCESS)
 		{
-			printf("[%s] Vulkan failed to create image!\n", __FUNCTION__);
+			DiracLog(1, "[%s] Vulkan failed to create image!", __FUNCTION__);
 			return false;
 		}
 	} // ~create image
@@ -1447,7 +1447,7 @@ bool CreateTexture()
 
 		if (bAllocatedMemory == false)
 		{
-			printf("[%s] Failed to allocate memory for image!\n", __FUNCTION__);
+			DiracLog(1, "[%s] Failed to allocate memory for image!", __FUNCTION__);
 			return false;
 		}
 	} // ~allocate image memory
@@ -1463,7 +1463,7 @@ bool CreateTexture()
 			g_image.memory,
 			0 /* memory offset */) != VK_SUCCESS)
 		{
-			printf("[%s] Vulkan failed to bind image memory!\n", __FUNCTION__);
+			DiracLog(1, "[%s] Vulkan failed to bind image memory!", __FUNCTION__);
 			return false;
 		}
 	} // ~bind image memory
@@ -1496,7 +1496,7 @@ bool CreateTexture()
 			g_pAllocationCallbacks,
 			&g_image.view) != VK_SUCCESS)
 		{
-			printf("[%s] Failed to create image view!\n", __FUNCTION__);
+			DiracLog(1, "[%s] Failed to create image view!", __FUNCTION__);
 			return false;
 		}
 	} // ~create image view
@@ -1530,7 +1530,7 @@ bool CreateTexture()
 			g_pAllocationCallbacks,
 			&g_image.sampler) != VK_SUCCESS)
 		{
-			printf("[%s] failed to create sampler!", __FUNCTION__);
+			DiracLog(1, "[%s] failed to create sampler!", __FUNCTION__);
 			return eRR_Error;
 		}
 	} // ~create sampler
@@ -1557,7 +1557,7 @@ bool CreateTexture()
 			0, // memory map flags
 			&pStagingBufferMemory) != VK_SUCCESS)
 		{
-			printf("[%s] failed to map staging buffer memory!\n", __FUNCTION__);
+			DiracLog(1, "[%s] failed to map staging buffer memory!", __FUNCTION__);
 			return false;
 		}
 
@@ -1713,7 +1713,7 @@ bool CreateTexture()
 			&submitInfo,
 			VK_NULL_HANDLE /* fence */) != VK_SUCCESS)
 		{
-			printf("[%s] failed to queue command buffer submission!", __FUNCTION__);
+			DiracLog(1, "[%s] failed to queue command buffer submission!", __FUNCTION__);
 			return false;
 		}
 
@@ -1739,7 +1739,7 @@ ERunResult Initialize()
 
 	if (!vulkan::DefaultShaders.LoadFiles())
 	{
-		puts("Failed to load default shader files!");
+		DiracError("Failed to load default shader files!");
 		return eRR_Error;
 	}
 
@@ -1777,7 +1777,7 @@ ERunResult Initialize()
 		VkResult res = vkCreateInstance(&info, vulkan::g_pAllocationCallbacks, &instance);
 		if (res != VK_SUCCESS)
 		{
-			printf("Vulkcan could not create instance!\n");
+			DiracLog(1, "Vulkcan could not create instance!");
 			return eRR_Error;
 		}
 
@@ -1793,7 +1793,7 @@ ERunResult Initialize()
 		VkSurfaceKHR presentationSurface;
 		if (SDL_Vulkan_CreateSurface(pWindow, vulkan::g_instance.handle, &presentationSurface) == SDL_FALSE)
 		{
-			printf("SDL could not create window surface! SDL_Error: %s\n", SDL_GetError());
+			DiracLog(1, "SDL could not create window surface! SDL_Error: %s", SDL_GetError());
 			return eRR_Error;
 		}
 
@@ -1810,19 +1810,19 @@ ERunResult Initialize()
 		uint32_t numDevices = 0;
 		if (vkEnumeratePhysicalDevices(vulkan::g_instance.handle, &numDevices, nullptr) != VK_SUCCESS)
 		{
-			puts("Vulkan failed to find number of physical devices!");
+			DiracError("Vulkan failed to find number of physical devices!");
 			return eRR_Error;
 		}
 		else if (numDevices == 0)
 		{
-			puts("Vulkan found no physical devices!");
+			DiracError("Vulkan found no physical devices!");
 			return eRR_Error;
 		}
 
 		VkPhysicalDevice* const physicalDevices = (VkPhysicalDevice*)alloca(sizeof(VkPhysicalDevice) * numDevices);
 		if (vkEnumeratePhysicalDevices(vulkan::g_instance.handle, &numDevices, physicalDevices) != VK_SUCCESS)
 		{
-			puts("Vulkan failed to enumerate physical devices!");
+			DiracError("Vulkan failed to enumerate physical devices!");
 			return eRR_Error;
 		}
 
@@ -1842,19 +1842,19 @@ ERunResult Initialize()
 
 		if (selectedPhysicalDevice == VK_NULL_HANDLE)
 		{
-			puts("Failed to find a compatible vulkan physical device!");
+			DiracError("Failed to find a compatible vulkan physical device!");
 			return eRR_Error;
 		}
 
 		if (graphicsQueueFamilyIndex == vulkan::INVALID_QUEUE_FAMILY_PROPERTIES_INDEX)
 		{
-			puts("Vulkan unable to find appropriate graphics queue family properties");
+			DiracError("Vulkan unable to find appropriate graphics queue family properties");
 			return eRR_Error;
 		}
 
 		if (presentQueueFamilyIndex == vulkan::INVALID_QUEUE_FAMILY_PROPERTIES_INDEX)
 		{
-			puts("Vulan unable to find appropriate present queue family properties");
+			DiracError("Vulan unable to find appropriate present queue family properties");
 			return eRR_Error;
 		}
 
@@ -1908,7 +1908,7 @@ ERunResult Initialize()
 
 		if (deviceCreationResult != VK_SUCCESS)
 		{
-			puts("Vulkan failed to create logical device!");
+			DiracError("Vulkan failed to create logical device!");
 			return eRR_Error;
 		}
 
@@ -1933,7 +1933,7 @@ ERunResult Initialize()
 			vulkan::g_presentationSurface,
 			&surfaceCapabilities) != VK_SUCCESS)
 		{
-			puts("Vulkan unable to query presentation surface capabilities!");
+			DiracError("Vulkan unable to query presentation surface capabilities!");
 			return eRR_Error;
 		}
 
@@ -1944,13 +1944,13 @@ ERunResult Initialize()
 			&formatsCount,
 			nullptr) != VK_SUCCESS)
 		{
-			puts("Vulkan unable to get physical device surface formats count!");
+			DiracError("Vulkan unable to get physical device surface formats count!");
 			return eRR_Error;
 		}
 
 		if (formatsCount == 0)
 		{
-			puts("Vulkan found 0 physical device surface formats!");
+			DiracError("Vulkan found 0 physical device surface formats!");
 			return eRR_Error;
 		}
 
@@ -1961,7 +1961,7 @@ ERunResult Initialize()
 			&formatsCount,
 			pSurfaceFormats) != VK_SUCCESS)
 		{
-			puts("Vulkan unable to get physical device surface formats!");
+			DiracError("Vulkan unable to get physical device surface formats!");
 			return eRR_Error;
 		}
 
@@ -1972,13 +1972,13 @@ ERunResult Initialize()
 			&presentModesCount,
 			nullptr) != VK_SUCCESS)
 		{
-			puts("Vulkan unable to find physical device presentation modes count!");
+			DiracError("Vulkan unable to find physical device presentation modes count!");
 			return eRR_Error;
 		}
 
 		if (presentModesCount == 0)
 		{
-			puts("Vulkan found 0 physical device presentation modes!");
+			DiracError("Vulkan found 0 physical device presentation modes!");
 			return eRR_Error;
 		}
 
@@ -1989,7 +1989,7 @@ ERunResult Initialize()
 			&presentModesCount,
 			presentModes) != VK_SUCCESS)
 		{
-			puts("Vulkan unable to find physical device presentation modes!");
+			DiracError("Vulkan unable to find physical device presentation modes!");
 			return eRR_Error;
 		}
 
@@ -2005,7 +2005,7 @@ ERunResult Initialize()
 		if (imageCount > vulkan::MAX_IMAGE_COUNT)
 		{
 			// need to resize max or consider dynamic allocation if we ever hit this
-			puts("Image count is greater than MAX_IMAGE_COUNT!");
+			DiracError("Image count is greater than MAX_IMAGE_COUNT!");
 			return eRR_Error;
 		}
 
@@ -2072,7 +2072,7 @@ ERunResult Initialize()
 		}
 		else
 		{
-			puts("Vulkan VK_IMAGE_USAGE_TRANSFER_DST not supported by physical device surface capabilities!");
+			DiracError("Vulkan VK_IMAGE_USAGE_TRANSFER_DST not supported by physical device surface capabilities!");
 			return eRR_Error;
 		}
 
@@ -2114,7 +2114,7 @@ ERunResult Initialize()
 			// FIFO should always be available!
 			if (presentMode == VkPresentModeKHR(-1))
 			{
-				puts("Vulkan unable to find FIFO present mode! This is expected to be alway supported!");
+				DiracError("Vulkan unable to find FIFO present mode! This is expected to be alway supported!");
 				return eRR_Error;
 			}
 		}
@@ -2145,7 +2145,7 @@ ERunResult Initialize()
 
 		if (vulkan::g_device.vkCreateSwapchainKHR(vulkan::g_device.handle, &swapChainCreateInfo, vulkan::g_pAllocationCallbacks, &newSwapChain) != VK_SUCCESS)
 		{
-			puts("Vulkan failed to create swap chain!");
+			DiracError("Vulkan failed to create swap chain!");
 			return eRR_Error;
 		}
 
@@ -2161,13 +2161,13 @@ ERunResult Initialize()
 			&imageCount,
 			swapChainImages) != VK_SUCCESS)
 		{
-			puts("Vulkan could not get swap chain images!");
+			DiracError("Vulkan could not get swap chain images!");
 			return eRR_Error;
 		}
 
 		if (!vulkan::SetSwapChain(newSwapChain, surfaceFormat, imageCount, swapChainImages, swapChainExtent))
 		{
-			puts("Failed to set initialize swap chain!");
+			DiracError("Failed to set initialize swap chain!");
 			return eRR_Error;
 		}
 
@@ -2188,7 +2188,7 @@ ERunResult Initialize()
 			vulkan::g_pAllocationCallbacks,
 			&vulkan::g_graphicsCommandPool) != VK_SUCCESS)
 		{
-			puts("Vulkan could not create a command pool!");
+			DiracError("Vulkan could not create a command pool!");
 			return eRR_Error;
 		}
 
@@ -2206,7 +2206,7 @@ ERunResult Initialize()
 				&commandBufferAllocateInfo,
 				&vulkan::g_renderResources[i].commandBuffer) != VK_SUCCESS)
 			{
-				puts("Vulkan failed to allocate command buffers!");
+				DiracError("Vulkan failed to allocate command buffers!");
 				return eRR_Error;
 			}
 		}
@@ -2228,7 +2228,7 @@ ERunResult Initialize()
 				nullptr,
 				&vulkan::g_renderResources[i].imageAvailableSemaphore) != VK_SUCCESS)
 			{
-				puts("Vulkan unable to create image available semaphore!");
+				DiracError("Vulkan unable to create image available semaphore!");
 				return eRR_Error;
 			}
 
@@ -2238,7 +2238,7 @@ ERunResult Initialize()
 				nullptr,
 				&vulkan::g_renderResources[i].renderingFinishedSemaphore) != VK_SUCCESS)
 			{
-				puts("Vulkan unable to create rendering finished semaphore!");
+				DiracError("Vulkan unable to create rendering finished semaphore!");
 				return eRR_Error;
 			}
 		}
@@ -2260,7 +2260,7 @@ ERunResult Initialize()
 				vulkan::g_pAllocationCallbacks,
 				&vulkan::g_renderResources[i].fence) != VK_SUCCESS)
 			{
-				puts("Vulkan fence creation failed!");
+				DiracError("Vulkan fence creation failed!");
 				return eRR_Error;
 			}
 		}
@@ -2279,7 +2279,7 @@ ERunResult Initialize()
 			stagingBufferSize,
 			vulkan::g_stagingBuffer) == false)
 		{
-			puts("Failed to create staging buffer!");
+			DiracError("Failed to create staging buffer!");
 			return eRR_Error;
 		}
 	} // ~create staging buffer
@@ -2296,7 +2296,7 @@ ERunResult Initialize()
 			sizeof(Matrix44l),
 			vulkan::g_uniformBuffer) == false)
 		{
-			puts("Vulkan failed to create uniform buffer!");
+			DiracError("Vulkan failed to create uniform buffer!");
 			return eRR_Error;
 		}
 	} // ~create uniform buffer
@@ -2304,11 +2304,11 @@ ERunResult Initialize()
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 	{ // create texture
-	if (!vulkan::CreateTexture())
-	{
-		puts("Failed to create texture!");
-		return eRR_Error;
-	}
+		if (!vulkan::CreateTexture())
+		{
+			DiracError("Failed to create texture!");
+			return eRR_Error;
+		}
 	} // create texture
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -2349,7 +2349,7 @@ ERunResult Initialize()
 				vulkan::g_pAllocationCallbacks,
 				&vulkan::g_descriptorSet.layout) != VK_SUCCESS)
 			{
-				printf("[%s] failed to create descriptor set layout!", __FUNCTION__);
+				DiracLog(1, "[%s] failed to create descriptor set layout!", __FUNCTION__);
 				return eRR_Error;
 			}
 		} // ~create descriptor set layout
@@ -2375,7 +2375,7 @@ ERunResult Initialize()
 				vulkan::g_pAllocationCallbacks,
 				&vulkan::g_descriptorSet.pool) != VK_NULL_HANDLE)
 			{
-				printf("[%s] failed to create descriptor pool!", __FUNCTION__);
+				DiracLog(1, "[%s] failed to create descriptor pool!", __FUNCTION__);
 				return eRR_Error;
 			}
 		} // ~create descriptor pool
@@ -2394,7 +2394,7 @@ ERunResult Initialize()
 				&descriptorSetAllocateInfo,
 				&vulkan::g_descriptorSet.handle) != VK_SUCCESS)
 			{
-				printf("[%s] failed to allocate descriptor sets!", __FUNCTION__);
+				DiracLog(1, "[%s] failed to allocate descriptor sets!", __FUNCTION__);
 				return eRR_Error;
 			}
 		} // ~allocate descriptor set
@@ -2537,7 +2537,7 @@ ERunResult Initialize()
 					vulkan::g_pAllocationCallbacks,
 					&vulkan::g_renderPass) != VK_SUCCESS)
 		{
-			puts("Vulkan failed to create render pass!");
+			DiracError("Vulkan failed to create render pass!");
 			return eRR_Error;
 		}
 	} // ~create render pass
@@ -2547,7 +2547,7 @@ ERunResult Initialize()
 	{ // create rendering pipeline
 		if (!vulkan::DefaultShaders.CreateShaderModules())
 		{
-			puts("Vulkan failed to create graphics pipeline!");
+			DiracError("Vulkan failed to create graphics pipeline!");
 			return eRR_Error;
 		}
 
@@ -2701,7 +2701,7 @@ ERunResult Initialize()
 				vulkan::g_pAllocationCallbacks,
 				&vulkan::g_pipelineLayout) != VK_SUCCESS)
 			{
-				puts("Vulkan failed to create pipeline layout!");
+				DiracError("Vulkan failed to create pipeline layout!");
 				return eRR_Error;
 			}
 
@@ -2747,7 +2747,7 @@ ERunResult Initialize()
 			vulkan::g_pAllocationCallbacks,
 			&vulkan::g_graphicsPipeline) != VK_SUCCESS)
 		{
-			puts("Vulkan failed to create graphics pipeline!");
+			DiracError("Vulkan failed to create graphics pipeline!");
 			return eRR_Error;
 		}
 	} // ~create rendering pipeline
@@ -2785,7 +2785,7 @@ ERunResult Initialize()
 			vertexBufferSize,
 			vulkan::g_vertexBuffer) == false)
 		{
-			puts("Failed to create vertex buffer!");
+			DiracError("Failed to create vertex buffer!");
 			return eRR_Error;
 		}
 	} // ~create vertex buffer
@@ -2809,7 +2809,7 @@ ERunResult Initialize()
 			0, // flags
 			&pStagingBufferMemory) != VK_SUCCESS)
 		{
-			puts("Vulkan failed to map vertex buffer memory!");
+			DiracError("Vulkan failed to map vertex buffer memory!");
 			return eRR_Error;
 		}
 
@@ -2892,7 +2892,7 @@ ERunResult Initialize()
 			&submitInfo,
 			VK_NULL_HANDLE) != VK_SUCCESS)
 		{
-			puts("Vulkan failed to submit queue to copy staging buffer to vertex buffer");
+			DiracError("Vulkan failed to submit queue to copy staging buffer to vertex buffer");
 			return eRR_Error;
 		}
 
@@ -2918,7 +2918,7 @@ ERunResult Initialize()
 				0, // flags
 				&pStagingBufferMemoryPoint) != VK_SUCCESS)
 			{
-				puts("Vulkan failed to map staging buffer for uniform data!");
+				DiracError("Vulkan failed to map staging buffer for uniform data!");
 				return eRR_Error;
 			}
 
@@ -2999,7 +2999,7 @@ ERunResult Initialize()
 				&submitInfo,
 				VK_NULL_HANDLE) != VK_SUCCESS)
 			{
-				puts("Vulkan failed to submit graphics queue for the uniform buffer!");
+				DiracError("Vulkan failed to submit graphics queue for the uniform buffer!");
 				return eRR_Error;
 			}
 
@@ -3030,7 +3030,7 @@ ERunResult Render(const SFrameContext& frameContext)
 		VK_FALSE, // waitAll
 		1000000000 /*timeout*/) != VK_SUCCESS)
 	{
-		puts("Vulkan waiting for fence is taking too long!");
+		DiracError("Vulkan waiting for fence is taking too long!");
 		return eRR_Error;
 	}
 
@@ -3059,7 +3059,7 @@ ERunResult Render(const SFrameContext& frameContext)
 	case VK_ERROR_OUT_OF_DATE_KHR:
 		break; // TODO: HANDLE WINDOW RESIZE
 	default:
-		puts("A problem occured during swap chain image acquisition!");
+		DiracError("A problem occured during swap chain image acquisition!");
 		return eRR_Error;
 	}
 
@@ -3071,7 +3071,7 @@ ERunResult Render(const SFrameContext& frameContext)
 		frameContext,
 		currentRenderingResource.frameBuffer))
 	{
-		puts("renderer failed to prepare frame!");
+		DiracError("renderer failed to prepare frame!");
 		return eRR_Error;
 	}
 
@@ -3095,7 +3095,7 @@ ERunResult Render(const SFrameContext& frameContext)
 		&submitInfo,
 		currentRenderingResource.fence) != VK_SUCCESS)
 	{
-		puts("Vulkan failed to submit to presentation queue!");
+		DiracError("Vulkan failed to submit to presentation queue!");
 		return eRR_Error;
 	}
 
@@ -3121,7 +3121,7 @@ ERunResult Render(const SFrameContext& frameContext)
 	case VK_ERROR_OUT_OF_DATE_KHR:
 		break; // TODO: HANDLE WINDOW RESIZE
 	default:
-		puts("A problem occured during image presentation!");
+		DiracError("A problem occured during image presentation!");
 		return eRR_Error;
 	}
 
@@ -3135,9 +3135,9 @@ ERunResult Shutdown()
 
 void SetViewMatrix(const Matrix44<float>& viewMatrix)
 {
-	Matrix33l rotation = viewMatrix.GetRotation();
-	Vec3 translation(viewMatrix.m41, -viewMatrix.m42, -viewMatrix.m43);
-	vulkan::g_pushConstants.viewMatrix = Matrix44l::CreateRotationAndTranslation(rotation, translation);
+	Matrix44l glslMatrix = viewMatrix;
+	glslMatrix.SetRow3(glslMatrix.GetRow3().Negated());
+	vulkan::g_pushConstants.viewMatrix = glslMatrix;
 }
 
 } // renderer namespace

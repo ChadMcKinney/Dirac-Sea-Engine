@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include <vector2.h>
+
 namespace game
 {
 	ERunResult Initialize();

@@ -74,10 +74,24 @@ float cubeSDF(vec3 samplePos, vec3 cubePos, vec3 halfExtents)
     return insideDistance + outsideDistance;
 }
 
+float wrap(float f)
+{
+    const float w = 8;
+    return mod(f + w, w * 2) - 2;
+}
+
+
 float sceneSDF(vec3 pos)
 {
-    /* return sphereSDF(pos); */
-    /* return cubeSDF(pos); */
+    /* return sphereSDF(pos, vec3(0.0, 0.0, 0.0), 1.0); */
+    /* pos = vec3(mod(-pos.x, 8), mod(-pos.y, 8), mod(-pos.z, 8)); */
+    /* pos = vec3(wrap(pos.x), wrap(pos.y), wrap(pos.z)); */
+    return unionSDF(
+        sphereSDF(pos, vec3(1.0, 1.0, -1.0), 0.5),
+        unionSDF(cubeSDF(pos, vec3(1.0, 0.0, 1.0), vec3(0.5, 0.5, 0.5)),
+        unionSDF(cubeSDF(pos, vec3(-1.0, 0.0, 1.0), vec3(0.5, 0.5, 0.5)),
+        cubeSDF(pos, vec3(0.0, 0.0, 0.0), vec3(0.5, 0.5, 0.5)))));
+    /*
     vec3 spherePos = vec3(sin(u_TimeSecs * 0.5) * 0.25, cos(u_TimeSecs * 2) * 0.125, 0.0);
     float sphereRadius = sin(u_TimeSecs * 4) * 0.75 + 1.5;
     vec3 cubePos = vec3(cos(u_TimeSecs * 5) * 0.125, sin(u_TimeSecs) * 0.25, 0.0);
@@ -87,6 +101,7 @@ float sceneSDF(vec3 pos)
     float d1 = intersectSDF(cubeDist, sphereDist);
     float d2 = intersectSDF(d1, differenceSDF(-sphereDist * 0.25, -cubeDist * 0.25));
     return unionSDF(d2, intersectSDF((d2 - d1) * 0.25, ((d1 - d2) * 0.125)) + sphereSDF(pos, spherePos, 0.8));
+    */
 }
 
 float shortestDistanceToSurface(vec3 eye, vec3 marchingDirection, float start, float end)
@@ -225,31 +240,59 @@ vec3 phongIllumination(
     return color;
 }
 
-mat4 viewMatrix(vec3 eye, vec3 center, vec3 up)
+mat3 lookAtMat3(vec3 eye, vec3 lookAt, vec3 up)
 {
-    vec3 f = normalize(center - eye);
-    vec3 s = normalize(cross(f, up));
-    vec3 u = cross(s, f);
-    return mat4(
-        vec4(s, 0.0),
-        vec4(u, 0.0),
-        vec4(-f, 0.0),
-        vec4(0.0, 0.0, 0.0, 1)
+    vec3 forward = normalize(lookAt - eye);
+    vec3 right = normalize(cross(up, forward));
+    vec3 fixedUp = normalize(cross(forward, right));
+    return mat3(
+        right,
+        fixedUp,
+        -forward
     );
+}
+
+mat4 lookAtMat4(vec3 eye, vec3 lookAt, vec3 up)
+{
+    vec3 forward = normalize(lookAt - eye);
+    vec3 right = normalize(cross(up, forward));
+    vec3 fixedUp = normalize(cross(forward, right));
+    return mat4(
+        vec4(right, 0.0),
+        vec4(fixedUp, 0.0),
+        vec4(-forward, 0.0),
+        vec4(0.0, 0.0, 0.0, 1.0)
+    );
+}
+
+mat3 RotationY(float radians)
+{
+    float sinTheta = sin(radians);
+    float cosTheta = cos(radians);
+    return mat3(
+        vec3(cosTheta, 0.0, -sinTheta),
+        vec3(0.0, 1.0, 0.0),
+        vec3(sinTheta, 0.0, cosTheta));
+}
+
+mat3 RotationZ(float radians)
+{
+    float sinTheta = sin(radians);
+    float cosTheta = cos(radians);
+    return mat3(
+        vec3(cosTheta, sinTheta, 0.0),
+        vec3(-sinTheta, cosTheta, 0.0),
+        vec3(0.0, 0.0, 1.0));
 }
 
 ////////////////////////////////////////////
 // main
 void main()
 {
-    /* vec2 size = vec2(1024.0, 768.0); // TODO: pass in as uniform */
     vec2 size = vec2(1920, 1080); // TODO: pass in as uniform
     vec3 viewDir = rayDirection(45.0, size);
     vec3 eye = u_ViewMatrix[3].xyz;
-    /* vec3 eye = vec3(8.0, 5.0, 7.0);; */
-    vec3 dir = viewDir * mat3(u_ViewMatrix[0].xyz, u_ViewMatrix[1].xyz, u_ViewMatrix[2].xyz);
-    /* mat4 viewToWorld = viewMatrix(eye, vec3(0.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0)); */
-    /* vec3 dir = (viewToWorld * vec4(viewDir, 0.0)).xyz; */
+    vec3 dir = mat3(u_ViewMatrix[0].xyz, u_ViewMatrix[1].xyz, u_ViewMatrix[2].xyz) * viewDir;
     float dist = shortestDistanceToSurface(eye, dir, MIN_DIST, MAX_DIST);
     if (dist > MAX_DIST - EPSILON)
     {

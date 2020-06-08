@@ -9,18 +9,39 @@
 #include <cstdio>
 #include <cstring>
 
+/////////////////////////////////////////////////////////////////////
+// Frame
+
 typedef std::chrono::steady_clock TSteadyClock;
 typedef std::chrono::steady_clock::time_point TTime;
 typedef std::chrono::duration<double, std::ratio<60, 1>> TMinutes;
 typedef std::chrono::duration<double, std::ratio<1, 1>> TSeconds;
 typedef std::chrono::duration<double, std::ratio<1, 1000>> TMilliseconds;
+typedef uint64_t TFrameId;
 
 struct SFrameContext
 {
 	TTime frameStartTime;
 	TMilliseconds lastFrameDuration;
 	TMinutes gameDuration;
+	TFrameId frameId;
 };
+/////////////////////////////////////////////////////////////////////
+
+/////////////////////////////////////////////////////////////////////
+// Logging
+
+#define VERBOSITY 1
+
+#if VERBOSITY > 0
+#define DiracLog(logVerbosity, ...) do { if constexpr (logVerbosity <= VERBOSITY) { printf(__VA_ARGS__); puts(""); } } while (0)
+#define DiracLogSameLine(logVerbosity, ...) do { if constexpr (logVerbosity <= VERBOSITY) { printf(__VA_ARGS__); } } while (0)
+#else
+#define DiracLog(...)
+#endif
+
+#define DiracError(...) do { fprintf(stderr, __VA_ARGS__); puts(""); } while (0)
+/////////////////////////////////////////////////////////////////////
 	
 enum ERunResult : int32_t
 {
@@ -89,20 +110,22 @@ namespace E##name\
 
 //////////////////////
 // Auto Bitfield
-#define AUTO_BITFIELD_MEMBER(name, member) BIT(E##name::member),
-#define AUTO_BITFIELD_OPERATOR(T, OP) inline T operator OP(T lhs, T rhs) { return T((std::underlying_type<T>)(lhs) op (std::underlying_type<T>)(rhs)); }
-#define AUTO_BITFIELD_ENUM(name, list, type)\
-SCOPED_AUTO_ENUM(name, list, type)\
+#define AUTO_BITFIELD_MEMBER(member) member = BIT(static_cast<std::underlying_type<Enum>::type>(Enum::member)),
+#define AUTO_BITFIELD_OPERATOR(T, OP) inline constexpr T operator OP(T lhs, T rhs)\
+{ return (T) (static_cast<std::underlying_type<T>::type>(lhs) OP static_cast<std::underlying_type<T>::type>(rhs)); }
+#define AUTO_BITFIELD_ENUM(name, list, flagType)\
+SCOPED_AUTO_ENUM(name, list, flagType)\
 namespace E##name\
 {\
-	enum class Flags : type\
+	enum class Flags : flagType\
 	{\
 		list(AUTO_BITFIELD_MEMBER)\
 		FLAGS_NONE = 0,\
-		FLAGS_ALL = type(BIT(E##name::ENUM_COUNT)) - 1\
+		FLAGS_ALL = flagType(BIT(E##name::count)) - 1\
 	};\
+	typedef flagType TUnderlyingType;\
 }\
-inline E##name::Flags operator~(E##name::Flags n) { return ~(std::underlying_type<type>(n)); }\
+inline E##name::Flags operator~(E##name::Flags n) { return static_cast<E##name::Flags>(~static_cast<std::underlying_type<E##name::Flags>::type>(n)); }\
 AUTO_BITFIELD_OPERATOR(E##name::Flags, |)\
 AUTO_BITFIELD_OPERATOR(E##name::Flags, ^)\
 AUTO_BITFIELD_OPERATOR(E##name::Flags, &)

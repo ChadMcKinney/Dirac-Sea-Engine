@@ -12,22 +12,22 @@
 
 ERunResult Initialize()
 {
-  puts("[DiracSea] Initializing...");
+  DiracLog(1, "[DiracSea] Initializing...");
   if (platform::Initialize() != eRR_Success)
   {
-    puts("Platform initialization failed!");
+    DiracError("Platform initialization failed!");
     return eRR_Error;
   }
 
   if (game::Initialize() != eRR_Success)
   {
-    puts("Game initialized failed!");
+    DiracError("Game initialization failed!");
     return eRR_Error;
   }
 
   if (renderer::Initialize() != eRR_Success)
   {
-    puts("Renderer initialization failed!");
+    DiracError("Renderer initialization failed!");
     return eRR_Error;
   }
 
@@ -36,7 +36,7 @@ ERunResult Initialize()
 
 ERunResult Run()
 {
-		puts("[DiracSea] Running...");
+		DiracLog(1, "[DiracSea] Running...");
     RunTests();
 
 		bool bExit = false;
@@ -45,7 +45,7 @@ ERunResult Run()
 		ERunResult renderResult = eRR_Success;
 
 		TTime lastFrameTime = std::chrono::steady_clock::now();
-		SFrameContext frameContext = { lastFrameTime, TMilliseconds() };
+		SFrameContext frameContext = { lastFrameTime, TMilliseconds(), TMinutes(), 0 };
 
 		while (bExit == false && (platformRunIOResult | gameRunResult | renderResult) == eRR_Success)
 		{
@@ -53,25 +53,26 @@ ERunResult Run()
 			frameContext.frameStartTime = std::chrono::steady_clock::now();
 			frameContext.lastFrameDuration = frameContext.frameStartTime - lastFrameTime;
       frameContext.gameDuration += frameContext.lastFrameDuration;
+      frameContext.frameId++;
 
-			platformRunIOResult = platform::RunIO(&bExit);
+			platformRunIOResult = platform::RunIO(frameContext, &bExit);
       gameRunResult = game::Run(frameContext);
 			renderResult = renderer::Render(frameContext);
 		}
 
     if (platformRunIOResult != eRR_Success)
     {
-      puts("Platform RunIO failed!");
+      DiracError("Platform RunIO failed!");
     }
 
     if (gameRunResult != eRR_Success)
     {
-      puts("Game run failed!");
+      DiracError("Game run failed!");
     }
 
     if (renderResult != eRR_Success)
     {
-      puts("Renderer render failed!");
+      DiracError("Renderer render failed!");
     }
 
     return ERunResult(platformRunIOResult | gameRunResult | renderResult);
@@ -79,16 +80,16 @@ ERunResult Run()
 
 ERunResult Shutdown()
 {
-		puts("[DiracSea] Shutting down...");
+		DiracLog(1, "[DiracSea] Shutting down...");
     ERunResult rendererShutdownResult = renderer::Shutdown();
     if (rendererShutdownResult != eRR_Success)
     {
-      puts("Renderer shutdown error!");
+      DiracError("Renderer shutdown error!");
     }
     ERunResult platformShutdownResult = platform::Shutdown();
     if (platformShutdownResult != eRR_Success)
     {
-      puts("Platform shutdown error!");
+      DiracError("Platform shutdown error!");
     }
     return ERunResult(platformShutdownResult | rendererShutdownResult);
 }
@@ -107,7 +108,7 @@ int main()
   int diracSeaEngineResult = initializationResult | runResult | shutdownResult;
   if (diracSeaEngineResult != eRR_Success)
   {
-    printf("[DiracSea] exiting with error: %d\n", diracSeaEngineResult);
+    DiracError("[DiracSea] exiting with error: %d\n", diracSeaEngineResult);
   }
 
   return diracSeaEngineResult;
