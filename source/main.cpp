@@ -44,13 +44,13 @@ ERunResult Run()
     ERunResult gameRunResult = eRR_Success;
 		ERunResult renderResult = eRR_Success;
 
-		TTime lastFrameTime = std::chrono::steady_clock::now();
+		TTime lastFrameTime = TSteadyClock::now();
 		SFrameContext frameContext = { lastFrameTime, TMilliseconds(), TMinutes(), 0 };
 
 		while (bExit == false && (platformRunIOResult | gameRunResult | renderResult) == eRR_Success)
 		{
 			lastFrameTime = frameContext.frameStartTime;
-			frameContext.frameStartTime = std::chrono::steady_clock::now();
+			frameContext.frameStartTime = TSteadyClock::now();
 			frameContext.lastFrameDuration = frameContext.frameStartTime - lastFrameTime;
       frameContext.gameDuration += frameContext.lastFrameDuration;
       frameContext.frameId++;
@@ -58,6 +58,7 @@ ERunResult Run()
 			platformRunIOResult = platform::RunIO(frameContext, &bExit);
       gameRunResult = game::Run(frameContext);
 			renderResult = renderer::Render(frameContext);
+      platform::RegulateFrameLimit(frameContext);
 		}
 
     if (platformRunIOResult != eRR_Success)

@@ -22,6 +22,7 @@ static constexpr int kScreenWidth = 1920;
 static constexpr int kScreenHeight = 1080;
 static constexpr int kScreenHalfWidth = kScreenWidth / 2;
 static constexpr int kScreenHalfHeight = kScreenHeight / 2;
+static constexpr TTime::duration kFrameDuration = { std::chrono::duration_cast<TTime::duration>(TMilliseconds(8)) }; // ~120FPS
 
 ////////////////////////////////////////////////
 // State
@@ -113,6 +114,29 @@ ERunResult RunIO(const SFrameContext& /*frameContext*/, bool* pExit)
 	}
 
 	return eRR_Success;
+}
+
+void RegulateFrameLimit(const SFrameContext& frameContext)
+{
+	static TTime::duration lastFrameDuration;
+	{ // limit frame rate: TODO: skip render when lagging behind
+		static TTime lastFrameTime = frameContext.frameStartTime;
+		static TTime nextFrameTime = frameContext.frameStartTime;
+		TTime currentTime = frameContext.frameStartTime;
+		TTime::duration timeTillNextFrame = currentTime - nextFrameTime;
+		while (timeTillNextFrame.count() < 0)
+		{
+			SDL_Delay(0);
+			currentTime = TSteadyClock::now();
+			timeTillNextFrame = currentTime - nextFrameTime;
+		}
+
+		lastFrameDuration = currentTime - lastFrameTime;
+		lastFrameTime = nextFrameTime;
+		nextFrameTime += kFrameDuration;
+	}
+
+	DiracLog(3, "FrameContext::lastFrameDuration: %f, LastFrameDuration (ms): %f", frameContext.lastFrameDuration.count(), TMilliseconds(lastFrameDuration).count());
 }
 
 ERunResult Shutdown()

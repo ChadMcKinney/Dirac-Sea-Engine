@@ -17,6 +17,8 @@ typedef std::chrono::steady_clock::time_point TTime;
 typedef std::chrono::duration<double, std::ratio<60, 1>> TMinutes;
 typedef std::chrono::duration<double, std::ratio<1, 1>> TSeconds;
 typedef std::chrono::duration<double, std::ratio<1, 1000>> TMilliseconds;
+typedef std::chrono::duration<uint64_t, std::ratio<1, 1000000>> TMicroseconds;
+
 typedef uint64_t TFrameId;
 
 struct SFrameContext

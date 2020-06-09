@@ -10,6 +10,7 @@
 
 #include "camera.h"
 #include "platform.h"
+#include "quaternion.h"
 #include "renderer.h"
 
 namespace game
@@ -40,13 +41,15 @@ AUTO_BITFIELD_ENUM(Rotation, ROTATION_LIST, uint16_t);
 
 struct SPlayer
 {
+  Quaternionl orientation = { EIdentity::Constructor };
+  Vec3l position = { EZero::Constructor };
   ERotation::Flags rotations = ERotation::Flags::FLAGS_NONE;
   ERotation::Flags activeRotations = ERotation::Flags::FLAGS_NONE;
   EDirection::Flags directions = EDirection::Flags::FLAGS_NONE;
   EDirection::Flags activeDirections = EDirection::Flags::FLAGS_NONE;
   Vec3l relativeMoveDir = { EZero::Constructor };
   float movSpdPerSec = 4.0f;
-  float rotSpdPerSec = kFLocalPi * 4.0;
+  float rotSpdPerSec = kFLocalPi;
 };
 
 SPlayer g_player;
@@ -162,9 +165,10 @@ void HandleQ(int32_t, uint16_t, platform::EKeyChange keyChange)
 
 ERunResult Initialize()
 {
+  g_player.position = Vec3l(0, 0, -8);
   g_camera.transform = Matrix44l::CreateRotationAndTranslation(
     EIdentity::Constructor,
-    Vec3l(0, 0, -8)
+    g_player.position
   );
 
   platform::TActionMap actionMap = {
@@ -189,9 +193,7 @@ ERunResult Run(const SFrameContext& frameContext)
 		const Matrix33l rotation = g_camera.transform.GetRotation();
     const Vec3l direction = (g_player.relativeMoveDir * rotation).Normalized();
 		const Vec3l movement = direction.Scaled(float(g_player.movSpdPerSec * TSeconds(frameContext.lastFrameDuration).count()));
-		g_camera.transform.m41 += movement.x;
-		g_camera.transform.m42 += movement.y;
-		g_camera.transform.m43 += movement.z;
+    g_player.position = g_player.position + movement;
 
 #if 0
 		if (movement.Magnitude() > kFLocalEpsilon * 4)
@@ -207,14 +209,14 @@ ERunResult Run(const SFrameContext& frameContext)
   if ((g_player.activeRotations & ERotation::Flags::Roll) != ERotation::Flags::FLAGS_NONE)
   {
     const double radians = TSeconds(frameContext.lastFrameDuration).count() * kFWorldQuarterPi * 0.5;
-    const Matrix44l rot = localspace_cast(Matrix33w::CreateRotationZ(radians));
-    g_camera.transform = rot * g_camera.transform;
+    const Quaternionl rot = Quaternionl::CreateRotationZ((float) radians);
+    g_player.orientation = g_player.orientation * rot;
   }
   else if ((g_player.activeRotations & ERotation::Flags::RollBack) != ERotation::Flags::FLAGS_NONE)
   {
     const double radians = TSeconds(frameContext.lastFrameDuration).count() * kFWorldQuarterPi * 0.5;
-    const Matrix44l rot = localspace_cast(Matrix33w::CreateRotationZ(-radians));
-    g_camera.transform = rot * g_camera.transform;
+    const Quaternionl rot = Quaternionl::CreateRotationZ((float) -radians);
+    g_player.orientation = g_player.orientation * rot;
   }
 
 	Vec2i rawRelMouse(EUninitialized::Constructor);
@@ -223,7 +225,7 @@ ERunResult Run(const SFrameContext& frameContext)
   const Vec2l normalizedMouse = relMouse.SafeNormalized();
 
 #if 0
-  GameDebug("MouseMoved frameID: %llu, rawRelMouse@(%i, %i), relMouse@(%f, %f), normalizedMouse@(%f, %f)\n",
+  DiracLog(1, "MouseMoved frameID: %llu, rawRelMouse@(%i, %i), relMouse@(%f, %f), normalizedMouse@(%f, %f)\n",
     frameContext.frameId,
     rawRelMouse.x,
     rawRelMouse.y,
@@ -237,8 +239,13 @@ ERunResult Run(const SFrameContext& frameContext)
   {
     static const double fSensitivity = 50.f;
     const float fSpdPerSec = g_player.rotSpdPerSec * float(TSeconds(frameContext.lastFrameDuration).count() * fSensitivity);
-		g_camera.transform = Matrix44l(Matrix33l::CreateRotationY(relMouse.x * fSpdPerSec) * Matrix33l::CreateRotationX(-relMouse.y * fSpdPerSec)) * g_camera.transform;
+    g_player.orientation = g_player.orientation * Quaternionl::CreateRotationY(relMouse.x * fSpdPerSec) * Quaternionl::CreateRotationX(-relMouse.y * fSpdPerSec);
   }
+
+  g_camera.transform = Matrix44l::CreateRotationAndTranslation(
+    g_player.orientation,
+    g_player.position
+  );
 
   renderer::SetViewMatrix(g_camera.transform);
   return eRR_Success;

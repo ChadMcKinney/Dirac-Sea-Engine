@@ -18,6 +18,7 @@ namespace platform
 {
 	ERunResult Initialize();
 	ERunResult RunIO(const SFrameContext& frameContext, bool* pExit);
+	void RegulateFrameLimit(const SFrameContext& frameContext);
 	ERunResult Shutdown();
 	SDL_Window* GetWindow();
 
