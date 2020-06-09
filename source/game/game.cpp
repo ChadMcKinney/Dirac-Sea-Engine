@@ -254,7 +254,7 @@ ERunResult Run(const SFrameContext& frameContext)
         pitchRadians = relMouse.y * fSpdPerSec;
     }
 
-    if (abs(rollRadians + yawRadians + pitchRadians) > FLT_EPSILON)
+    if (abs(rollRadians + yawRadians + pitchRadians) > kFLocalEpsilon)
     {
         g_player.targetOrientation = g_player.targetOrientation * Quaternionl::CreateRotationXYZ(pitchRadians, yawRadians, rollRadians);
         g_player.targetOrientation.Normalize();

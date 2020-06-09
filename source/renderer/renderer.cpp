@@ -563,12 +563,12 @@ SHADER_BANK(DefaultShaders, DEFAULT_SHADERS)
     /////////////////////////////////////////////////////////
     // Functions
 
-    ERunResult SetDevice(
-        VkDevice _device,
-        VkPhysicalDevice _physicalDevice,
-        uint32_t _graphicsQueueFamilyIndex,
-        uint32_t _presentQueueFamilyIndex,
-        VkDeviceSize _memoryAlignment)
+ERunResult SetDevice(
+    VkDevice _device,
+    VkPhysicalDevice _physicalDevice,
+    uint32_t _graphicsQueueFamilyIndex,
+    uint32_t _presentQueueFamilyIndex,
+    VkDeviceSize _memoryAlignment)
 {
     assert(g_device.state == SDevice::EState::Uninitialized);
     assert(_device != VK_NULL_HANDLE);
