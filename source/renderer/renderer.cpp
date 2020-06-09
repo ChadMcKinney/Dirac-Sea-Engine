@@ -556,7 +556,7 @@ static SShaderBankState<E##name::Enum, E##name::count> name(__##name::vertexShad
 ///////////////////////////
 // Default Shaders
 #define DEFAULT_SHADERS(x)\
-x(sdf)
+    x(sdf)
 
 SHADER_BANK(DefaultShaders, DEFAULT_SHADERS)
 
@@ -1132,7 +1132,7 @@ ERunResult DestroyState()
         }
         else
         {
-            DiracLog(1, "[%s] g_descriptorSet.layout is unexpectedly null!", __FUNCTION__);
+            DiracError("[%s] g_descriptorSet.layout is unexpectedly null!", __FUNCTION__);
             destroyResult = eRR_Error;
         }
 
@@ -1143,7 +1143,7 @@ ERunResult DestroyState()
         }
         else
         {
-            DiracLog(1, "[%s] g_uniformBuffer.handle is unexpectedly null!", __FUNCTION__);
+            DiracError("[%s] g_uniformBuffer.handle is unexpectedly null!", __FUNCTION__);
             destroyResult = eRR_Error;
         }
 
@@ -1154,7 +1154,7 @@ ERunResult DestroyState()
         }
         else
         {
-            DiracLog(1, "[%s] g_uniformBuffer.memory is unexpectedly null!", __FUNCTION__);
+            DiracError("[%s] g_uniformBuffer.memory is unexpectedly null!", __FUNCTION__);
             destroyResult = eRR_Error;
         }
 
@@ -1165,7 +1165,7 @@ ERunResult DestroyState()
         }
         else
         {
-            DiracLog(1, "[%s] g_image.sampler is unexpectedly null!", __FUNCTION__);
+            DiracError("[%s] g_image.sampler is unexpectedly null!", __FUNCTION__);
             destroyResult = eRR_Error;
         }
 
@@ -1176,7 +1176,7 @@ ERunResult DestroyState()
         }
         else
         {
-            DiracLog(1, "[%s] g_image.view is unexpectedly null!", __FUNCTION__);
+            DiracError("[%s] g_image.view is unexpectedly null!", __FUNCTION__);
             destroyResult = eRR_Error;
         }
 
@@ -1187,7 +1187,7 @@ ERunResult DestroyState()
         }
         else
         {
-            DiracLog(1, "[%s] g_image.handle is unexpectedly null!", __FUNCTION__);
+            DiracError("[%s] g_image.handle is unexpectedly null!", __FUNCTION__);
             destroyResult = eRR_Error;
         }
 
@@ -1198,7 +1198,7 @@ ERunResult DestroyState()
         }
         else
         {
-            DiracLog(1, "[%s] g_image.memory is unexpectedly null!", __FUNCTION__);
+            DiracError("[%s] g_image.memory is unexpectedly null!", __FUNCTION__);
             destroyResult = eRR_Error;
         }
 
@@ -1231,13 +1231,13 @@ ERunResult DestroyState()
     }
     else
     {
-        DiracLog(1, "[%s] g_device is unexpectedly null!", __FUNCTION__);
+        DiracError("[%s] g_device is unexpectedly null!", __FUNCTION__);
         destroyResult = eRR_Error;
     }
 
     if (g_instance.state != SInstance::EState::Initialized)
     {
-        DiracLog(1, "[%s] g_instance is uninitialized!", __FUNCTION__);
+        DiracError("[%s] g_instance is uninitialized!", __FUNCTION__);
         destroyResult = eRR_Error;
     }
 
@@ -1252,7 +1252,7 @@ ERunResult DestroyState()
     }
     else
     {
-        DiracLog(1, "[%s] g_instance is unexpectedly null!", __FUNCTION__);
+        DiracError("[%s] g_instance is unexpectedly null!", __FUNCTION__);
         destroyResult = eRR_Error;
     }
 
