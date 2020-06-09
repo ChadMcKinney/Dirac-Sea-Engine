@@ -9,5 +9,5 @@
 
 struct SCamera
 {
-  Matrix44l transform = { EIdentity::Constructor };
+    Matrix44l transform = { EIdentity::Constructor };
 };

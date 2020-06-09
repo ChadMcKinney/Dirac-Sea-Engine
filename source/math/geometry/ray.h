@@ -16,12 +16,12 @@
 template <typename T>
 struct Ray
 {
-	Ray();
-	Ray(EZero);
-	Ray(EUninitialized);
-	Ray(const Vec3<T>& _origin, const Vec3<T>& _extent);
+    Ray();
+    Ray(EZero);
+    Ray(EUninitialized);
+    Ray(const Vec3<T>& _origin, const Vec3<T>& _extent);
 
-	Vec3<T> origin, extent; // extent is both direction and length, relative to origin
+    Vec3<T> origin, extent; // extent is both direction and length, relative to origin
 };
 
 ///////////////////////////////////////////////////////////////////////
@@ -33,24 +33,24 @@ Ray<T>::Ray()
 ///////////////////////////////////////////////////////////////////////
 template <typename T>
 Ray<T>::Ray(EZero)
-	: origin(EZero::Constructor)
-	, extent(EZero::Constructor)
+    : origin(EZero::Constructor)
+    , extent(EZero::Constructor)
 {
 }
 
 ///////////////////////////////////////////////////////////////////////
 template <typename T>
 Ray<T>::Ray(EUninitialized)
-	: origin(EUninitialized::Constructor)
-	, extent(EUninitialized::Constructor)
+    : origin(EUninitialized::Constructor)
+    , extent(EUninitialized::Constructor)
 {
 }
 
 ///////////////////////////////////////////////////////////////////////
 template <typename T>
 Ray<T>::Ray(const Vec3<T>& _origin, const Vec3<T>& _extent)
-	: origin(_origin)
-	, extent(_extent)
+    : origin(_origin)
+    , extent(_extent)
 {
 }
 

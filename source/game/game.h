@@ -9,7 +9,7 @@
 
 namespace game
 {
-	ERunResult Initialize();
-	ERunResult Run(const SFrameContext& frameContext);
-	ERunResult Shutdown();
+    ERunResult Initialize();
+    ERunResult Run(const SFrameContext& frameContext);
+    ERunResult Shutdown();
 } // namespace game

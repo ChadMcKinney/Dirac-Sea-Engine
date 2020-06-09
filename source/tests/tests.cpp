@@ -15,9 +15,9 @@
 
 void RunTests()
 {
-  RunGeometryTests();
-  RunVectorTests();
-  RunMatrixTests();
-  RunQuaternionTests();
-  DiracLog(1, "[DiracSea] tests successful");
+    RunGeometryTests();
+    RunVectorTests();
+    RunMatrixTests();
+    RunQuaternionTests();
+    DiracLog(1, "[DiracSea] tests successful");
 }

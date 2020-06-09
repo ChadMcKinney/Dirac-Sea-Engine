@@ -24,10 +24,10 @@ typedef uint64_t TFrameId;
 
 struct SFrameContext
 {
-	TTime frameStartTime;
-	TMilliseconds lastFrameDuration;
-	TMinutes gameDuration;
-	TFrameId frameId;
+    TTime frameStartTime;
+    TMilliseconds lastFrameDuration;
+    TMinutes gameDuration;
+    TFrameId frameId;
 };
 /////////////////////////////////////////////////////////////////////
 
@@ -45,19 +45,19 @@ struct SFrameContext
 
 #define DiracError(...) do { fprintf(stderr, __VA_ARGS__); puts(""); } while (0)
 /////////////////////////////////////////////////////////////////////
-	
+
 enum ERunResult : int32_t
 {
-	eRR_Success = 0,
-	eRR_Error = 1
+    eRR_Success = 0,
+    eRR_Error = 1
 };
 
 #define BIT(x) (1 << x)
 
 static const union
 {
-	uint32_t i;
-	char c[4];
+    uint32_t i;
+    char c[4];
 } _endianInt = { 0x01020304 };
 static const bool kIsBigEndian = _endianInt.c[0] == 1;
 

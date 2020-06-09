@@ -16,59 +16,61 @@ struct Vec2;
 
 namespace platform
 {
-	ERunResult Initialize();
-	ERunResult RunIO(const SFrameContext& frameContext, bool* pExit);
-	void RegulateFrameLimit(const SFrameContext& frameContext);
-	ERunResult Shutdown();
-	SDL_Window* GetWindow();
 
-	enum class EFileType : uint8_t
-	{
-		Text,
-		Binary,
-		NUM_FILETYPES
-	};
+ERunResult Initialize();
+ERunResult RunIO(const SFrameContext& frameContext, bool* pExit);
+void RegulateFrameLimit(const SFrameContext& frameContext);
+ERunResult Shutdown();
+SDL_Window* GetWindow();
 
-	struct SFile
-	{
-		size_t numBytes = 0;
-		std::unique_ptr<char[]> pData = nullptr;
-	};
+enum class EFileType : uint8_t
+{
+    Text,
+    Binary,
+    NUM_FILETYPES
+};
 
-	// pOutArray is assumed to be the same size as numFiles
-	// caller owns data allocation (hence, unique_ptr in SFile)
-	bool LoadFiles(const char* fileNames[], size_t numFiles, EFileType fileType, SFile* pOutArray);
+struct SFile
+{
+    size_t numBytes = 0;
+    std::unique_ptr<char[]> pData = nullptr;
+};
 
-	struct SImageSurfaceDeleter
-	{
-		void operator()(SDL_Surface* pSurface);
-	};
-	typedef std::unique_ptr<SDL_Surface, SImageSurfaceDeleter> ImageSurfacePtr;
+// pOutArray is assumed to be the same size as numFiles
+// caller owns data allocation (hence, unique_ptr in SFile)
+bool LoadFiles(const char* fileNames[], size_t numFiles, EFileType fileType, SFile* pOutArray);
 
-	ImageSurfacePtr LoadImage(const char* filePath);
+struct SImageSurfaceDeleter
+{
+    void operator()(SDL_Surface* pSurface);
+};
+typedef std::unique_ptr<SDL_Surface, SImageSurfaceDeleter> ImageSurfacePtr;
 
-	enum class EKeyChange
-	{
-		Pressed,
-		Released
-	};
+ImageSurfacePtr LoadImage(const char* filePath);
 
-	typedef int32_t TKeyCode;
-	typedef uint16_t TKeyMod;
+enum class EKeyChange
+{
+    Pressed,
+    Released
+};
 
-	struct SActionHandler
-	{
-		TKeyCode keyCode = { 0 };
-		TKeyMod requiredKeyMods = { 0 };
-		void (*callback)(TKeyCode keyCode, TKeyMod keyMod, EKeyChange keyChange);
-	};
+typedef int32_t TKeyCode;
+typedef uint16_t TKeyMod;
 
-	typedef std::vector<SActionHandler> TActionMap;
-	typedef uint8_t TActionMapId;
-	
-	TActionMapId PushActionMap(TActionMap&& actionMap);
-	void RemoveActionMap(TActionMapId id);
+struct SActionHandler
+{
+    TKeyCode keyCode = { 0 };
+    TKeyMod requiredKeyMods = { 0 };
+    void (*callback)(TKeyCode keyCode, TKeyMod keyMod, EKeyChange keyChange);
+};
 
-	uint32_t GetRelativeMouseState(Vec2<int>* pOutRawRel, Vec2<float>* pOutScreenRatioRel);
+typedef std::vector<SActionHandler> TActionMap;
+typedef uint8_t TActionMapId;
+
+TActionMapId PushActionMap(TActionMap&& actionMap);
+void RemoveActionMap(TActionMapId id);
+
+uint32_t GetRelativeMouseState(Vec2<int>* pOutRawRel, Vec2<float>* pOutScreenRatioRel);
+
 } // platform namespace
 
