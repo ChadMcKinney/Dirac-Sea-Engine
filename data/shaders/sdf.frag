@@ -84,6 +84,7 @@ float wrap(float f)
 float sceneSDF(vec3 pos)
 {
     /* return sphereSDF(pos, vec3(0.0, 0.0, 0.0), 1.0); */
+    /* pos = vec3(mod(pos.x, 8), mod(pos.y, 8), mod(pos.z, 8)); */
     /* pos = vec3(mod(-pos.x, 8), mod(-pos.y, 8), mod(-pos.z, 8)); */
     /* pos = vec3(wrap(pos.x), wrap(pos.y), wrap(pos.z)); */
     return unionSDF(

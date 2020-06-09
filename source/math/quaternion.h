@@ -77,6 +77,9 @@ struct Quaternion
 	inline void SetRotationZ(T radians);
 	inline static Quaternion CreateRotationZ(T radians);
 
+	inline void SetRotationXYZ(T x, T y, T z);
+	inline static Quaternion CreateRotationXYZ(T x, T y, T z);
+
 	T x, y, z, w;
 };
 
@@ -311,8 +314,8 @@ inline Quaternion<T> Quaternion<T>::CreateNLerp(const Quaternion& q1, const Quat
 template <typename T>
 inline void Quaternion<T>::SetSlerp(Quaternion q1, const Quaternion& q2, T t)
 {
-	assert(q1.IsUnit(epsilon<T>() * 4));
-	assert(q2.IsUnit(epsilon<T>() * 4));
+	assert(q1.IsUnit(epsilon<T>() * 10));
+	assert(q2.IsUnit(epsilon<T>() * 10));
 	T cosOmega = q1.Dot(q2);
 
 	// If cosOmega is negative then negate one of the quaternions to take the shortest path
@@ -512,7 +515,7 @@ inline Quaternion<T> Quaternion<T>::Inverted() const
 template <typename T>
 inline void Quaternion<T>::SetAxisAngle(const Vec3<T>& axis, T radians)
 {
-	assert(axis.IsUnit(epsilon<T>()));
+	assert(axis.IsUnit(epsilon<T>() * 10));
 	const T halfTheta = radians * T(0.5);
 	const T sinHalfTheta = std::sin(halfTheta);
 	w = std::cos(halfTheta);
@@ -597,6 +600,34 @@ inline Quaternion<T> Quaternion<T>::CreateRotationZ(T radians)
 {
 	Quaternion<T> q(EUninitialized::Constructor);
 	q.SetRotationZ(radians);
+	return q;
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void Quaternion<T>::SetRotationXYZ(T pitch, T yaw, T roll)
+{
+	const T halfX = pitch * T(0.5);
+	const T halfY = yaw * T(0.5);
+	const T halfZ = roll * T(0.5);
+	const T sinHalfX = std::sin(halfX);
+	const T cosHalfX = std::cos(halfX);
+	const T sinHalfY = std::sin(halfY);
+	const T cosHalfY = std::cos(halfY);
+	const T sinHalfZ = std::sin(halfZ);
+	const T cosHalfZ = std::cos(halfZ);
+	x = (sinHalfX * -cosHalfY * cosHalfZ) - (cosHalfX * sinHalfY * sinHalfZ);
+	y = (sinHalfX * cosHalfY * sinHalfZ) - (cosHalfX * sinHalfY * cosHalfZ);
+	z = (sinHalfX * sinHalfY * cosHalfZ) - (cosHalfX * cosHalfY * sinHalfZ);
+	w = (cosHalfX * cosHalfY * cosHalfZ) + (sinHalfX * sinHalfY * sinHalfZ);
+}
+
+///////////////////////////////////////////////////////////////////////
+template <typename T>
+inline Quaternion<T> Quaternion<T>::CreateRotationXYZ(T x, T y, T z)
+{
+	Quaternion<T> q(EUninitialized::Constructor);
+	q.SetRotationXYZ(x, y, z);
 	return q;
 }
 

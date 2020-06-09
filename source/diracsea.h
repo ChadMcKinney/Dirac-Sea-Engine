@@ -3,6 +3,7 @@
  * Proprietary and confidential
  */
 
+#include <algorithm>
 #include <cassert>
 #include <chrono>
 #include <cstdint>
