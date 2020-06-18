@@ -11,6 +11,7 @@
 #include <SDL_vulkan.h>
 #include <Vulkan.h>
 
+#include "math/matrix43.h"
 #include "math/matrix44.h"
 #include "platform/platform.h"
 
@@ -120,6 +121,17 @@ static constexpr VkDeviceSize kMatrix43Alignment = 4;
 static constexpr VkDeviceSize kMatrix33Alignment = 4;
 static constexpr VkDeviceSize kMatrix22Alignment = 2;
 
+// Keep in sync with sdf.frag
+static constexpr size_t MAX_SHAPES = 256;
+enum EShape : uint8_t
+{
+    eSH_Sphere = 0,
+    eSH_Cube
+};
+
+static constexpr VkDeviceSize SHAPE_TRANSFORM_SIZE = sizeof(Matrix44l);
+static constexpr VkDeviceSize SHAPE_TRANSFORMS_SIZE = SHAPE_TRANSFORM_SIZE * MAX_SHAPES;
+
 /////////////////////////////////////////////////////////
 // State
 
@@ -127,6 +139,10 @@ struct SPushConstants
 {
     Matrix44l viewMatrix = { EIdentity::Constructor };
     float timeSecs = 0;
+
+    // Keep in sync with EShape enum
+    int numSpheres = 0;
+    int numCubes = 0;
 };
 static_assert(sizeof(SPushConstants) <= MAX_PUSH_CONSTANTS_SIZE);
 
@@ -336,6 +352,7 @@ struct SDescriptorSet
 // TODO: Add allocation callbacks for debugging
 static const VkAllocationCallbacks* g_pAllocationCallbacks = nullptr;
 static SPushConstants g_pushConstants;
+static Matrix44l g_invShapeTransforms[MAX_SHAPES] = { EIdentity::Constructor };
 static SDevice g_device;
 static SInstance g_instance;
 
@@ -352,6 +369,7 @@ static VkPipelineLayout g_pipelineLayout = VK_NULL_HANDLE;
 static VkPipeline g_graphicsPipeline = VK_NULL_HANDLE;
 static SBuffer g_vertexBuffer;
 static SBuffer g_uniformBuffer;
+static void* g_pMappedStagingBuffer = nullptr;
 static SBuffer g_stagingBuffer;
 static SImage g_image;
 static SDescriptorSet g_descriptorSet;
@@ -1053,6 +1071,17 @@ ERunResult DestroyState()
             DiracError("[%s] g_verteBuffer.memory is unexpectedly null!", __FUNCTION__);
             destroyResult = eRR_Error;
         }
+        
+        if (g_pMappedStagingBuffer != nullptr)
+        {
+            g_device.vkUnmapMemory(g_device.handle, g_stagingBuffer.memory);
+            g_pMappedStagingBuffer = nullptr;
+        }
+        else
+        {
+            DiracError("[%s] g_pMappedStagingBuffer is unexpectedly null!", __FUNCTION__);
+            destroyResult = eRR_Error;
+        }
 
         if (g_stagingBuffer.handle != VK_NULL_HANDLE)
         {
@@ -1547,19 +1576,7 @@ bool CreateTexture()
 
         const uint32_t dataSize = pImage->pitch * (uint32_t)pImage->h;
         assert(g_stagingBuffer.size >= dataSize);
-
-        void* pStagingBufferMemory = nullptr;
-        if (g_device.vkMapMemory(
-            g_device.handle,
-            g_stagingBuffer.memory,
-            0, // offset
-            dataSize,
-            0, // memory map flags
-            &pStagingBufferMemory) != VK_SUCCESS)
-        {
-            DiracLog(1, "[%s] failed to map staging buffer memory!", __FUNCTION__);
-            return false;
-        }
+        assert(g_pMappedStagingBuffer != nullptr);
 
         // TODO: Load images in a better/consistent format to allow for memcpy
         // instead of SDL_GetRGBA (and support across platforms/endianness)
@@ -1568,7 +1585,7 @@ bool CreateTexture()
         const size_t height = (size_t)pImage->h;
         const SDL_PixelFormat* srcFormat = pImage->format;
         const uint32_t* srcPixels = (uint32_t*)pImage->pixels;
-        uint32_t* dstPixels = (uint32_t*)pStagingBufferMemory;
+        uint32_t* dstPixels = (uint32_t*)g_pMappedStagingBuffer;
 
         if (formatPixelSize == kRGBASize && !kIsBigEndian && srcFormat->format == SDL_PIXELFORMAT_RGBA32)
         {
@@ -1606,7 +1623,6 @@ bool CreateTexture()
         flushRange.size = flushSize * g_device.memoryAlignment;
 
         g_device.vkFlushMappedMemoryRanges(g_device.handle, 1, &flushRange);
-        g_device.vkUnmapMemory(g_device.handle, g_stagingBuffer.memory);
 
         /////////////////////////////////////////////////////////////////////////////
         // 2. Create command buffers to transfer from staging buffer to vulkan image 
@@ -1731,6 +1747,107 @@ bool CreateTexture()
 
 namespace renderer
 {
+
+bool FlushSceneSDF(size_t startIndex, size_t endIndex)
+{
+    assert(endIndex >= startIndex);
+    assert(startIndex < vulkan::MAX_SHAPES);
+    assert(endIndex < vulkan::MAX_SHAPES);
+    const size_t count = endIndex - startIndex + 1;
+    const size_t offsetSize = startIndex * vulkan::SHAPE_TRANSFORM_SIZE;
+    const size_t rangeSize = count * vulkan::SHAPE_TRANSFORM_SIZE;
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    { // Copy shape transforms to staging buffer, then copy to host memory uniform buffer
+        { // copy scene information to staging buffer memory
+            memcpy(vulkan::g_pMappedStagingBuffer, &vulkan::g_invShapeTransforms[startIndex], rangeSize);
+
+            VkMappedMemoryRange flushRange;
+            flushRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+            flushRange.pNext = nullptr;
+            flushRange.memory = vulkan::g_stagingBuffer.memory;
+            flushRange.offset = 0;
+            flushRange.size = rangeSize;
+
+            vulkan::g_device.vkFlushMappedMemoryRanges(vulkan::g_device.handle, 1, &flushRange);
+        } // copy scene information to staging buffer memory
+
+        { // copy from the staging buffer into the uniform buffer's device local memory
+            VkCommandBuffer commandBuffer = vulkan::g_renderResources[0].commandBuffer;
+            VkCommandBufferBeginInfo commandBufferBeginInfo;
+            commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+            commandBufferBeginInfo.pNext = nullptr;
+            commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+            commandBufferBeginInfo.pInheritanceInfo = nullptr;
+
+            vulkan::g_device.vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo);
+
+            VkBufferCopy bufferCopyInfo;
+            bufferCopyInfo.srcOffset = 0;
+            bufferCopyInfo.dstOffset = offsetSize;
+            bufferCopyInfo.size = rangeSize;
+
+            vulkan::g_device.vkCmdCopyBuffer(
+                commandBuffer,
+                vulkan::g_stagingBuffer.handle,
+                vulkan::g_uniformBuffer.handle,
+                1,
+                &bufferCopyInfo);
+
+            VkBufferMemoryBarrier bufferMemoryBarrier;
+            bufferMemoryBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+            bufferMemoryBarrier.pNext = nullptr;
+            bufferMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            bufferMemoryBarrier.dstAccessMask = VK_ACCESS_UNIFORM_READ_BIT;
+            bufferMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            bufferMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            bufferMemoryBarrier.buffer = vulkan::g_uniformBuffer.handle;
+            bufferMemoryBarrier.offset = offsetSize;
+            bufferMemoryBarrier.size = rangeSize;
+
+            vulkan::g_device.vkCmdPipelineBarrier(
+                commandBuffer,
+                VK_PIPELINE_STAGE_TRANSFER_BIT,
+                VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
+                0, // dependency flags
+                0, // memory barrier count
+                nullptr, // memory barriers
+                1, // buffer memory barrier count
+                &bufferMemoryBarrier, // buffer memory barriers
+                0, // image memory barrier count
+                nullptr /* image memory barriers */);
+
+            vulkan::g_device.vkEndCommandBuffer(commandBuffer);
+
+            VkSubmitInfo submitInfo;
+            submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+            submitInfo.pNext = nullptr;
+            submitInfo.waitSemaphoreCount = 0;
+            submitInfo.pWaitSemaphores = nullptr;
+            submitInfo.pWaitDstStageMask = nullptr;
+            submitInfo.commandBufferCount = 1;
+            submitInfo.pCommandBuffers = &commandBuffer;
+            submitInfo.signalSemaphoreCount = 0;
+            submitInfo.pSignalSemaphores = nullptr;
+
+            if (vulkan::g_device.vkQueueSubmit(
+                vulkan::g_device.graphicsQueue,
+                1,
+                &submitInfo,
+                VK_NULL_HANDLE) != VK_SUCCESS)
+            {
+                DiracError("Vulkan failed to submit graphics queue for the uniform buffer!");
+                return false;
+            }
+
+            vulkan::g_device.vkDeviceWaitIdle(vulkan::g_device.handle); // TODO: use semaphores instead of simply waiting on the device
+        } // Copy uniform buffer to staging buffer, then copy to host memory
+
+    } // ~Copy matrix to staging buffer, then copy to host memory uniform buffer
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    return true;
+}
 
 ERunResult Initialize()
 {
@@ -2273,6 +2390,8 @@ ERunResult Initialize()
         const VkBufferUsageFlags stagingBufferUsage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
         const VkMemoryPropertyFlagBits stagingBufferMemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 
+        assert(vulkan::g_pMappedStagingBuffer == nullptr);
+
         if (vulkan::CreateBuffer(
             stagingBufferUsage,
             stagingBufferMemoryProperty,
@@ -2282,6 +2401,20 @@ ERunResult Initialize()
             DiracError("Failed to create staging buffer!");
             return eRR_Error;
         }
+
+        if (vulkan::g_device.vkMapMemory(
+            vulkan::g_device.handle,
+            vulkan::g_stagingBuffer.memory,
+            0, // offset
+            stagingBufferSize, // size
+            0, // flags
+            &vulkan::g_pMappedStagingBuffer) != VK_SUCCESS)
+        {
+            DiracError("Vulkan failed to map staging buffer for uniform data!");
+            return eRR_Error;
+        }
+
+        assert(vulkan::g_pMappedStagingBuffer != nullptr);
     } // ~create staging buffer
     ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -2293,7 +2426,7 @@ ERunResult Initialize()
         if (vulkan::CreateBuffer(
             uniformBufferUsage,
             uniformBufferMemoryProperty,
-            sizeof(Matrix44l),
+            vulkan::SHAPE_TRANSFORMS_SIZE,
             vulkan::g_uniformBuffer) == false)
         {
             DiracError("Vulkan failed to create uniform buffer!");
@@ -2799,22 +2932,9 @@ ERunResult Initialize()
         assert(vulkan::g_stagingBuffer.handle != VK_NULL_HANDLE);
         assert(vulkan::g_stagingBuffer.memory != VK_NULL_HANDLE);
         assert(vulkan::g_stagingBuffer.size >= vulkan::g_vertexBuffer.size);
+        assert(vulkan::g_pMappedStagingBuffer != nullptr);
 
-        void* pStagingBufferMemory = nullptr;
-        if (vulkan::g_device.vkMapMemory(
-            vulkan::g_device.handle,
-            vulkan::g_stagingBuffer.memory,
-            0, // offset
-            vulkan::g_stagingBuffer.size,
-            0, // flags
-            &pStagingBufferMemory) != VK_SUCCESS)
-        {
-            DiracError("Vulkan failed to map vertex buffer memory!");
-            return eRR_Error;
-        }
-
-        assert(pStagingBufferMemory != nullptr);
-        memcpy(pStagingBufferMemory, vertexData, vulkan::g_vertexBuffer.size);
+        memcpy(vulkan::g_pMappedStagingBuffer, vertexData, vulkan::g_vertexBuffer.size);
 
         const VkDeviceSize flushSize = (vulkan::g_vertexBuffer.size + vulkan::g_device.memoryAlignment - 1) / vulkan::g_device.memoryAlignment;
 
@@ -2826,7 +2946,6 @@ ERunResult Initialize()
         flushRange.size = flushSize * vulkan::g_device.memoryAlignment;
 
         vulkan::g_device.vkFlushMappedMemoryRanges(vulkan::g_device.handle, 1, &flushRange);
-        vulkan::g_device.vkUnmapMemory(vulkan::g_device.handle, vulkan::g_stagingBuffer.memory);
 
         VkCommandBufferBeginInfo commandBufferBeginInfo;
         commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -2901,112 +3020,40 @@ ERunResult Initialize()
     ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    { // Copy matrix to staging buffer, then copy to host memory uniform buffer
-        static const Matrix44l matrix = Matrix44l::CreateRotationAndTranslation(
-            Matrix33l::CreateRotationZ(kFLocalQuarterPi),
-            Vec3l(-0.5f, -0.5f, 0.0f)
-        );
-        static const VkDeviceSize matrixSize = sizeof(matrix);
+    { // Initialize SDF scene data
 
-        { // Map staging buffer memory and copy projection matrix to it
-            void* pStagingBufferMemoryPoint;
-            if (vulkan::g_device.vkMapMemory(
-                vulkan::g_device.handle,
-                vulkan::g_stagingBuffer.memory,
-                0, // offset
-                matrixSize,
-                0, // flags
-                &pStagingBufferMemoryPoint) != VK_SUCCESS)
-            {
-                DiracError("Vulkan failed to map staging buffer for uniform data!");
-                return eRR_Error;
-            }
+        size_t shapeIndex = 0;
+        vulkan::g_pushConstants.numSpheres = 2;
+        vulkan::g_invShapeTransforms[shapeIndex] = Matrix43l::CreateRotationAndTranslation(
+            EIdentity::Constructor,
+            Vec3l(1, 0, -1)
+        ).Inverted();
+        ++shapeIndex;
 
-            memcpy(pStagingBufferMemoryPoint, &matrix, matrixSize);
+        vulkan::g_invShapeTransforms[shapeIndex] = Matrix43l::CreateRotationAndTranslation(
+            EIdentity::Constructor,
+            Vec3l(3, 0, -1)
+        ).Inverted();
+        ++shapeIndex;
 
-            VkMappedMemoryRange flushRange;
-            flushRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
-            flushRange.pNext = nullptr;
-            flushRange.memory = vulkan::g_stagingBuffer.memory;
-            flushRange.offset = 0;
-            flushRange.size = matrixSize;
+        vulkan::g_pushConstants.numCubes = 2;
+        vulkan::g_invShapeTransforms[shapeIndex] = Matrix43l::CreateRotationAndTranslation(
+            EIdentity::Constructor,
+            Vec3l(-1, 0, -1)
+        ).Inverted();
+        ++shapeIndex;
 
-            vulkan::g_device.vkFlushMappedMemoryRanges(vulkan::g_device.handle, 1, &flushRange);
-            vulkan::g_device.vkUnmapMemory(vulkan::g_device.handle, vulkan::g_stagingBuffer.memory);
-        } // ~Map staging buffer memory and copy projection matrix to it
+        vulkan::g_invShapeTransforms[shapeIndex] = Matrix43l::CreateRotationAndTranslation(
+            EIdentity::Constructor,
+            Vec3l(-3, 0, -1)
+        ).Inverted();
 
-        { // copy from the staging buffer into the uniform buffer's device local memory
-            VkCommandBuffer commandBuffer = vulkan::g_renderResources[0].commandBuffer;
-            VkCommandBufferBeginInfo commandBufferBeginInfo;
-            commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-            commandBufferBeginInfo.pNext = nullptr;
-            commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-            commandBufferBeginInfo.pInheritanceInfo = nullptr;
-
-            vulkan::g_device.vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo);
-
-            VkBufferCopy bufferCopyInfo;
-            bufferCopyInfo.srcOffset = 0;
-            bufferCopyInfo.dstOffset = 0;
-            bufferCopyInfo.size = matrixSize;
-
-            vulkan::g_device.vkCmdCopyBuffer(
-                commandBuffer,
-                vulkan::g_stagingBuffer.handle,
-                vulkan::g_uniformBuffer.handle,
-                1,
-                &bufferCopyInfo);
-
-            VkBufferMemoryBarrier bufferMemoryBarrier;
-            bufferMemoryBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-            bufferMemoryBarrier.pNext = nullptr;
-            bufferMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-            bufferMemoryBarrier.dstAccessMask = VK_ACCESS_UNIFORM_READ_BIT;
-            bufferMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            bufferMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            bufferMemoryBarrier.buffer = vulkan::g_uniformBuffer.handle;
-            bufferMemoryBarrier.offset = 0;
-            bufferMemoryBarrier.size = matrixSize;
-
-            vulkan::g_device.vkCmdPipelineBarrier(
-                commandBuffer,
-                VK_PIPELINE_STAGE_TRANSFER_BIT,
-                VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
-                0, // dependency flags
-                0, // memory barrier count
-                nullptr, // memory barriers
-                1, // buffer memory barrier count
-                &bufferMemoryBarrier, // buffer memory barriers
-                0, // image memory barrier count
-                nullptr /* image memory barriers */);
-
-            vulkan::g_device.vkEndCommandBuffer(commandBuffer);
-
-            VkSubmitInfo submitInfo;
-            submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-            submitInfo.pNext = nullptr;
-            submitInfo.waitSemaphoreCount = 0;
-            submitInfo.pWaitSemaphores = nullptr;
-            submitInfo.pWaitDstStageMask = nullptr;
-            submitInfo.commandBufferCount = 1;
-            submitInfo.pCommandBuffers = &commandBuffer;
-            submitInfo.signalSemaphoreCount = 0;
-            submitInfo.pSignalSemaphores = nullptr;
-
-            if (vulkan::g_device.vkQueueSubmit(
-                vulkan::g_device.graphicsQueue,
-                1,
-                &submitInfo,
-                VK_NULL_HANDLE) != VK_SUCCESS)
-            {
-                DiracError("Vulkan failed to submit graphics queue for the uniform buffer!");
-                return eRR_Error;
-            }
-
-            vulkan::g_device.vkDeviceWaitIdle(vulkan::g_device.handle); // TODO: use semaphores instead of simply waiting on the device
-        } // Copy uniform buffer to staging buffer, then copy to host memory
-
-    } // ~Copy matrix to staging buffer, then copy to host memory uniform buffer
+        if (!FlushSceneSDF(0, shapeIndex))
+        {
+            DiracError("Failed to initialize SDF scene!");
+            return eRR_Error;
+        }
+    } // ~Initialize SDF scene data
     ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     return eRR_Success;

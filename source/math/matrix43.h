@@ -426,11 +426,11 @@ inline void Matrix43<T>::SetRotationAndTranslation(const Matrix33<T>& m, const V
 
 ///////////////////////////////////////////////////////////////////////
 template <typename T>
-inline static Matrix43<T> Matrix43<T>::CreateRotationAndTranslation(const Matrix33<T>& m, const Vec3<T>& t)
+inline Matrix43<T> Matrix43<T>::CreateRotationAndTranslation(const Matrix33<T>& m, const Vec3<T>& t)
 {
-    Matrix43<T> m(EUninitialized::Constructor);
-    m.SetRotationAndTranslation(m, t);
-    return m;
+    Matrix43<T> m2(EUninitialized::Constructor);
+    m2.SetRotationAndTranslation(m, t);
+    return m2;
 }
 
 ///////////////////////////////////////////////////////////////////////

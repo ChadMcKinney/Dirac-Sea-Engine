@@ -7,17 +7,34 @@
 #version 450
 
 ////////////////////////////////////////////
+// Constants
+
+const int MAX_MARCHING_STEPS = 255;
+const float MIN_DIST = 0.0;
+const float MAX_DIST = 1000.0;
+const float EPSILON = 0.0001;
+
+// Shape Enum - keep in sync with code in renderer.cpp
+const int MAX_SHAPES = 256;
+const int SPHERE = 0;
+const int CUBE = 1;
+
+////////////////////////////////////////////
 // Inputs
+
 layout(set=0, binding=0) uniform sampler2D u_Texture;
 layout(set=0, binding=1) uniform u_UniformBuffer
 {
-    mat4 u_UnusedMatrix; // TODO; remove/repurpose this
+    // we store inverted transform data as this is how we need to use it with SDF functions
+    mat4 u_InvShapeTransforms[MAX_SHAPES];
 };
 
 layout(push_constant) uniform PushConstants
 {
     mat4 u_ViewMatrix;
     float u_TimeSecs;
+    int u_NumSpheres;
+    int u_NumCubes;
 };
 
 layout(location = 0) in vec2 v_Texcoord;
@@ -25,14 +42,6 @@ layout(location = 0) in vec2 v_Texcoord;
 ////////////////////////////////////////////
 // Outputs
 layout(location = 0) out vec4 o_Color;
-
-////////////////////////////////////////////
-// Constants
-
-const int MAX_MARCHING_STEPS = 255;
-const float MIN_DIST = 0.0;
-const float MAX_DIST = 100.0;
-const float EPSILON = 0.0001;
 
 ////////////////////////////////////////////
 // SDF helpers
@@ -56,16 +65,16 @@ float differenceSDF(float distA, float distB)
 ////////////////////////////////////////////
 // SDF scene
 
-float sphereSDF(vec3 samplePos, vec3 spherePos, float radius)
+float sphereSDF(vec4 samplePos, mat4 invTransform, float radius)
 {
-    return length(samplePos - spherePos) - radius;
+    return length(vec3(invTransform * samplePos)) - radius;
 }
 
-float cubeSDF(vec3 samplePos, vec3 cubePos, vec3 halfExtents)
+float cubeSDF(vec4 samplePos, mat4 invTransform, vec3 halfExtents)
 {
     // if d.x < 0 then -1 < p.x < 1, same for p.y, p.z
     // so if all components of d are negative, then p is inside the unit cube
-    vec3 d = abs(samplePos - cubePos) - halfExtents;
+    vec3 d = abs(vec3(invTransform * samplePos)) - halfExtents;
     float insideDistance = min(max(d.x, max(d.y, d.z)), 0.0);
 
     // Assuming p is inside the cube, how far is it from the surface?
@@ -80,19 +89,9 @@ float wrap(float f)
     return mod(f + w, w * 2) - 2;
 }
 
-
-float sceneSDF(vec3 pos)
+/*
+float wobblySphereSDF(vec3 pos)
 {
-    /* return sphereSDF(pos, vec3(0.0, 0.0, 0.0), 1.0); */
-    /* pos = vec3(mod(pos.x, 8), mod(pos.y, 8), mod(pos.z, 8)); */
-    /* pos = vec3(mod(-pos.x, 8), mod(-pos.y, 8), mod(-pos.z, 8)); */
-    /* pos = vec3(wrap(pos.x), wrap(pos.y), wrap(pos.z)); */
-    return unionSDF(
-        sphereSDF(pos, vec3(1.0, 1.0, -1.0), 0.5),
-        unionSDF(cubeSDF(pos, vec3(1.0, 0.0, 1.0), vec3(0.5, 0.5, 0.5)),
-        unionSDF(cubeSDF(pos, vec3(-1.0, 0.0, 1.0), vec3(0.5, 0.5, 0.5)),
-        cubeSDF(pos, vec3(0.0, 0.0, 0.0), vec3(0.5, 0.5, 0.5)))));
-    /*
     vec3 spherePos = vec3(sin(u_TimeSecs * 0.5) * 0.25, cos(u_TimeSecs * 2) * 0.125, 0.0);
     float sphereRadius = sin(u_TimeSecs * 4) * 0.75 + 1.5;
     vec3 cubePos = vec3(cos(u_TimeSecs * 5) * 0.125, sin(u_TimeSecs) * 0.25, 0.0);
@@ -102,7 +101,36 @@ float sceneSDF(vec3 pos)
     float d1 = intersectSDF(cubeDist, sphereDist);
     float d2 = intersectSDF(d1, differenceSDF(-sphereDist * 0.25, -cubeDist * 0.25));
     return unionSDF(d2, intersectSDF((d2 - d1) * 0.25, ((d1 - d2) * 0.125)) + sphereSDF(pos, spherePos, 0.8));
-    */
+}
+
+float boxesAndSphere(vec3 pos)
+{
+    return unionSDF(
+        sphereSDF(pos, vec3(1.0, 1.0, -1.0), 0.5),
+        unionSDF(cubeSDF(pos, vec3(1.0, 0.0, 1.0), vec3(0.5, 0.5, 0.5)),
+        unionSDF(cubeSDF(pos, vec3(-1.0, 0.0, 1.0), vec3(0.5, 0.5, 0.5)),
+        cubeSDF(pos, vec3(0.0, 0.0, 0.0), vec3(0.5, 0.5, 0.5)))));
+}
+*/
+
+
+float sceneSDF(vec3 pos)
+{
+    vec4 pos4 = vec4(pos, 1);
+    float dist = MAX_DIST;
+    // Keep in sync with shapes enum
+    int s = 0;
+    for (int i = 0; i < u_NumSpheres; ++i, ++s)
+    {
+        dist = unionSDF(dist, sphereSDF(pos4, u_InvShapeTransforms[s], 1.0));
+    }
+
+    for (int i = 0; i < u_NumCubes; ++i, ++s)
+    {
+        dist = unionSDF(dist, cubeSDF(pos4, u_InvShapeTransforms[s], vec3(1, 1, 1)));
+    }
+
+    return dist;
 }
 
 float shortestDistanceToSurface(vec3 eye, vec3 marchingDirection, float start, float end)
