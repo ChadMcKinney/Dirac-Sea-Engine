@@ -360,9 +360,9 @@ const Vec3<T> Vec3<T>::Left(-1, 0, 0);
 template <typename T>
 const Vec3<T> Vec3<T>::Right(1, 0, 0);
 template <typename T>
-const Vec3<T> Vec3<T>::Forward(0, 0, 1);
+const Vec3<T> Vec3<T>::Forward(0, 0, -1);
 template <typename T>
-const Vec3<T> Vec3<T>::Back(0, 0, -1);
+const Vec3<T> Vec3<T>::Back(0, 0, 1);
 
 ///////////////////////////////////////////////////////////////////////
 typedef Vec3<fworld> Vec3w;

@@ -747,8 +747,8 @@ void RunMatrix4x4Tests()
         Matrix44<T> m = Matrix33<T>::CreateOrientation(Vec3<T>::Right, Vec3<T>::Up, kPi<T>);
         Matrix44<T> m2 = Matrix33<T>::CreateOrientation(Vec3<T>::Right, Vec3<T>::Up, 0);
         Vec4<T> right(1, 0, 0, 1);
-        Vec4<T> forward(0, 0, 1, 1);
-        Vec4<T> back(0, 0, -1, 1);
+        Vec4<T> forward(0, 0, -1, 1);
+        Vec4<T> back(0, 0, 1, 1);
         Vec4<T> v = right * m;
         Vec4<T> v2 = right * m2;
         TEST("m44: CreateOrientation Right Up", v.IsEquivalent(forward, epsilon<T>()));

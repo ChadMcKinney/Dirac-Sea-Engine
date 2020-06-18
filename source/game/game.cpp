@@ -169,7 +169,7 @@ void HandleQ(int32_t, uint16_t, platform::EKeyChange keyChange)
 
 ERunResult Initialize()
 {
-    g_player.position = Vec3l(0, 0, -8);
+    g_player.position = Vec3l(0, 0, 8);
     g_camera.transform = Matrix44l::CreateRotationAndTranslation(
         EIdentity::Constructor,
         g_player.position
@@ -220,11 +220,11 @@ ERunResult Run(const SFrameContext& frameContext)
 
     if ((g_player.activeRotations & ERotation::Flags::Roll) != ERotation::Flags::FLAGS_NONE)
     {
-        rollRadians = float(-TSeconds(frameContext.lastFrameDuration).count() * kFWorldQuarterPi * 0.5);
+        rollRadians = float(TSeconds(frameContext.lastFrameDuration).count() * kFWorldQuarterPi * 0.5);
     }
     else if ((g_player.activeRotations & ERotation::Flags::RollBack) != ERotation::Flags::FLAGS_NONE)
     {
-        rollRadians = float(TSeconds(frameContext.lastFrameDuration).count() * kFWorldQuarterPi * 0.5);
+        rollRadians = float(-TSeconds(frameContext.lastFrameDuration).count() * kFWorldQuarterPi * 0.5);
     }
 
     Vec2i rawRelMouse(EUninitialized::Constructor);
@@ -250,7 +250,7 @@ ERunResult Run(const SFrameContext& frameContext)
     {
         static const double fSensitivity = 50.f;
         const float fSpdPerSec = g_player.rotSpdPerSec * float(TSeconds(frameContext.lastFrameDuration).count() * fSensitivity);
-        yawRadians = -relMouse.x * fSpdPerSec;
+        yawRadians = relMouse.x * fSpdPerSec;
         pitchRadians = relMouse.y * fSpdPerSec;
     }
 

@@ -496,9 +496,9 @@ inline void Matrix33<T>::SetOrthonormalBasisRotation(const Vec3<T>& forward, con
     // assert that forward and up are perpendicular
     assert((up.Cross(forward).Cross(up) - forward).Magnitude() < epsilon<T>());
     assert((forward.Cross(up.Cross(forward)) - up).Magnitude() < epsilon<T>());
-    SetRow1(up.Cross(forward));
+    SetRow1(forward.Cross(up));
     SetRow2(up);
-    SetRow3(forward);
+    SetRow3(forward.Negated());
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -516,11 +516,11 @@ inline void Matrix33<T>::SetOrthonormalBasisRotation_FixedForward(const Vec3<T>&
 {
     assert(forward.IsUnit(epsilon<T>()));
     assert(up.IsUnit(epsilon<T>()));
-    const Vec3<T> right = up.Cross(forward).SafeNormalized();
-    const Vec3<T> fixedUp = forward.Cross(right).SafeNormalized();
+    const Vec3<T> right = forward.Cross(up).SafeNormalized();
+    const Vec3<T> fixedUp = right.Cross(forward).SafeNormalized();
     SetRow1(right);
     SetRow2(fixedUp);
-    SetRow3(forward);
+    SetRow3(forward.Negated());
 }
 
 ///////////////////////////////////////////////////////////////////////

@@ -3135,9 +3135,7 @@ ERunResult Shutdown()
 
 void SetViewMatrix(const Matrix44<float>& viewMatrix)
 {
-    Matrix44l glslMatrix = viewMatrix;
-    glslMatrix.SetRow3(glslMatrix.GetRow3().Negated());
-    vulkan::g_pushConstants.viewMatrix = glslMatrix;
+    vulkan::g_pushConstants.viewMatrix = viewMatrix;
 }
 
 } // renderer namespace
